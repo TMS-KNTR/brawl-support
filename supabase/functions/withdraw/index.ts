@@ -1,0 +1,96 @@
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+      apiVersion: "2023-10-16",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // 従業員認証
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("認証が必要です");
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) throw new Error("認証が必要です");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, balance, stripe_account_id")
+      .eq("id", user.id)
+      .single();
+
+    const role = profile?.role;
+    if (!["worker", "employee", "admin"].includes(role || "")) {
+      throw new Error("従業員権限が必要です");
+    }
+
+    const { amount } = await req.json();
+    if (!amount || amount <= 0) throw new Error("出金額を指定してください");
+
+    const currentBalance = profile?.balance || 0;
+    if (amount > currentBalance) throw new Error(`残高不足です（残高: ¥${currentBalance.toLocaleString()}）`);
+
+    if (!profile?.stripe_account_id) {
+      throw new Error("銀行口座が未登録です。先に口座登録を行ってください。");
+    }
+
+    // Stripe Transferで送金
+    const transfer = await stripe.transfers.create({
+      amount: amount,
+      currency: "jpy",
+      destination: profile.stripe_account_id,
+      description: `出金申請 ¥${amount.toLocaleString()}`,
+      metadata: { user_id: user.id },
+    });
+
+    // 残高を減らす
+    const newBalance = currentBalance - amount;
+    await supabase
+      .from("profiles")
+      .update({ balance: newBalance })
+      .eq("id", user.id);
+
+    // 出金履歴に記録
+    await supabase.from("withdrawals").insert({
+      user_id: user.id,
+      amount: amount,
+      type: "withdrawal",
+      status: "completed",
+      transfer_id: transfer.id,
+      description: `出金 ¥${amount.toLocaleString()}`,
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: `¥${amount.toLocaleString()} を出金しました`,
+        transfer_id: transfer.id,
+        new_balance: newBalance,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+  } catch (err: any) {
+    console.error("Withdraw error:", err.message);
+    return new Response(
+      JSON.stringify({ success: false, error: err.message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+  }
+});
