@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -22,9 +22,10 @@ function roleLabel(role: string): string {
 
 export default function AdminUsersPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState('all');
 
   // 警告モーダル
@@ -80,6 +81,7 @@ export default function AdminUsersPage() {
         .eq('id', warnTarget.id);
 
       if (error) { alert('エラー: ' + error.message); return; }
+      await logAdminAction({ action: 'user_warning_auto_ban', targetType: 'user', targetId: warnTarget.id, details: `${name} に警告を与え自動BAN`, meta: { reason: warnReason, warning_count: newCount } });
       alert(`${name} に警告を与え、自動BANしました。`);
     } else {
       if (!window.confirm(`${name} に警告を与えますか？\n\n理由: ${warnReason}\n\n現在の警告回数: ${currentCount}回 → ${newCount}回\n（2回でBANになります）`)) return;
@@ -90,6 +92,7 @@ export default function AdminUsersPage() {
         .eq('id', warnTarget.id);
 
       if (error) { alert('エラー: ' + error.message); return; }
+      await logAdminAction({ action: 'user_warning', targetType: 'user', targetId: warnTarget.id, details: `${name} に警告 (${newCount}/2)`, meta: { reason: warnReason, warning_count: newCount } });
       alert(`${name} に警告を与えました（${newCount}/2回）`);
     }
 
@@ -105,6 +108,7 @@ export default function AdminUsersPage() {
     if (!window.confirm(`${name} の警告回数をリセット（0回に戻す）しますか？`)) return;
     const { error } = await supabase.from('profiles').update({ warning_count: 0 }).eq('id', user.id);
     if (error) { alert('エラー: ' + error.message); return; }
+    await logAdminAction({ action: 'user_warnings_reset', targetType: 'user', targetId: user.id, details: `${name} の警告回数をリセット`, meta: { previous_count: user.warning_count } });
     loadUsers();
   }
 
@@ -125,6 +129,7 @@ export default function AdminUsersPage() {
 
     const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
     if (error) { alert('エラー: ' + error.message); return; }
+    await logAdminAction({ action: newBan ? 'user_ban' : 'user_unban', targetType: 'user', targetId: user.id, details: `${name} を${newBan ? 'BAN' : 'BAN解除'}`, meta: { is_banned: newBan, ban_reason: updates.ban_reason } });
     loadUsers();
   }
 
@@ -133,6 +138,7 @@ export default function AdminUsersPage() {
     if (!window.confirm(`${name} のロールを「${roleLabel(newRole)}」に変更しますか？`)) return;
     const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', user.id);
     if (error) { alert('エラー: ' + error.message); return; }
+    await logAdminAction({ action: 'user_role_changed', targetType: 'user', targetId: user.id, details: `${name} のロールを ${roleLabel(user.role)} → ${roleLabel(newRole)} に変更`, meta: { old_role: user.role, new_role: newRole } });
     loadUsers();
   }
 

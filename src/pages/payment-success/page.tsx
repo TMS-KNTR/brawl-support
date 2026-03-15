@@ -1,27 +1,52 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session_id')
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [chatThreadId, setChatThreadId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (sessionId) {
-      // Stripe Checkoutセッションが存在する = 決済ページから正常に戻ってきた
-      // 実際のDB更新はstripe-webhook側で行われる（ここではUIだけ）
-      setStatus('success')
-    } else {
+    if (!sessionId) {
       setStatus('error')
+      return
     }
+    setStatus('success')
   }, [sessionId])
+
+  // ユーザーの最新注文からchat_thread_idを取得
+  useEffect(() => {
+    if (!user || status !== 'success') return
+    const fetchChatThread = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, chat_threads:chat_threads(id)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (!error && data) {
+        const thread = Array.isArray(data.chat_threads) ? data.chat_threads[0] : data.chat_threads
+        if (thread?.id) setChatThreadId(thread.id)
+      }
+    }
+    fetchChatThread()
+  }, [user, status])
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">決済情報を確認中...</p>
+          <div className="relative w-8 h-8 mx-auto mb-3">
+            <div className="absolute inset-0 border-2 border-[#E5E5E5] rounded-full" />
+            <div className="absolute inset-0 border-2 border-transparent border-t-[#111] rounded-full animate-spin" />
+          </div>
+          <p className="text-[13px] text-[#888]">決済情報を確認中...</p>
         </div>
       </div>
     )
@@ -29,21 +54,15 @@ export default function PaymentSuccessPage() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-lg p-8 text-center max-w-md">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-3xl">✕</span>
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-[#E5E5E5] p-7 text-center">
+          <div className="w-14 h-14 rounded-full bg-[#FEF2F2] flex items-center justify-center mx-auto mb-4">
+            <i className="ri-close-line text-[24px] text-[#DC2626]"></i>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            決済情報が確認できません
-          </h1>
-          <p className="text-gray-600 mb-6">
-            このページに直接アクセスした場合、決済情報を取得できません。
-          </p>
-          <Link
-            to="/"
-            className="inline-block px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition"
-          >
+          <h1 className="text-[18px] font-bold text-[#111] mb-2">決済情報が確認できません</h1>
+          <p className="text-[13px] text-[#888] mb-6">このページに直接アクセスした場合、決済情報を取得できません。</p>
+          <Link to="/"
+            className="inline-block px-6 py-2.5 text-[13px] font-bold bg-[#111] text-white rounded-xl hover:bg-[#333] transition-colors">
             ホームに戻る
           </Link>
         </div>
@@ -51,77 +70,70 @@ export default function PaymentSuccessPage() {
     )
   }
 
+  const handleNext = () => {
+    if (chatThreadId) {
+      navigate(`/chat/${chatThreadId}`)
+    } else {
+      navigate('/dashboard/customer')
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-20">
-        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="mb-8">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-3xl text-green-600">✓</span>
+    <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl border border-[#E5E5E5] p-7 text-center">
+          {/* 決済完了 */}
+          <style>{`
+            @keyframes successRingScale {
+              0% { transform: scale(0); opacity: 0; }
+              50% { transform: scale(1.15); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes successCheckDraw {
+              0% { stroke-dashoffset: 24; opacity: 0; }
+              40% { opacity: 1; }
+              100% { stroke-dashoffset: 0; opacity: 1; }
+            }
+            @keyframes successRingPulse {
+              0%, 100% { box-shadow: 0 0 0 0 rgba(5,150,105,0.25); }
+              50% { box-shadow: 0 0 0 10px rgba(5,150,105,0); }
+            }
+            .success-ring {
+              animation: successRingScale 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both,
+                         successRingPulse 1.8s ease-in-out 0.7s both;
+            }
+            .success-check {
+              stroke-dasharray: 24;
+              stroke-dashoffset: 24;
+              animation: successCheckDraw 0.4s cubic-bezier(0.65,0,0.35,1) 0.45s forwards;
+            }
+          `}</style>
+          <div className="success-ring w-14 h-14 rounded-full bg-[#ECFDF5] flex items-center justify-center mx-auto mb-4">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <path className="success-check" d="M7.5 14.5L12 19L20.5 9.5" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h1 className="text-[20px] font-bold text-[#111] mb-1">決済が完了しました</h1>
+          <p className="text-[13px] text-[#888] mb-6">ご注文ありがとうございます</p>
+
+          {/* まだ終わりではありません */}
+          <div className="rounded-xl bg-[#FFFBEB] border border-[#FDE68A] px-5 py-4 mb-6">
+            <div className="flex items-center gap-2 justify-center mb-1.5">
+              <i className="ri-error-warning-fill text-[16px] text-[#F59E0B]"></i>
+              <p className="text-[15px] font-bold text-[#92400E]">まだ終わりではありません</p>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">決済完了！</h1>
-            <p className="text-xl text-gray-600 mb-6">
-              Brawl Stars代行サービスのご注文ありがとうございます
+            <p className="text-[13px] text-[#92400E] leading-relaxed">
+              代行を開始するにはアカウントの引き継ぎが必要です。<br />
+              チャット画面の手順に沿って進めてください。
             </p>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-6 mb-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              次のステップ
-            </h2>
-            <div className="space-y-4 text-left">
-              <div className="flex items-start">
-                <div className="w-8 h-8 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
-                  1
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">確認メール送信</div>
-                  <div className="text-gray-600 text-sm">
-                    ご登録のメールアドレスに注文確認メールをお送りします
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="w-8 h-8 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
-                  2
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">
-                    担当者からご連絡
-                  </div>
-                  <div className="text-gray-600 text-sm">
-                    24時間以内に担当者からご連絡いたします
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="w-8 h-8 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
-                  3
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">代行開始</div>
-                  <div className="text-gray-600 text-sm">
-                    アカウント情報確認後、代行サービスを開始します
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Link
-              to="/dashboard/customer"
-              className="block w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-xl font-bold hover:from-yellow-600 hover:to-orange-700 transition-all duration-300"
-            >
-              注文状況を確認する
-            </Link>
-            <Link
-              to="/"
-              className="block w-full py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-bold hover:border-gray-400 transition-all duration-300"
-            >
-              ホームページに戻る
-            </Link>
-          </div>
+          {/* 次に進むボタン */}
+          <button onClick={handleNext}
+            className="flex items-center justify-center gap-2 w-full py-3.5 text-[14px] font-bold bg-[#F59E0B] text-white rounded-xl hover:bg-[#D97706] transition-colors cursor-pointer">
+            次に進む
+            <i className="ri-arrow-right-line text-[16px]"></i>
+          </button>
         </div>
       </div>
     </div>

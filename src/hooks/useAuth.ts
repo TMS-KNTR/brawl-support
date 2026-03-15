@@ -32,6 +32,41 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | { __timeou
   ])
 }
 
+const PROFILE_CACHE_KEY = 'brawl_support_profile'
+const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000 // 5分
+
+function getProfileFromCache(userId: string): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY)
+    if (!raw) return null
+    const { id, profile, at } = JSON.parse(raw)
+    if (id !== userId || !profile) return null
+    if (Date.now() - (at || 0) > PROFILE_CACHE_TTL_MS) return null
+    return { ...profile, id: userId, role: normalizeRole(profile.role) }
+  } catch {
+    return null
+  }
+}
+
+function setProfileCache(userId: string, profile: UserProfile) {
+  try {
+    localStorage.setItem(
+      PROFILE_CACHE_KEY,
+      JSON.stringify({ id: userId, profile: { ...profile, id: userId }, at: Date.now() })
+    )
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearProfileCache() {
+  try {
+    localStorage.removeItem(PROFILE_CACHE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 export function useAuthImpl() {
   const [user, setUser] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -47,6 +82,7 @@ export function useAuthImpl() {
     try {
       await supabase.auth.signOut()
     } finally {
+      clearProfileCache()
       lastKnownProfileRef.current = null
       setUser(null)
       setUserProfile(null)
@@ -61,42 +97,73 @@ export function useAuthImpl() {
   // ================================
   const fetchUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     const reqId = ++activeProfileReqId.current
-    setProfileStatus('loading')
     setProfileError(null)
+
+    const cached = getProfileFromCache(userId)
+    if (cached) {
+      lastKnownProfileRef.current = cached
+      setUserProfile(cached)
+      setProfileStatus('ready')
+      setAuthLoading(false)
+      // バックグラウンドで最新を取得（結果で上書き）
+      supabase.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
+        if (reqId !== activeProfileReqId.current) return
+        if (data) {
+          const normalized: UserProfile = { ...data, id: userId, role: normalizeRole(data?.role) }
+          lastKnownProfileRef.current = normalized
+          setUserProfile(normalized)
+          setProfileCache(userId, normalized)
+        }
+      }).catch(() => {})
+      return cached
+    }
+
+    setProfileStatus('loading')
+    const PROFILE_TIMEOUT_MS = 15000
+
+    const doFetch = () =>
+      withTimeout(
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        PROFILE_TIMEOUT_MS
+      )
 
     try {
       console.log('[fetchUserProfile] start', userId)
+      let queryResult = await doFetch()
 
-      // 8秒タイムアウト付きでプロフィール取得
-      const queryResult = await withTimeout(
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single(),
-        8000
-      )
-
-      // stale防止
       if (reqId !== activeProfileReqId.current) {
         console.log('[fetchUserProfile] stale request, skipping')
         return null
       }
 
-      // タイムアウトした場合
       if (queryResult && '__timeout' in queryResult) {
-        console.error('[fetchUserProfile] TIMEOUT - Supabase応答なし（RLS設定を確認してください）')
-        // 既に取得済みのプロフィールがあれば上書きしない（タブ切替で全員customerになるバグを防ぐ）
-        if (lastKnownProfileRef.current && lastKnownProfileRef.current.id === userId) {
-          console.log('[fetchUserProfile] keeping existing profile after timeout')
+        const fromCache = getProfileFromCache(userId)
+        if (fromCache) {
+          lastKnownProfileRef.current = fromCache
+          setUserProfile(fromCache)
+          setProfileStatus('ready')
+          return fromCache
+        }
+        if (lastKnownProfileRef.current?.id === userId) {
           setProfileStatus('ready')
           return lastKnownProfileRef.current
         }
-        const fallback: UserProfile = { id: userId, role: 'customer' }
-        console.log('[fetchUserProfile] fallback profile applied (customer)')
-        setUserProfile(fallback)
-        setProfileStatus('ready')
-        return fallback
+        queryResult = await doFetch()
+        if (reqId !== activeProfileReqId.current) return null
+        if (queryResult && '__timeout' in queryResult) {
+          const fromCache2 = getProfileFromCache(userId)
+          if (fromCache2) {
+            lastKnownProfileRef.current = fromCache2
+            setUserProfile(fromCache2)
+            setProfileStatus('ready')
+            return fromCache2
+          }
+          console.warn('[fetchUserProfile] TIMEOUT after retry - using fallback role')
+          const fallback: UserProfile = { id: userId, role: 'customer' }
+          setUserProfile(fallback)
+          setProfileStatus('ready')
+          return fallback
+        }
       }
 
       const { data, error } = queryResult as any
@@ -113,11 +180,16 @@ export function useAuthImpl() {
           return await autoCreateProfile(userId, reqId)
         }
 
-        // RLSやその他のエラーでもフォールバック（既存プロフィールがあれば維持）
-        if (lastKnownProfileRef.current && lastKnownProfileRef.current.id === userId) {
-          console.log('[fetchUserProfile] keeping existing profile after error')
+        if (lastKnownProfileRef.current?.id === userId) {
           setProfileStatus('ready')
           return lastKnownProfileRef.current
+        }
+        const fromCache = getProfileFromCache(userId)
+        if (fromCache) {
+          lastKnownProfileRef.current = fromCache
+          setUserProfile(fromCache)
+          setProfileStatus('ready')
+          return fromCache
         }
         console.warn('[fetchUserProfile] using fallback due to error')
         const fallback: UserProfile = { id: userId, role: 'customer' }
@@ -141,6 +213,7 @@ export function useAuthImpl() {
 
       console.log('[fetchUserProfile] SUCCESS, role=', normalized.role)
       lastKnownProfileRef.current = normalized
+      setProfileCache(userId, normalized)
       setUserProfile(normalized)
       setProfileStatus('ready')
       return normalized
@@ -148,10 +221,16 @@ export function useAuthImpl() {
     } catch (e: any) {
       console.error('[fetchUserProfile] catch:', e)
       if (reqId !== activeProfileReqId.current) return null
-
-      if (lastKnownProfileRef.current && lastKnownProfileRef.current.id === userId) {
+      if (lastKnownProfileRef.current?.id === userId) {
         setProfileStatus('ready')
         return lastKnownProfileRef.current
+      }
+      const fromCache = getProfileFromCache(userId)
+      if (fromCache) {
+        lastKnownProfileRef.current = fromCache
+        setUserProfile(fromCache)
+        setProfileStatus('ready')
+        return fromCache
       }
       const fallback: UserProfile = { id: userId, role: 'customer' }
       setUserProfile(fallback)
@@ -225,6 +304,7 @@ export function useAuthImpl() {
 
       console.log('[autoCreateProfile] success, role=', normalized.role)
       lastKnownProfileRef.current = normalized
+      setProfileCache(userId, normalized)
       setUserProfile(normalized)
       setProfileStatus('ready')
       return normalized
@@ -283,8 +363,13 @@ export function useAuthImpl() {
         return
       }
 
-      // TOKEN_REFRESHED / USER_UPDATED
+      // TOKEN_REFRESHED / USER_UPDATED（タブ・ブラウザ切替で発火しやすい）
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (lastKnownProfileRef.current?.id === sessionUser.id) {
+          setProfileStatus('ready')
+          if (mounted) setAuthLoading(false)
+          return
+        }
         await fetchUserProfile(sessionUser.id)
         if (mounted) setAuthLoading(false)
       }

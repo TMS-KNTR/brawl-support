@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../../../contexts/AuthContext'
-import { invokeEdgeFunction } from '../../../lib/supabase'
+import { invokeEdgeFunction, supabase } from '../../../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import { BRAWLERS, STRENGTH_LABELS, STRENGTH_COLORS } from '../../../data/brawlers'
+import type { BrawlerStrength } from '../../../data/brawlers'
+import { calcTrophyPrice } from '../../../lib/pricing'
 
 export default function BrawlStarsOrderForm() {
   const { user } = useAuth()
@@ -22,12 +25,62 @@ export default function BrawlStarsOrderForm() {
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null)
   const [estimatedDuration, setEstimatedDuration] = useState<string>('')
   const [priceError, setPriceError] = useState<string | null>(null)
+  const [feeRate, setFeeRate] = useState(0.20)
 
-  /** 料金計算（Supabase Edge Function呼び出し） */
+  // トロフィー上げ用
+  const [selectedBrawlerId, setSelectedBrawlerId] = useState('')
+  const [brawlerSearch, setBrawlerSearch] = useState('')
+
+  const isTrophyPush = formData.serviceType === 'trophy-push'
+
+  const selectedBrawler = useMemo(
+    () => BRAWLERS.find((b) => b.id === selectedBrawlerId),
+    [selectedBrawlerId]
+  )
+
+  const filteredBrawlers = useMemo(() => {
+    if (!brawlerSearch) return BRAWLERS
+    const q = brawlerSearch.toLowerCase()
+    return BRAWLERS.filter((b) => b.name.toLowerCase().includes(q) || b.id.includes(q))
+  }, [brawlerSearch])
+
+  useEffect(() => {
+    supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'platform_fee_rate')
+      .single()
+      .then(({ data }) => {
+        if (data?.value != null) setFeeRate(Number(data.value))
+      })
+  }, [])
+
+  // トロフィー上げの料金をローカル計算
+  const trophyPriceResult = useMemo(() => {
+    if (!isTrophyPush || !selectedBrawler) return null
+    const cur = parseInt(formData.currentTrophies)
+    const tgt = parseInt(formData.targetTrophies)
+    if (isNaN(cur) || isNaN(tgt) || tgt <= cur) return null
+    if (cur < 0 || tgt > 2000) return null
+    return calcTrophyPrice(cur, tgt, selectedBrawler.strength)
+  }, [isTrophyPush, selectedBrawler, formData.currentTrophies, formData.targetTrophies])
+
+  // トロフィー上げの場合はローカル計算結果を反映
+  useEffect(() => {
+    if (isTrophyPush && trophyPriceResult) {
+      setEstimatedPrice(trophyPriceResult.total)
+      setPriceError(null)
+    } else if (isTrophyPush) {
+      setEstimatedPrice(null)
+    }
+  }, [trophyPriceResult, isTrophyPush])
+
+  /** 料金計算（非トロフィー上げ：Edge Function呼び出し） */
   const calculatePrice = async () => {
     if (!formData.serviceType || !formData.currentTrophies || !formData.targetTrophies) {
       return
     }
+    if (isTrophyPush) return // トロフィー上げはローカル計算
 
     setPriceError(null)
 
@@ -62,19 +115,27 @@ export default function BrawlStarsOrderForm() {
       return
     }
 
+    if (isTrophyPush && !selectedBrawlerId) {
+      alert('キャラを選択してください')
+      return
+    }
+
     setIsSubmitting(true)
+
+    const brawlerNote = selectedBrawler
+      ? `キャラ: ${selectedBrawler.name}（${STRENGTH_LABELS[selectedBrawler.strength]}）`
+      : ''
 
     try {
       if (submitType === 'payment') {
-        // ===== Stripe決済フロー =====
-        // create-order-payment Edge Function を呼ぶ
-        // → 注文をDBに作成 → Stripe Checkout Session作成 → URLを返す
         const result = await invokeEdgeFunction('create-order-payment', {
           currentRank: formData.currentTrophies,
           targetRank: formData.targetTrophies,
+          serviceType: formData.serviceType,
           region: formData.deviceType,
           notes: [
             formData.serviceType,
+            brawlerNote,
             formData.additionalInfo,
             `希望時間: ${formData.preferredTime}`,
             `連絡方法: ${formData.contactMethod}`,
@@ -87,30 +148,26 @@ export default function BrawlStarsOrderForm() {
             notes: `デバイス: ${formData.deviceType}`,
           },
           totalPrice: estimatedPrice || 0,
-          subtotal: estimatedPrice ? Math.floor(estimatedPrice * 0.8) : 0,
-          platformFee: estimatedPrice ? Math.floor(estimatedPrice * 0.2) : 0,
         })
 
         if (result.success && result.data?.checkoutUrl) {
-          // Stripeの決済ページにリダイレクト
           window.location.href = result.data.checkoutUrl
         } else {
           throw new Error(result.error || '注文の作成に失敗しました')
         }
       } else {
-        // ===== 見積もり依頼フロー（従来通りSupabase直接） =====
         const { supabase } = await import('../../../lib/supabase')
 
         const { data: orderData, error } = await supabase
           .from('orders')
           .insert([
             {
-              customer_id: user.id,
+              user_id: user.id,
               game_title: 'Brawl Stars',
               service_type: formData.serviceType,
               current_rank: formData.currentTrophies,
               target_rank: formData.targetTrophies,
-              total_price: estimatedPrice || 0,
+              price: estimatedPrice || 0,
               status: 'pending',
             },
           ])
@@ -136,7 +193,7 @@ export default function BrawlStarsOrderForm() {
               order_id: orderData.id,
               username: formData.gameAccount,
               password_encrypted: btoa(formData.gamePassword),
-              notes: `デバイス: ${formData.deviceType}\n追加情報: ${formData.additionalInfo}`,
+              notes: `デバイス: ${formData.deviceType}\n${brawlerNote}\n追加情報: ${formData.additionalInfo}`,
               masked_preview: `${formData.gameAccount.substring(0, 2)}***`,
               visible_to: JSON.stringify([]),
             },
@@ -159,6 +216,18 @@ export default function BrawlStarsOrderForm() {
   ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+
+    // サービスタイプ変更時にリセット
+    if (name === 'serviceType') {
+      setEstimatedPrice(null)
+      setEstimatedDuration('')
+      setPriceError(null)
+      if (value !== 'trophy-push') {
+        setSelectedBrawlerId('')
+        setBrawlerSearch('')
+      }
+    }
+
     if (['serviceType', 'currentTrophies', 'targetTrophies'].includes(name)) {
       setTimeout(calculatePrice, 500)
     }
@@ -218,36 +287,6 @@ export default function BrawlStarsOrderForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              現在のトロフィー数 *
-            </label>
-            <input
-              type="number"
-              name="currentTrophies"
-              required
-              value={formData.currentTrophies}
-              onChange={handleInputChange}
-              placeholder="例: 15000"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              目標トロフィー数 *
-            </label>
-            <input
-              type="number"
-              name="targetTrophies"
-              required
-              value={formData.targetTrophies}
-              onChange={handleInputChange}
-              placeholder="例: 20000"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
               デバイスタイプ *
             </label>
             <select
@@ -262,7 +301,196 @@ export default function BrawlStarsOrderForm() {
               <option value="pc">PC (エミュレーター)</option>
             </select>
           </div>
+        </div>
 
+        {/* ═══ トロフィー上げ：キャラ選択 ═══ */}
+        {isTrophyPush && (
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              キャラクター選択 *
+            </label>
+
+            {/* 選択済み表示 */}
+            {selectedBrawler && (
+              <div className="flex items-center gap-3 p-3 mb-3 rounded-lg border-2 border-purple-300 bg-purple-50">
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="text-[15px] font-bold text-gray-900">{selectedBrawler.name}</span>
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold"
+                    style={{
+                      color: STRENGTH_COLORS[selectedBrawler.strength],
+                      background: STRENGTH_COLORS[selectedBrawler.strength] + '15',
+                    }}
+                  >
+                    {STRENGTH_LABELS[selectedBrawler.strength]}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedBrawlerId(''); setBrawlerSearch('') }}
+                  className="text-sm text-gray-500 hover:text-gray-700 cursor-pointer"
+                >
+                  変更
+                </button>
+              </div>
+            )}
+
+            {/* キャラ検索・一覧 */}
+            {!selectedBrawler && (
+              <>
+                <input
+                  type="text"
+                  value={brawlerSearch}
+                  onChange={(e) => setBrawlerSearch(e.target.value)}
+                  placeholder="キャラ名で検索..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-3"
+                />
+                <div className="max-h-[280px] overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  {filteredBrawlers.map((brawler) => (
+                    <button
+                      key={brawler.id}
+                      type="button"
+                      onClick={() => { setSelectedBrawlerId(brawler.id); setBrawlerSearch('') }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-purple-50 transition-colors text-left cursor-pointer"
+                    >
+                      <span className="text-[13px] font-semibold text-gray-900 flex-1">{brawler.name}</span>
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold"
+                        style={{
+                          color: STRENGTH_COLORS[brawler.strength],
+                          background: STRENGTH_COLORS[brawler.strength] + '15',
+                        }}
+                      >
+                        {STRENGTH_LABELS[brawler.strength]}
+                      </span>
+                    </button>
+                  ))}
+                  {filteredBrawlers.length === 0 && (
+                    <div className="px-4 py-6 text-center text-sm text-gray-400">
+                      該当するキャラが見つかりません
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ═══ トロフィー数入力 ═══ */}
+        <div className="grid md:grid-cols-2 gap-6 mt-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {isTrophyPush ? '現在のトロフィー数（キャラ個別）*' : '現在のトロフィー数 *'}
+            </label>
+            <input
+              type="number"
+              name="currentTrophies"
+              required
+              value={formData.currentTrophies}
+              onChange={handleInputChange}
+              placeholder={isTrophyPush ? '例: 500' : '例: 15000'}
+              min={0}
+              max={isTrophyPush ? 2000 : undefined}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {isTrophyPush ? '目標トロフィー数（キャラ個別）*' : '目標トロフィー数 *'}
+            </label>
+            <input
+              type="number"
+              name="targetTrophies"
+              required
+              value={formData.targetTrophies}
+              onChange={handleInputChange}
+              placeholder={isTrophyPush ? '例: 1500' : '例: 20000'}
+              min={0}
+              max={isTrophyPush ? 2000 : undefined}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* ═══ トロフィー上げ：料金プレビュー ═══ */}
+        {isTrophyPush && trophyPriceResult && trophyPriceResult.total > 0 && (
+          <div className="mt-6 p-5 rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-blue-50">
+            <h4 className="font-semibold text-gray-900 mb-3">料金</h4>
+
+            {selectedBrawler && (
+              <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
+                <span>{selectedBrawler.name}</span>
+                <span className="text-gray-300">|</span>
+                <span style={{ color: STRENGTH_COLORS[selectedBrawler.strength] }}>
+                  {STRENGTH_LABELS[selectedBrawler.strength]}
+                </span>
+                <span className="text-gray-300">|</span>
+                <span>{formData.currentTrophies} → {formData.targetTrophies} トロフィー</span>
+              </div>
+            )}
+
+            {/* 内訳 */}
+            {trophyPriceResult.breakdown.length > 1 && (
+              <div className="space-y-1.5 mb-3">
+                {trophyPriceResult.breakdown.map((seg, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-gray-600">{seg.label} 帯</span>
+                    <span className="font-medium text-gray-800">¥{seg.price.toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="border-t border-green-200 pt-1.5" />
+              </div>
+            )}
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700 font-medium">合計料金</span>
+              <span className="text-2xl font-bold text-green-600">
+                ¥{trophyPriceResult.total.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ トロフィー上げ：料金表 ═══ */}
+        {isTrophyPush && !trophyPriceResult && (
+          <div className="mt-6 p-5 rounded-lg border border-gray-200 bg-gray-50">
+            <h4 className="font-semibold text-gray-900 mb-3">料金表</h4>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-300">
+                  <th className="text-left py-2 text-gray-600">トロフィー帯</th>
+                  <th className="text-right py-2 text-green-600">強い</th>
+                  <th className="text-right py-2 text-blue-600">普通</th>
+                  <th className="text-right py-2 text-red-600">弱い</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="py-2 text-gray-700">0 〜 1,000</td>
+                  <td className="py-2 text-right text-gray-900 font-medium" colSpan={3}>¥3,000（一律）</td>
+                </tr>
+                <tr>
+                  <td className="py-2 text-gray-700">1,000 〜 2,000</td>
+                  <td className="py-2 text-right text-green-700 font-medium">¥4,500</td>
+                  <td className="py-2 text-right text-blue-700 font-medium">¥5,000</td>
+                  <td className="py-2 text-right text-red-700 font-medium">¥5,500</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="text-xs text-gray-400 mt-2">* 帯をまたぐ場合は按分で合算されます</p>
+          </div>
+        )}
+
+        {/* 目標1000以上の注意書き */}
+        {isTrophyPush && parseInt(formData.targetTrophies) >= 1000 && (
+          <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
+            <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
+            <span className="text-xs text-amber-800">トロフィー1,000以上はハイパーチャージ・スタパ・ギア解放キャラのみ対応</span>
+          </div>
+        )}
+
+        <div className="grid md:grid-cols-2 gap-6 mt-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               ゲームアカウント *
@@ -320,8 +548,6 @@ export default function BrawlStarsOrderForm() {
           >
             <option value="in-app">アプリ内チャット</option>
             <option value="email">メール</option>
-            <option value="discord">Discord</option>
-            <option value="line">LINE</option>
           </select>
         </div>
 
@@ -343,8 +569,8 @@ export default function BrawlStarsOrderForm() {
           </div>
         </div>
 
-        {/* 料金表示 */}
-        {estimatedPrice && (
+        {/* 料金表示（非トロフィー上げ） */}
+        {!isTrophyPush && estimatedPrice && (
           <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
             <h4 className="font-semibold text-gray-900 mb-2">見積もり結果</h4>
             <div className="flex justify-between items-center">

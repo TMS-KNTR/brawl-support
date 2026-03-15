@@ -47,9 +47,16 @@ serve(async (req: Request) => {
     const employeeId = order.employee_id;
     if (!employeeId) throw new Error("従業員が割り当てられていません");
 
-    // 報酬計算（75%が従業員）
+    // system_settings から手数料率を取得
+    const { data: feeRateSetting } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "platform_fee_rate")
+      .single();
+    const feeRate = Number(feeRateSetting?.value) || 0.20;
+
     const totalPrice = order.price || order.total_price || 0;
-    const platformFee = order.platform_fee || Math.round(totalPrice * 0.25);
+    const platformFee = order.platform_fee || Math.round(totalPrice * feeRate);
     const payoutAmount = totalPrice - platformFee;
     if (payoutAmount <= 0) throw new Error("支払い金額が0以下です");
 
@@ -70,11 +77,11 @@ serve(async (req: Request) => {
 
     if (balanceError) throw new Error("残高更新に失敗: " + balanceError.message);
 
-    // 注文を完了に更新
+    // 注文を確認済みに更新
     await supabase
       .from("orders")
       .update({
-        status: "completed",
+        status: "confirmed",
         is_paid_out: true,
         payout_amount: payoutAmount,
         paid_out_at: new Date().toISOString(),

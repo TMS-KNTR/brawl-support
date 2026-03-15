@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 
-export default function Register() {
+export default function RegisterPage() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -10,32 +12,36 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const { signUp } = useAuth()
-  const navigate = useNavigate()
+
+  const passwordChecks = [
+    { test: (p: string) => p.length >= 8, label: '8文字以上' },
+    { test: (p: string) => /[a-zA-Z]/.test(p), label: '英字を含む' },
+    { test: (p: string) => /[0-9]/.test(p), label: '数字を含む' },
+  ]
+  const allChecksPassed = passwordChecks.every((c) => c.test(password))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('パスワードが一致しません')
-      setLoading(false)
-      return
-    }
+    if (!username.trim()) { setError('ユーザー名を入力してください'); return }
+    if (!email.trim()) { setError('メールアドレスを入力してください'); return }
+    if (!allChecksPassed) { setError('パスワード要件を満たしてください'); return }
+    if (password !== confirmPassword) { setError('パスワードが一致しません'); return }
 
-    if (password.length < 6) {
-      setError('パスワードは6文字以上で入力してください')
-      setLoading(false)
-      return
-    }
-
+    setLoading(true)
     try {
-      await signUp(email, password, username)
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { username: username.trim() },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (signUpError) throw signUpError
       setSuccess(true)
-      setTimeout(() => {
-        navigate('/login')
-      }, 2000)
+      setTimeout(() => navigate('/login'), 3000)
     } catch (err: any) {
       setError(err.message || '登録に失敗しました')
     } finally {
@@ -45,19 +51,31 @@ export default function Register() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 shadow-xl">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <i className="ri-check-line text-2xl text-white"></i>
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4"
+        style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
+        <RegisterBackground />
+        <div className="relative z-10 w-full max-w-[400px]"
+          style={{ animation: 'reg-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+          <style>{`
+            @keyframes reg-fadeUp {
+              from { opacity: 0; transform: translateY(20px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+          <div className="rounded-2xl border border-[#E0E7FF] p-8 text-center bg-white"
+            style={{
+              boxShadow: '0 20px 60px rgba(99,102,241,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+            }}>
+            <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center bg-[#EEF2FF]">
+              <i className="ri-check-line text-[22px] text-[#6366F1]"></i>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-4">登録完了！</h2>
-            <p className="text-gray-300 mb-4">
-              確認メールを送信しました。メールを確認してアカウントを有効化してください。
+            <h2 className="text-[18px] font-bold text-[#1A1A2E] mb-2"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}>登録完了</h2>
+            <p className="text-[13px] text-[#6B7280] leading-relaxed"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+              確認メールを送信しました。<br />メール内のリンクをクリックしてアカウントを有効化してください。
             </p>
-            <p className="text-sm text-gray-400">
-              2秒後にログインページに移動します...
-            </p>
+            <p className="text-[11px] text-[#9CA3AF] mt-4">3秒後にログインページに移動します...</p>
           </div>
         </div>
       </div>
@@ -65,127 +83,206 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <Link to="/" className="text-3xl font-bold text-white font-['Pacifico']">
-            GameBoost
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
+      style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
+      <Helmet>
+        <title>新規登録 | GEMSUKE - ゲーム代行サービス</title>
+        <meta name="description" content="GEMSUKEに無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
+        <link rel="canonical" href="https://gemsuke.com/register" />
+      </Helmet>
+      <RegisterBackground />
+
+      <style>{`
+        @keyframes reg-fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .reg-card {
+          animation: reg-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+        }
+        .reg-btn {
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reg-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 0 20px rgba(99,102,241,0.25);
+        }
+        .reg-input {
+          transition: all 0.25s ease;
+        }
+        .reg-input:focus {
+          border-color: #6366F1;
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+      `}</style>
+
+      <div className="relative z-10 w-full max-w-[400px]">
+        {/* Logo */}
+        <div className="text-center mb-8" style={{ animation: 'reg-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+          <Link to="/" className="inline-flex items-center gap-2.5 group">
+            <div className="w-8 h-8 border border-[#6366F1]/20 rounded-lg flex items-center justify-center group-hover:border-[#6366F1]/40 transition-colors">
+              <i className="ri-gamepad-fill text-[#6366F1] text-sm"></i>
+            </div>
+            <span
+              className="text-[15px] font-bold tracking-[0.15em] text-[#1A1A2E]"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              GEMSUKE
+            </span>
           </Link>
-          <h2 className="mt-6 text-3xl font-extrabold text-white">
-            新規アカウント作成
-          </h2>
-          <p className="mt-2 text-sm text-gray-300">
-            すでにアカウントをお持ちの方は{' '}
-            <Link to="/login" className="font-medium text-pink-400 hover:text-pink-300">
-              ログイン
-            </Link>
-          </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 shadow-xl">
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-200 mb-2">
-                  ユーザー名
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  placeholder="ユーザー名を入力"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-2">
-                  メールアドレス
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  placeholder="your@email.com"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-200 mb-2">
-                  パスワード
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  placeholder="6文字以上のパスワード"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-200 mb-2">
-                  パスワード確認
-                </label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  placeholder="パスワードを再入力"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                {loading ? (
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    登録中...
-                  </div>
-                ) : (
-                  'アカウント作成'
-                )}
-              </button>
-            </div>
-
-            <div className="mt-4 text-xs text-gray-400 text-center">
-              登録することで、
-              <Link to="/terms" className="text-pink-400 hover:text-pink-300">利用規約</Link>
-              および
-              <Link to="/privacy" className="text-pink-400 hover:text-pink-300">プライバシーポリシー</Link>
-              に同意したものとみなされます。
-            </div>
+        {/* Card */}
+        <div className="reg-card rounded-2xl border border-[#E0E7FF] p-6 sm:p-8 bg-white"
+          style={{
+            boxShadow: '0 20px 60px rgba(99,102,241,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+          }}>
+          <div className="mb-6">
+            <h1
+              className="text-[20px] font-bold text-[#1A1A2E]"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}
+            >
+              新規登録
+            </h1>
+            <p className="text-[13px] text-[#6B7280] mt-1" style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+              すでにアカウントをお持ちの方は{' '}
+              <Link to="/login" className="text-[#6366F1] font-semibold hover:text-[#4F46E5] transition-colors">
+                ログイン
+              </Link>
+            </p>
           </div>
-        </form>
+
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-600 px-3.5 py-2.5 text-[12px] font-medium"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+              <i className="ri-error-warning-line mr-1.5"></i>{error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-bold text-[#6B7280] mb-1.5 tracking-wider uppercase"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+                ユーザー名
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="表示名を入力"
+                className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#6B7280] mb-1.5 tracking-wider uppercase"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+                メールアドレス
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                inputMode="email"
+                placeholder="you@example.com"
+                className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#6B7280] mb-1.5 tracking-wider uppercase"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+                パスワード
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                placeholder="8文字以上・英字+数字"
+                className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}
+              />
+              {password && (
+                <div className="flex gap-3 mt-2">
+                  {passwordChecks.map((c) => (
+                    <span key={c.label} className={`text-[10px] font-medium flex items-center gap-1 ${c.test(password) ? 'text-[#6366F1]' : 'text-[#9CA3AF]'}`}>
+                      <i className={`${c.test(password) ? 'ri-check-line' : 'ri-close-line'} text-[10px]`}></i>
+                      {c.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#6B7280] mb-1.5 tracking-wider uppercase"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+                パスワード（確認）
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                placeholder="もう一度入力"
+                className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="reg-btn w-full py-3 text-[12px] font-bold tracking-[0.08em] uppercase bg-[#6366F1] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <i className="ri-loader-4-line text-[14px] animate-spin"></i>
+                  登録中...
+                </span>
+              ) : (
+                'アカウントを作成'
+              )}
+            </button>
+          </form>
+
+          <p className="mt-4 text-[10px] text-[#9CA3AF] text-center leading-relaxed"
+            style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+            登録することで、
+            <Link to="/legal/terms" className="text-[#6B7280] hover:text-[#6366F1] transition-colors">利用規約</Link>
+            および
+            <Link to="/legal/privacy" className="text-[#6B7280] hover:text-[#6366F1] transition-colors">プライバシーポリシー</Link>
+            に同意したものとみなされます。
+          </p>
+        </div>
       </div>
+    </div>
+  )
+}
+
+/* ── Soft background with grid pattern ── */
+function RegisterBackground() {
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      <style>{`
+        @keyframes reg-grid-pulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
+
+      {/* Grid pattern */}
+      <div className="absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px',
+          animation: 'reg-grid-pulse 8s ease-in-out infinite',
+        }} />
     </div>
   )
 }

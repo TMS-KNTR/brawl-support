@@ -7,6 +7,7 @@ import ProtectedRoute from '../components/base/ProtectedRoute'
 const HomePage = lazy(() => import('../pages/home/page'))
 const LoginPage = lazy(() => import('../pages/auth/login'))
 const RegisterPage = lazy(() => import('../pages/auth/register'))
+const AuthCallbackPage = lazy(() => import('../pages/auth/callback'))
 const NotFoundPage = lazy(() => import('../pages/NotFound'))
 
 // Brawl Stars
@@ -43,6 +44,15 @@ const AdminSystemPage = lazy(() => import('../pages/dashboard/admin/system/page'
 const AdminInterventionChatPage = lazy(
   () => import('../pages/dashboard/admin/intervention-chat/page')
 )
+const AdminRatingsPage = lazy(() => import('../pages/dashboard/admin/ratings/page'))
+const AdminNotificationsPage = lazy(() => import('../pages/dashboard/admin/notifications/page'))
+const AdminWithdrawalsPage = lazy(() => import('../pages/dashboard/admin/withdrawals/page'))
+const AdminReportsPage = lazy(() => import('../pages/dashboard/admin/reports/page'))
+const NotificationsPage = lazy(() => import('../pages/notifications/page'))
+const OrderDetailPage = lazy(() => import('../pages/dashboard/customer/order/page'))
+const EmployeeOrderDetailPage = lazy(() => import('../pages/dashboard/employee/order/page'))
+const EmployeeManualPage = lazy(() => import('../pages/dashboard/employee/manual/page'))
+const AccountPage = lazy(() => import('../pages/account/page'))
 
 /* ========= Route定義（1ファイルに統一） ========= */
 
@@ -51,6 +61,7 @@ const routes: RouteObject[] = [
   { path: '/', element: <HomePage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/auth/callback', element: <AuthCallbackPage /> },
   { path: '/services', element: <ServicesPage /> },
   { path: '/games', element: <GamesPage /> },
   { path: '/games/brawl-stars', element: <BrawlStarsPage /> },
@@ -76,6 +87,26 @@ const routes: RouteObject[] = [
     ),
   },
 
+  // === 通知（ログイン済みなら誰でも） ===
+  {
+    path: '/notifications',
+    element: (
+      <ProtectedRoute allowedRoles={['customer', 'employee', 'worker', 'admin']}>
+        <NotificationsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // === アカウント設定 ===
+  {
+    path: '/account',
+    element: (
+      <ProtectedRoute allowedRoles={['customer', 'employee', 'worker', 'admin']}>
+        <AccountPage />
+      </ProtectedRoute>
+    ),
+  },
+
   // === Chat ===
   {
     path: '/chat/:threadId',
@@ -95,6 +126,14 @@ const routes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
+  {
+    path: '/dashboard/customer/order/:orderId',
+    element: (
+      <ProtectedRoute allowedRoles={['customer']}>
+        <OrderDetailPage />
+      </ProtectedRoute>
+    ),
+  },
 
   // === Employee ===
   {
@@ -102,6 +141,22 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={['employee', 'admin']}>
         <EmployeeDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/employee/order/:orderId',
+    element: (
+      <ProtectedRoute allowedRoles={['employee', 'admin']}>
+        <EmployeeOrderDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/employee/manual',
+    element: (
+      <ProtectedRoute allowedRoles={['employee', 'admin']}>
+        <EmployeeManualPage />
       </ProtectedRoute>
     ),
   },
@@ -184,6 +239,38 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={['admin']}>
         <AdminInterventionChatPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/admin/ratings',
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AdminRatingsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/admin/notifications',
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AdminNotificationsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/admin/withdrawals',
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AdminWithdrawalsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/admin/reports',
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AdminReportsPage />
       </ProtectedRoute>
     ),
   },

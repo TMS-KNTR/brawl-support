@@ -1,17 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
 
 export default function AdminOrdersPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState('all');
   const [processing, setProcessing] = useState<string | null>(null); // 処理中のorder_id
+  const [feeRate, setFeeRate] = useState(0.20);
+
+  useEffect(() => {
+    supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'platform_fee_rate')
+      .single()
+      .then(({ data }) => {
+        if (data?.value != null) setFeeRate(Number(data.value));
+      });
+  }, []);
 
   useEffect(() => { loadOrders(); }, []);
 
@@ -59,6 +72,12 @@ export default function AdminOrdersPage() {
     return data;
   }
 
+  async function sendNotification(userId: string, type: string, title: string, body: string) {
+    try {
+      await callEdgeFunction('create-notification', { user_id: userId, type, title, body, link_url: '/dashboard/customer' });
+    } catch { /* 通知失敗は無視 */ }
+  }
+
   /** 強制キャンセル + Stripe自動返金 */
   async function forceCancel(order: any) {
     const msg = `⚠ 強制キャンセル + 全額返金\n\n注文: ${order.id.slice(0, 8)}...\n金額: ¥${(order.price || order.total_price || 0).toLocaleString()}\n\nStripeで自動返金されます。続行しますか？`;
@@ -68,10 +87,20 @@ export default function AdminOrdersPage() {
 
     try {
       const result = await callEdgeFunction('refund-order', { order_id: order.id });
+      await logAdminAction({ action: 'order_force_cancelled', targetType: 'order', targetId: order.id, details: `注文を強制キャンセル+返金 ¥${(order.price || order.total_price || 0).toLocaleString()}`, meta: { refund_id: result.refund_id, amount: result.amount } });
+      // 依頼者に通知
+      if (order.user_id) {
+        await sendNotification(order.user_id, 'order_cancelled', '注文がキャンセルされました', `注文が管理者によりキャンセルされました。全額返金されます。`);
+      }
+      // 従業員に通知
+      if (order.employee_id) {
+        await sendNotification(order.employee_id, 'order_cancelled', '担当注文がキャンセルされました', `担当していた注文が管理者によりキャンセルされました。`);
+      }
       alert(`✅ 返金完了\n\n返金ID: ${result.refund_id || '-'}\n金額: ¥${(result.amount || 0).toLocaleString()}`);
     } catch (err: any) {
       alert(`❌ エラー: ${err.message}\n\nStripeダッシュボード(dashboard.stripe.com)から手動で返金してください。`);
       await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id);
+      await logAdminAction({ action: 'order_force_cancelled_fallback', targetType: 'order', targetId: order.id, details: `返金エラー、ステータスのみキャンセルに変更`, meta: { error: err.message } });
     }
 
     setProcessing(null);
@@ -81,20 +110,33 @@ export default function AdminOrdersPage() {
   /** 強制完了 + 残高加算 */
   async function forceComplete(order: any) {
     const totalPrice = order.price || order.total_price || 0;
-    const platformFee = order.platform_fee || Math.round(totalPrice * 0.25);
+    const platformFee = order.platform_fee || Math.round(totalPrice * feeRate);
     const payoutAmount = totalPrice - platformFee;
+    const feePercent = Math.round(feeRate * 100);
+    const payoutPercent = 100 - feePercent;
 
-    const msg = `✅ 強制完了 + 従業員の残高に加算\n\n注文: ${order.id.slice(0, 8)}...\n総額: ¥${totalPrice.toLocaleString()}\n手数料(25%): ¥${platformFee.toLocaleString()}\n従業員への支払い(75%): ¥${payoutAmount.toLocaleString()}\n\n従業員の残高に加算されます。続行しますか？`;
+    const msg = `✅ 強制完了 + 従業員の残高に加算\n\n注文: ${order.id.slice(0, 8)}...\n総額: ¥${totalPrice.toLocaleString()}\n手数料(${feePercent}%): ¥${platformFee.toLocaleString()}\n従業員への支払い(${payoutPercent}%): ¥${payoutAmount.toLocaleString()}\n\n従業員の残高に加算されます。続行しますか？`;
     if (!window.confirm(msg)) return;
 
     setProcessing(order.id);
 
     try {
       const result = await callEdgeFunction('payout-employee', { order_id: order.id });
+      await supabase.from('orders').update({ status: 'confirmed', is_paid_out: true, paid_out_at: new Date().toISOString() }).eq('id', order.id);
+      await logAdminAction({ action: 'order_force_completed', targetType: 'order', targetId: order.id, details: `注文を強制完了+従業員支払い ¥${payoutAmount.toLocaleString()}`, meta: { total_price: totalPrice, platform_fee: platformFee, payout_amount: payoutAmount } });
+      // 依頼者に通知
+      if (order.user_id) {
+        await sendNotification(order.user_id, 'order_completed', '注文が完了しました', `注文が管理者により完了処理されました。`);
+      }
+      // 従業員に通知
+      if (order.employee_id) {
+        await sendNotification(order.employee_id, 'order_confirmed', '報酬が支払われました', `管理者により注文が完了処理され、報酬 ¥${payoutAmount.toLocaleString()} が残高に反映されました。`);
+      }
       alert(`✅ 完了\n\n${result.message}`);
     } catch (err: any) {
       alert(`❌ エラー: ${err.message}`);
       await supabase.from('orders').update({ status: 'completed' }).eq('id', order.id);
+      await logAdminAction({ action: 'order_force_completed_fallback', targetType: 'order', targetId: order.id, details: `支払いエラー、ステータスのみ完了に変更`, meta: { error: err.message } });
     }
 
     setProcessing(null);
@@ -105,7 +147,8 @@ export default function AdminOrdersPage() {
   async function changeStatusOnly(orderId: string, newStatus: string) {
     if (!window.confirm(`ステータスを「${statusLabel(newStatus)}」に変更しますか？\n\n※ お金の移動はありません`)) return;
     const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
-    if (error) alert('エラー: ' + error.message);
+    if (error) { alert('エラー: ' + error.message); return; }
+    await logAdminAction({ action: 'order_status_changed', targetType: 'order', targetId: orderId, details: `注文ステータスを ${statusLabel(newStatus)} に変更`, meta: { new_status: newStatus } });
     loadOrders();
   }
 
@@ -235,7 +278,7 @@ export default function AdminOrdersPage() {
                         )}
 
                         {/* 強制完了 + 従業員支払い */}
-                        {['assigned', 'in_progress'].includes(o.status) && !o.is_paid_out && o.employee_id && (
+                        {['assigned', 'in_progress', 'completed'].includes(o.status) && !o.is_paid_out && o.employee_id && (
                           <button
                             onClick={() => forceComplete(o)}
                             disabled={isProcessing}

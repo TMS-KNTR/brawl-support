@@ -56,15 +56,30 @@ function getStatusBadge(status: string) {
   );
 }
 
+type ChatViolation = {
+  id: string;
+  user_id: string | null;
+  order_id: string | null;
+  thread_id: string | null;
+  message_content: string;
+  matched_word: string;
+  created_at: string;
+  profiles?: { username: string; full_name: string } | null;
+};
+
 export default function AdminChatsPage() {
   const navigate = useNavigate();
   const [threads, setThreads] = useState<ChatThreadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [tab, setTab] = useState<'threads' | 'violations'>('threads');
+  const [violations, setViolations] = useState<ChatViolation[]>([]);
+  const [violationsLoading, setViolationsLoading] = useState(false);
 
   useEffect(() => {
     loadThreads();
+    loadViolations();
   }, []);
 
   async function loadThreads() {
@@ -75,6 +90,34 @@ export default function AdminChatsPage() {
       .order('created_at', { ascending: false });
     setThreads((data as ChatThreadRow[]) || []);
     setLoading(false);
+  }
+
+  async function loadViolations() {
+    setViolationsLoading(true);
+    const { data: rawViolations } = await supabase
+      .from('chat_violations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (rawViolations && rawViolations.length > 0) {
+      // ユーザー情報を別途取得
+      const userIds = [...new Set(rawViolations.map(v => v.user_id).filter(Boolean))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username, full_name')
+        .in('id', userIds);
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+      const enriched = rawViolations.map(v => ({
+        ...v,
+        profiles: v.user_id ? profileMap.get(v.user_id) || null : null,
+      }));
+      setViolations(enriched as ChatViolation[]);
+    } else {
+      setViolations([]);
+    }
+    setViolationsLoading(false);
   }
 
   /** スレッドから注文情報を1件取り出す */
@@ -139,6 +182,80 @@ export default function AdminChatsPage() {
             </button>
           </div>
 
+          {/* タブ切替 */}
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setTab('threads')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'threads' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              チャットスレッド ({threads.length})
+            </button>
+            <button
+              onClick={() => setTab('violations')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'violations' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              NGワード違反ログ ({violations.length})
+            </button>
+          </div>
+
+          {tab === 'violations' ? (
+            <div>
+              {violationsLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto" />
+                </div>
+              ) : violations.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500">
+                  違反ログはありません
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {violations.map((v) => (
+                    <div key={v.id} className="bg-white rounded-lg shadow-sm p-5 border-l-4 border-red-400">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">
+                              {v.matched_word}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(v.created_at).toLocaleString('ja-JP')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded break-all">
+                            {v.message_content}
+                          </p>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 font-mono mt-2">
+                            <span>ユーザー: {(v.profiles as any)?.username || (v.profiles as any)?.full_name || v.user_id?.slice(0, 8) || '不明'}</span>
+                            {v.order_id && <span>注文: {v.order_id.slice(0, 8)}...</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          {v.thread_id && (
+                            <button
+                              onClick={() => navigate(`/chat/${v.thread_id}`)}
+                              className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition text-xs font-medium"
+                            >
+                              チャット確認
+                            </button>
+                          )}
+                          {v.user_id && (
+                            <button
+                              onClick={() => navigate(`/dashboard/admin/users?search=${v.user_id}`)}
+                              className="border border-gray-200 text-gray-600 px-3 py-2 rounded-lg hover:border-purple-300 transition text-xs font-medium"
+                            >
+                              ユーザー管理
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+          <>
           {/* フィルター */}
           <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-center">
             <input
@@ -196,7 +313,7 @@ export default function AdminChatsPage() {
                     <div className="flex gap-2 shrink-0">
                       {order?.id && (
                         <button
-                          onClick={() => navigate('/dashboard/admin/orders')}
+                          onClick={() => navigate(`/dashboard/admin/orders?search=${t.order_id}`)}
                           className="text-gray-600 hover:text-purple-600 text-sm font-medium px-3 py-2 rounded-lg border border-gray-200 hover:border-purple-300 transition"
                         >
                           注文管理で確認
@@ -213,6 +330,8 @@ export default function AdminChatsPage() {
                 );
               })}
             </div>
+          )}
+          </>
           )}
         </div>
         <Footer />

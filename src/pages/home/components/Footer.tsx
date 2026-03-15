@@ -2,54 +2,83 @@ import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
-          <div>
-            <div className="flex items-center space-x-2 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-lg flex items-center justify-center">
-                <i className="ri-gamepad-fill text-white text-xl"></i>
+    <footer className="border-t border-[#222] bg-[#111]">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+          {/* Brand */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="w-8 h-8 border border-[#333] rounded-lg flex items-center justify-center">
+                <i className="ri-gamepad-fill text-white text-sm"></i>
               </div>
-              <span className="text-2xl font-bold text-white" style={{ fontFamily: '"Pacifico", serif' }}>げむ助</span>
+              <span
+                className="text-base font-bold tracking-[0.15em] text-white"
+                style={{ fontFamily: '"Orbitron", sans-serif' }}
+              >
+                GEMSUKE
+              </span>
             </div>
-            <p className="text-gray-400 leading-relaxed mb-6">
-              プロゲーマーによる安全・確実なゲーム代行サービス
+            <p className="text-[12px] text-[#888] leading-relaxed mb-6 max-w-xs font-medium">
+              プロゲーマーによる安全・確実なゲーム代行サービス。Brawl Stars専門のマーケットプレイス。
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
-                <i className="ri-twitter-x-fill text-lg"></i>
-              </a>
-              <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
-                <i className="ri-discord-fill text-lg"></i>
-              </a>
-              <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
-                <i className="ri-youtube-fill text-lg"></i>
-              </a>
+            <div className="flex gap-2">
+              {[
+                { icon: 'ri-twitter-x-fill', href: '#' },
+                { icon: 'ri-discord-fill', href: '#' },
+                { icon: 'ri-youtube-fill', href: '#' },
+              ].map((s, i) => (
+                <a
+                  key={i}
+                  href={s.href}
+                  className="w-8 h-8 border border-[#333] rounded flex items-center justify-center text-[#666] hover:text-white hover:border-[#555] transition-all duration-300 cursor-pointer"
+                >
+                  <i className={`${s.icon} text-xs`}></i>
+                </a>
+              ))}
             </div>
           </div>
 
+          {/* Support */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-6">サポート</h3>
+            <h3
+              className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#666] mb-5"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              サポート
+            </h3>
             <ul className="space-y-3">
-              <li><a href="mailto:gemusuke.official@gmail.com" className="hover:text-purple-400 transition-colors cursor-pointer">お問い合わせ</a></li>
+              <li>
+                <a href="mailto:gemusuke.official@gmail.com" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 cursor-pointer font-medium">
+                  お問い合わせ
+                </a>
+              </li>
             </ul>
           </div>
 
+          {/* Legal */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-6">法的情報</h3>
+            <h3
+              className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#666] mb-5"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              法的情報
+            </h3>
             <ul className="space-y-3">
-              <li><Link to="/legal/terms" className="hover:text-purple-400 transition-colors">利用規約</Link></li>
-              <li><Link to="/legal/privacy" className="hover:text-purple-400 transition-colors">プライバシーポリシー</Link></li>
-              <li><Link to="/legal/compliance" className="hover:text-purple-400 transition-colors">特定商取引法に基づく表記</Link></li>
+              <li><Link to="/legal/terms" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">利用規約</Link></li>
+              <li><Link to="/legal/privacy" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">プライバシーポリシー</Link></li>
+              <li><Link to="/legal/compliance" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">特定商取引法に基づく表記</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-8">
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <p className="text-gray-400 text-sm mb-4 md:mb-0">
-              © 2026 げむ助. All rights reserved.
-            </p>
+        {/* Copyright */}
+        <div className="border-t border-[#222] pt-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <p className="text-[11px] text-[#666] font-medium">
+            &copy; 2026 GEMSUKE. All rights reserved.
+          </p>
+          <div className="flex items-center gap-2 text-[11px] text-[#666]">
+            <i className="ri-shield-check-line text-[#444]"></i>
+            <span className="font-medium">Powered by Stripe</span>
           </div>
         </div>
       </div>

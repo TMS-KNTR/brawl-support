@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -12,6 +12,7 @@ export default function AdminDisputesPage() {
   const [disputes, setDisputes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [feeRate, setFeeRate] = useState(0.20);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveTarget, setResolveTarget] = useState<any>(null);
   const [resolveAction, setResolveAction] = useState<string>('none');
@@ -19,6 +20,17 @@ export default function AdminDisputesPage() {
   const [resolveLoading, setResolveLoading] = useState(false);
 
   useEffect(() => { loadDisputes(); }, []);
+
+  useEffect(() => {
+    supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'platform_fee_rate')
+      .single()
+      .then(({ data }) => {
+        if (data?.value != null) setFeeRate(Number(data.value));
+      });
+  }, []);
 
   async function loadDisputes() {
     setLoading(true);
@@ -95,35 +107,49 @@ export default function AdminDisputesPage() {
       const order = resolveTarget.order;
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (resolveAction === 'refund' && order && !order.is_refunded) {
+      const orderId = order?.id || resolveTarget.order_id;
+      if (!orderId) {
+        throw new Error('紛争に紐づく注文IDがありません');
+      }
+
+      if (resolveAction === 'refund') {
         const res = await supabase.functions.invoke('refund-order', {
-          body: { order_id: order.id },
-          headers: { Authorization: `Bearer ${session?.access_token}` },
+          body: { order_id: orderId },
         });
-        const result = res.data;
+        if (res.error) throw new Error(res.error.message || '返金に失敗しました');
+        const result = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
         if (!result?.success) throw new Error(result?.error || '返金に失敗しました');
-      } else if (resolveAction === 'payout' && order && !order.is_paid_out) {
+      } else if (resolveAction === 'payout') {
         const res = await supabase.functions.invoke('payout-employee', {
-          body: { order_id: order.id },
-          headers: { Authorization: `Bearer ${session?.access_token}` },
+          body: { order_id: orderId },
         });
-        const result = res.data;
+        if (res.error) throw new Error(res.error.message || '支払いに失敗しました');
+        const result = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
         if (!result?.success) throw new Error(result?.error || '支払いに失敗しました');
       }
 
-      const { error } = await supabase
+      const newStatus = resolveAction === 'refund' ? 'resolved_refund'
+        : resolveAction === 'payout' ? 'resolved_release'
+        : 'resolved_release';
+
+      const updateResult = await supabase
         .from('disputes')
         .update({
-          status: 'resolved',
+          status: newStatus,
           resolution: resolveAction,
           resolution_note: resolveNote,
           resolved_at: new Date().toISOString(),
           resolved_by: user?.id,
         })
-        .eq('id', resolveTarget.id);
+        .eq('id', resolveTarget.id)
+        .select();
 
-      if (error) throw new Error(error.message);
+      if (updateResult.error) throw new Error('紛争ステータス更新エラー: ' + updateResult.error.message);
+      if (!updateResult.data || updateResult.data.length === 0) {
+        throw new Error(`紛争の更新が反映されませんでした（0行更新）。ID: ${resolveTarget.id}, newStatus: ${newStatus}`);
+      }
 
+      await logAdminAction({ action: 'dispute_resolved', targetType: 'dispute', targetId: resolveTarget.id, details: `紛争を解決 (${resolveAction})`, meta: { resolution: resolveAction, resolution_note: resolveNote, order_id: orderId } });
       const actionText = resolveAction === 'refund' ? '（返金済み）' : resolveAction === 'payout' ? '（従業員に支払い済み）' : '';
       alert('✅ 紛争を解決しました' + actionText);
       setShowResolveModal(false);
@@ -137,19 +163,23 @@ export default function AdminDisputesPage() {
   async function closeDismiss(id: string) {
     if (!window.confirm('この紛争を却下（クローズ）しますか？')) return;
     const { error } = await supabase.from('disputes').update({
-      status: 'closed',
+      status: 'resolved_release',
+      resolution: 'dismissed',
+      resolution_note: '管理者により却下',
       resolved_at: new Date().toISOString(),
       resolved_by: user?.id,
     }).eq('id', id);
     if (error) { alert('エラー: ' + error.message); return; }
+    await logAdminAction({ action: 'dispute_closed', targetType: 'dispute', targetId: id, details: '紛争を却下（クローズ）', meta: {} });
     loadDisputes();
   }
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { color: string; text: string }> = {
       open: { color: 'bg-red-100 text-red-800', text: '未解決' },
-      resolved: { color: 'bg-green-100 text-green-800', text: '解決済' },
-      closed: { color: 'bg-gray-100 text-gray-800', text: '却下' },
+      'need-more-info': { color: 'bg-yellow-100 text-yellow-800', text: '情報待ち' },
+      'resolved_refund': { color: 'bg-green-100 text-green-800', text: '解決済（返金）' },
+      'resolved_release': { color: 'bg-green-100 text-green-800', text: '解決済' },
     };
     const cfg = map[status] || { color: 'bg-gray-100 text-gray-800', text: status };
     return <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.text}</span>;
@@ -213,7 +243,6 @@ export default function AdminDisputesPage() {
                     {d.status === 'open' && (
                       <div className="flex flex-wrap gap-2">
                         <button onClick={() => openResolveModal(d)} className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 font-medium">✅ 解決する</button>
-                        <button onClick={() => closeDismiss(d.id)} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">却下</button>
                         {(() => {
                           const threads = order?.chat_threads;
                           const threadId = Array.isArray(threads) ? threads[0]?.id : threads?.id;
@@ -264,7 +293,7 @@ export default function AdminDisputesPage() {
                     <input type="radio" name="action" value="payout" checked={resolveAction === 'payout'} onChange={() => setResolveAction('payout')} className="mr-3" disabled={resolveTarget.order?.is_paid_out} />
                     <div>
                       <p className="font-medium text-gray-900">💰 従業員に報酬を支払い</p>
-                      <p className="text-xs text-gray-500">従業員の残高に報酬（75%）を加算します{resolveTarget.order?.is_paid_out ? '（支払い済み）' : ''}</p>
+                      <p className="text-xs text-gray-500">従業員の残高に報酬（{Math.round((1 - feeRate) * 100)}%）を加算します{resolveTarget.order?.is_paid_out ? '（支払い済み）' : ''}</p>
                     </div>
                   </label>
 

@@ -51,37 +51,26 @@ serve(async (req: Request) => {
       throw new Error("銀行口座が未登録です。先に口座登録を行ってください。");
     }
 
-    // Stripe Transferで送金
-    const transfer = await stripe.transfers.create({
-      amount: amount,
-      currency: "jpy",
-      destination: profile.stripe_account_id,
-      description: `出金申請 ¥${amount.toLocaleString()}`,
-      metadata: { user_id: user.id },
-    });
-
-    // 残高を減らす
+    // 残高を仮押さえ（減らす）
     const newBalance = currentBalance - amount;
     await supabase
       .from("profiles")
       .update({ balance: newBalance })
       .eq("id", user.id);
 
-    // 出金履歴に記録
+    // 出金申請を pending で記録（管理者の承認待ち）
     await supabase.from("withdrawals").insert({
       user_id: user.id,
       amount: amount,
       type: "withdrawal",
-      status: "completed",
-      transfer_id: transfer.id,
-      description: `出金 ¥${amount.toLocaleString()}`,
+      status: "pending",
+      description: `出金申請 ¥${amount.toLocaleString()}`,
     });
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `¥${amount.toLocaleString()} を出金しました`,
-        transfer_id: transfer.id,
+        message: `¥${amount.toLocaleString()} の出金申請を送信しました。管理者の承認後に振り込まれます。`,
         new_balance: newBalance,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }

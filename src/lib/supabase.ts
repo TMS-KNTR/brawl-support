@@ -16,6 +16,33 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
  * 使い方:
  *   const result = await invokeEdgeFunction('create-order-payment', { ... })
  */
+/**
+ * 管理者操作の監査ログを記録する
+ */
+export async function logAdminAction(params: {
+  action: string
+  targetType: string
+  targetId: string
+  details: string
+  meta?: Record<string, any>
+}) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { console.error('[logAdminAction] ユーザー未取得'); return }
+    const { error } = await supabase.from('admin_logs').insert({
+      actor_user_id: user.id,
+      action: params.action,
+      target_type: params.targetType,
+      target_id: params.targetId,
+      details: params.details,
+      meta_json: params.meta || {},
+    })
+    if (error) console.error('[logAdminAction] INSERT失敗:', error)
+  } catch (e) {
+    console.error('[logAdminAction] 例外:', e)
+  }
+}
+
 export async function invokeEdgeFunction<T = any>(
   functionName: string,
   body: Record<string, any>,

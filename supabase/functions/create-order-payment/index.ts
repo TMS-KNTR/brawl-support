@@ -31,29 +31,51 @@ serve(async (req) => {
       throw new Error('認証が必要です')
     }
 
-    const { 
-      currentRank, 
-      targetRank, 
-      region, 
-      notes, 
+    // メンテナンスモードチェック
+    const { data: maintenanceSetting } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .single()
+    if (maintenanceSetting?.value === true || maintenanceSetting?.value === 'true') {
+      throw new Error('現在メンテナンス中のため、新規注文を受け付けておりません')
+    }
+
+    // system_settings から手数料率を取得
+    const { data: feeRateSetting } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'platform_fee_rate')
+      .single()
+    const feeRate = Number(feeRateSetting?.value) || 0.20
+
+    const {
+      currentRank,
+      targetRank,
+      serviceType,
+      region,
+      notes,
       credentials,
       totalPrice,
-      subtotal,
-      platformFee 
     } = await req.json()
+
+    // サーバー側で手数料を再計算（クライアント値を信用しない）
+    const serverPlatformFee = Math.round(totalPrice * feeRate)
+    const serverSubtotal = totalPrice - serverPlatformFee
 
     // 注文を作成
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        customer_id: user.id,
+        user_id: user.id,
         current_rank: currentRank,
         target_rank: targetRank,
-        region,
-        price_subtotal: subtotal,
-        platform_fee: platformFee,
-        total_price: totalPrice,
-        status: 'PAYMENT_PENDING'
+        game_title: 'Brawl Stars',
+        service_type: serviceType || 'trophy',
+        price: totalPrice,
+        payout_amount: serverSubtotal,
+        status: 'PAYMENT_PENDING',
+        notes: notes || null
       })
       .select()
       .single()
@@ -106,19 +128,19 @@ serve(async (req) => {
         },
       ],
       mode: 'payment',
-      success_url: `${req.headers.get('origin')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/dashboard/customer`,
+      success_url: `${req.headers.get('origin') || Deno.env.get('SITE_URL')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get('origin') || Deno.env.get('SITE_URL')}/dashboard/customer`,
       metadata: {
         order_id: order.id,
         customer_id: user.id,
       },
     })
 
-    // 注文にセッションIDを更新
+    // 注文にPayment IntentIDを更新
     await supabase
       .from('orders')
-      .update({ 
-        stripe_checkout_session_id: session.id,
+      .update({
+        payment_intent_id: session.payment_intent as string || session.id,
         status: 'PAYMENT_PENDING'
       })
       .eq('id', order.id)

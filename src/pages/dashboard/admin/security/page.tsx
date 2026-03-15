@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -25,6 +25,7 @@ export default function AdminSecurityPage() {
   async function unban(userId: string) {
     if (!window.confirm('BANを解除しますか？')) return;
     await supabase.from('profiles').update({ is_banned: false, ban_reason: null, banned_at: null }).eq('id', userId);
+    await logAdminAction({ action: 'user_unban', targetType: 'user', targetId: userId, details: 'セキュリティページからBAN解除', meta: {} });
     loadData();
   }
 
@@ -50,7 +51,7 @@ export default function AdminSecurityPage() {
                   {bannedUsers.map((u) => (
                     <div key={u.id} className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-red-500 flex justify-between items-center">
                       <div>
-                        <p className="font-semibold">{u.username || u.full_name || '名前未設定'}</p>
+                        <p className="font-semibold font-mono">{u.id.slice(0, 8)}...</p>
                         <p className="text-sm text-gray-500">理由: {u.ban_reason || '不明'}</p>
                         <p className="text-xs text-gray-400">BAN日: {u.banned_at ? new Date(u.banned_at).toLocaleDateString() : '-'}</p>
                       </div>
@@ -68,7 +69,7 @@ export default function AdminSecurityPage() {
                   {warnedUsers.map((u) => (
                     <div key={u.id} className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-yellow-500 flex justify-between items-center">
                       <div>
-                        <p className="font-semibold">{u.username || u.full_name || '名前未設定'}</p>
+                        <p className="font-semibold font-mono">{u.id.slice(0, 8)}...</p>
                         <p className="text-sm text-gray-500">警告回数: {u.warning_count}</p>
                       </div>
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{u.role}</span>

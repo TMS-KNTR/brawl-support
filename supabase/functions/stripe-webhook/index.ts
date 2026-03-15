@@ -54,6 +54,30 @@ serve(async (req: Request) => {
       console.log("Checkout completed. order_id:", orderId);
 
       if (orderId) {
+        // 注文の現在のステータスを確認（自動キャンセル済みなら更新しない）
+        const { data: currentOrder } = await supabase
+          .from("orders")
+          .select("status, is_refunded")
+          .eq("id", orderId)
+          .single();
+
+        if (currentOrder?.status === "cancelled") {
+          console.warn("Order already cancelled, skipping update:", orderId);
+          // 既にキャンセル+返金済みならスキップ。未返金なら返金が必要
+          if (!currentOrder.is_refunded && session.payment_intent) {
+            console.log("Refunding cancelled order that was just paid:", orderId);
+            await stripe.refunds.create({ payment_intent: session.payment_intent });
+            await supabase
+              .from("orders")
+              .update({ is_refunded: true, payment_intent_id: session.payment_intent, refunded_at: new Date().toISOString() })
+              .eq("id", orderId);
+          }
+          return new Response(JSON.stringify({ received: true, skipped: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         // payment_intentを保存（返金に必要）
         const paymentIntentId = session.payment_intent;
         console.log("Payment Intent ID:", paymentIntentId);

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /chat/
+Disallow: /account/
+Disallow: /notifications/
+Disallow: /payment-success/
+
+Sitemap: https://gemsuke.com/sitemap.xml

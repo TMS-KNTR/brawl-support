@@ -38,7 +38,7 @@ serve(async (req: Request) => {
     if (orderError || !order) throw new Error("注文が見つかりません");
 
     // 依頼者本人かチェック
-    const customerId = order.user_id || order.customer_id;
+    const customerId = order.user_id;
     if (customerId !== user.id) throw new Error("この注文の依頼者ではありません");
 
     // completedステータスのみ確認可能
@@ -50,9 +50,16 @@ serve(async (req: Request) => {
     const employeeId = order.employee_id;
     if (!employeeId) throw new Error("従業員が割り当てられていません");
 
-    // 報酬計算（75%が従業員）
+    // system_settings から手数料率を取得
+    const { data: feeRateSetting } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "platform_fee_rate")
+      .single();
+    const feeRate = Number(feeRateSetting?.value) || 0.20;
+
     const totalPrice = order.price || order.total_price || 0;
-    const platformFee = order.platform_fee || Math.round(totalPrice * 0.25);
+    const platformFee = Math.round(totalPrice * feeRate);
     const payoutAmount = totalPrice - platformFee;
 
     if (payoutAmount <= 0) throw new Error("報酬金額が0以下です");
@@ -75,15 +82,17 @@ serve(async (req: Request) => {
     if (balanceError) throw new Error("残高更新に失敗: " + balanceError.message);
 
     // 注文ステータスを confirmed + 支払い済みに更新
-    await supabase
+    const { error: orderUpdateError } = await supabase
       .from("orders")
       .update({
         status: "confirmed",
         is_paid_out: true,
-        payout_amount: payoutAmount,
-        paid_out_at: new Date().toISOString(),
       })
       .eq("id", order_id);
+
+    if (orderUpdateError) {
+      throw new Error("注文更新に失敗: " + orderUpdateError.message);
+    }
 
     // 出金履歴に記録
     await supabase.from("withdrawals").insert({
@@ -94,6 +103,37 @@ serve(async (req: Request) => {
       description: `注文 ${order_id.slice(0, 8)}... の報酬`,
       order_id: order_id,
     });
+
+    await supabase.from("notifications").insert({
+      user_id: employeeId,
+      type: "order_confirmed",
+      title: "依頼者が完了を確認しました",
+      body: `報酬 ¥${payoutAmount.toLocaleString()} が残高に反映されました。`,
+      link_url: "/dashboard/employee",
+    });
+
+    const secret = Deno.env.get("INTERNAL_NOTIFICATION_SECRET");
+    const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification-email`;
+    if (secret) {
+      try {
+        await fetch(fnUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-secret": secret,
+          },
+          body: JSON.stringify({
+            user_id: employeeId,
+            type: "order_confirmed",
+            title: "依頼者が完了を確認しました",
+            body: `報酬 ¥${payoutAmount.toLocaleString()} が残高に反映されました。`,
+            link_url: "/dashboard/employee",
+          }),
+        });
+      } catch (e) {
+        console.error("send-notification-email:", e);
+      }
+    }
 
     return new Response(
       JSON.stringify({

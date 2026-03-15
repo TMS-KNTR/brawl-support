@@ -19,10 +19,15 @@ export default function EmployeeDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <style>{`@keyframes emp-spin-init { to { transform: rotate(360deg); } }`}</style>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">読み込み中...</p>
+          <div className="relative w-8 h-8 mx-auto mb-3">
+            <div className="absolute inset-0 border-2 border-[#E5E5E5] rounded-full" />
+            <div className="absolute inset-0 border-2 border-transparent border-t-[#111] rounded-full"
+              style={{ animation: 'emp-spin-init 0.7s linear infinite' }} />
+          </div>
+          <p className="text-[12px] text-[#999]">読み込み中...</p>
         </div>
       </div>
     );
@@ -65,6 +70,7 @@ function EmployeeDashboardContent() {
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<'not_created' | 'incomplete' | 'pending' | 'active'>('not_created');
   const [connectLoading, setConnectLoading] = useState(false);
+  const [ratingStats, setRatingStats] = useState<{ avg: number; count: number }>({ avg: 0, count: 0 });
 
   useEffect(() => {
     if (userProfile?.stripe_account_id) {
@@ -141,32 +147,79 @@ function EmployeeDashboardContent() {
       avail = data || [];
     }
 
-    // 自分の案件: 受注済み or 進行中（チャットスレッドも取得）
+    // 自分の案件: 受注済み・進行中・依頼完了報告済み（依頼者未確認の completed 含む）
     const { data: mine } = await supabase
       .from('orders')
-      .select(`*, chat_threads(id)`)
+      .select('*')
       .eq('employee_id', user?.id)
-      .in('status', ['assigned', 'in_progress'])
+      .in('status', ['assigned', 'in_progress', 'completed'])
       .order('created_at', { ascending: false });
 
-    // 完了履歴
+    // チャットスレッドIDを Edge Function で取得（RLS で読めない場合に対応）
+    let threadMap: Record<string, string> = {};
+    const orderIds = (mine || []).map((o: any) => o.id);
+    if (orderIds.length > 0) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await supabase.functions.invoke('get-chat-thread-ids', {
+          body: { order_ids: orderIds },
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        if (res.data?.success && res.data?.data && typeof res.data.data === 'object') {
+          threadMap = res.data.data;
+        }
+      } catch (_) {
+        // フォールバック: 従来の join で取得を試す
+        const { data: mineWithThreads } = await supabase
+          .from('orders')
+          .select('id, chat_threads(id)')
+          .eq('employee_id', user?.id)
+          .in('status', ['assigned', 'in_progress', 'completed']);
+        for (const o of mineWithThreads || []) {
+          const ct = (o as any).chat_threads;
+          const tid = Array.isArray(ct) ? ct[0]?.id : ct?.id;
+          if (tid) threadMap[o.id] = tid;
+        }
+      }
+    }
+
+    // 完了履歴（依頼者が「完了を確認」したもののみ。従業員の「依頼完了」報告だけの completed は含めない）
     const { data: history } = await supabase
       .from('orders')
       .select('*')
       .eq('employee_id', user?.id)
-      .in('status', ['completed', 'confirmed'])
+      .eq('status', 'confirmed')
       .order('created_at', { ascending: false });
+
+    // 完了履歴のチャットスレッドIDも取得
+    const historyIds = (history || []).map((o: any) => o.id);
+    let historyThreadMap: Record<string, string> = {};
+    if (historyIds.length > 0) {
+      try {
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        const res2 = await supabase.functions.invoke('get-chat-thread-ids', {
+          body: { order_ids: historyIds },
+          headers: { Authorization: `Bearer ${s2?.access_token}` },
+        });
+        if (res2.data?.success && res2.data?.data) {
+          historyThreadMap = res2.data.data;
+        }
+      } catch (_) {}
+    }
 
     setAvailableOrders(avail || []);
     setMyOrders(
       (mine || []).map((o: any) => ({
         ...o,
-        chat_thread_id: Array.isArray(o.chat_threads)
-          ? o.chat_threads[0]?.id ?? null
-          : o.chat_threads?.id ?? null,
+        chat_thread_id: threadMap[o.id] ?? null,
       }))
     );
-    setHistoryOrders(history || []);
+    setHistoryOrders(
+      (history || []).map((o: any) => ({
+        ...o,
+        chat_thread_id: historyThreadMap[o.id] ?? null,
+      }))
+    );
 
     // 残高取得
     const { data: prof } = await supabase
@@ -185,52 +238,88 @@ function EmployeeDashboardContent() {
       .limit(20);
     setWithdrawals(wds || []);
 
+    // 評価統計を取得
+    const { data: ratingAgg } = await supabase
+      .from('ratings')
+      .select('score', { count: 'exact' })
+      .eq('employee_id', user?.id);
+    const count = ratingAgg?.length ?? 0;
+    if (count > 0) {
+      const sum = ratingAgg.reduce((acc: number, r: any) => acc + (r.score || 0), 0);
+      setRatingStats({ avg: sum / count, count });
+    } else {
+      setRatingStats({ avg: 0, count: 0 });
+    }
+
     setDataLoading(false);
   };
 
-  /** 受注する */
+  // 受注確認モーダル
+  const [confirmAcceptOrder, setConfirmAcceptOrder] = useState<any | null>(null);
+
+  /** 受注する（Edge Function 経由で RLS をバイパス） */
   const handleAccept = async (orderId: string) => {
-    setActionLoading(orderId);
-    const { error } = await supabase
-      .from('orders')
-      .update({ employee_id: user?.id, status: 'assigned' })
-      .eq('id', orderId)
-      .is('employee_id', null);
-
-    if (error) {
-      alert('受注に失敗しました: ' + error.message);
-    } else {
-      // チャットスレッドにも従業員を追加
-      const { data: thread } = await supabase
-        .from('chat_threads')
-        .select('id, participants')
-        .eq('order_id', orderId)
-        .maybeSingle();
-
-      if (thread) {
-        const updated = [...(thread.participants || []), user?.id].filter(Boolean);
-        await supabase
-          .from('chat_threads')
-          .update({ participants: updated })
-          .eq('id', thread.id);
-      }
-    }
-
-    setActionLoading(null);
-    fetchAll();
+    if (!user?.id) return;
+    // 確認モーダルを表示
+    const order = availableOrders.find((o) => o.id === orderId);
+    if (!order) return;
+    setConfirmAcceptOrder(order);
   };
 
-  /** ステータス変更 */
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
+  const handleAcceptConfirmed = async () => {
+    if (!user?.id || !confirmAcceptOrder) return;
+    const orderId = confirmAcceptOrder.id;
+    setConfirmAcceptOrder(null);
     setActionLoading(orderId);
-    await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', orderId)
-      .eq('employee_id', user?.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('accept-order', {
+        body: { order_id: orderId },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
 
-    setActionLoading(null);
-    fetchAll();
+      const result = res.data;
+      if (res.error) {
+        alert('受注に失敗しました: ' + (res.error.message || '通信エラー'));
+        return;
+      }
+      if (!result?.success) {
+        alert('受注に失敗しました: ' + (result?.error || '不明なエラー'));
+        return;
+      }
+
+      alert('受注しました！「自分の案件」タブに移動します。');
+      setActiveTab('mine');
+      await fetchAll();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  /** ステータス変更（作業開始・作業完了）Edge Function 経由で RLS をバイパス */
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    if (!user?.id) return;
+    setActionLoading(orderId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('update-order-status', {
+        body: { order_id: orderId, status: newStatus },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+
+      const result = res.data;
+      if (res.error) {
+        alert('更新に失敗しました: ' + (res.error.message || '通信エラー'));
+        return;
+      }
+      if (!result?.success) {
+        alert('更新に失敗しました: ' + (result?.error || '不明なエラー'));
+        return;
+      }
+      await fetchAll();
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   /** 紛争作成 */
@@ -296,19 +385,63 @@ function EmployeeDashboardContent() {
     setWithdrawLoading(false);
   };
 
+  const STATUS_MAP: Record<string, { label: string; color: string }> = {
+    paid:             { label: '支払済',     color: '#059669' },
+    PAYMENT_PENDING:  { label: '決済待ち',   color: '#D97706' },
+    pending:          { label: '保留中',     color: '#D97706' },
+    open:             { label: '募集中',     color: '#2563EB' },
+    assigned:         { label: '受注済',     color: '#2563EB' },
+    in_progress:      { label: '作業中',     color: '#D97706' },
+    completed:        { label: '完了',       color: '#059669' },
+    confirmed:        { label: '確認済',     color: '#059669' },
+    cancelled:        { label: 'キャンセル', color: '#DC2626' },
+  };
+  /** notesから依頼詳細タグを生成 */
+  const getOrderDetails = (order: any) => {
+    const notes: string = order.notes || '';
+    const tags: { label: string; value: string }[] = [];
+
+    // ガチバトル上げ: ハイチャ解放×XX体, バフィー3つ解放×XX体
+    const hcMatch = notes.match(/ハイチャ解放×(\d+)体/);
+    const buffyMatch = notes.match(/バフィー3つ解放×(\d+)体/);
+    if (hcMatch) tags.push({ label: 'ハイチャ解放', value: `${hcMatch[1]}体` });
+    if (buffyMatch) tags.push({ label: 'バフィー3つ解放', value: `${buffyMatch[1]}体` });
+    // 旧フォーマット互換
+    const p11Match = notes.match(/パワー11×(\d+)体/);
+    const oldBuffyMatch = notes.match(/バフィー×(\d+)/);
+    if (!hcMatch && p11Match) tags.push({ label: 'ハイチャ解放', value: `${p11Match[1]}体` });
+    if (!buffyMatch && oldBuffyMatch) tags.push({ label: 'バフィー3つ解放', value: `${oldBuffyMatch[1]}体` });
+
+    // トロフィー上げ: キャラ名
+    const charaMatch = notes.match(/キャラ:\s*(.+?)（(強い|普通|弱い)）/);
+    if (charaMatch) {
+      tags.push({ label: 'キャラ', value: charaMatch[1] });
+      tags.push({ label: '強さ', value: charaMatch[2] });
+    }
+
+    return tags;
+  };
+
+  const SERVICE_TYPE_LABELS: Record<string, string> = {
+    rank: 'ガチバトル上げ',
+    trophy: 'トロフィー上げ',
+    'trophy-push': 'トロフィー上げ',
+    'rank-push': 'ランク上げ',
+    championship: 'チャンピオンシップ',
+    'daily-quest': 'デイリークエスト',
+    'event-clear': 'イベントクリア',
+  };
+  const getServiceLabel = (type: string) => SERVICE_TYPE_LABELS[type] || type;
+
   const getStatusBadge = (status: string) => {
-    const map: Record<string, { color: string; text: string }> = {
-      paid: { color: 'bg-green-100 text-green-800', text: '支払済' },
-      PAYMENT_PENDING: { color: 'bg-yellow-100 text-yellow-800', text: '決済待ち' },
-      pending: { color: 'bg-yellow-100 text-yellow-800', text: '保留中' },
-      open: { color: 'bg-blue-100 text-blue-800', text: '募集中' },
-      assigned: { color: 'bg-purple-100 text-purple-800', text: '受注済' },
-      in_progress: { color: 'bg-orange-100 text-orange-800', text: '作業中' },
-      completed: { color: 'bg-green-100 text-green-800', text: '完了' },
-      confirmed: { color: 'bg-green-600 text-white', text: '確認済' },
-    };
-    const cfg = map[status] || { color: 'bg-gray-100 text-gray-800', text: status };
-    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.text}</span>;
+    const cfg = STATUS_MAP[status] || { label: status, color: '#9CA3AF' };
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+        style={{ color: cfg.color, background: `${cfg.color}10` }}>
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.color }} />
+        {cfg.label}
+      </span>
+    );
   };
 
   const tabs = [
@@ -320,436 +453,529 @@ function EmployeeDashboardContent() {
 
   return (
     <ProtectedRoute allowedRoles={['employee', 'admin']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <style>{`
+          @keyframes emp-fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes emp-spin { to { transform: rotate(360deg); } }
+        `}</style>
+
         <Header />
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">従業員ダッシュボード</h1>
-            <p className="text-gray-600">案件の受注・作業管理ができます</p>
-          </div>
 
-          {/* Stripe Connect口座登録バナー */}
-          {stripeStatus === 'not_created' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+        {/* ═══ Header ═══ */}
+        <section className="pt-[72px] border-b border-[#E5E5E5] bg-white">
+          <div className="max-w-3xl mx-auto px-6 pt-5 pb-6">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-yellow-800">💳 報酬受取口座が未登録です</p>
-                <p className="text-sm text-yellow-700">報酬を受け取るにはStripeで口座登録が必要です</p>
+                <h1 className="text-[22px] font-bold text-[#111] tracking-tight">代行者ダッシュボード</h1>
+                <p className="text-[13px] text-[#888] mt-1">案件の受注・作業管理ができます</p>
               </div>
-              <button
-                onClick={startStripeOnboarding}
-                disabled={connectLoading}
-                className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition disabled:opacity-50 text-sm whitespace-nowrap"
-              >
-                {connectLoading ? '処理中...' : '口座を登録する'}
-              </button>
-            </div>
-          )}
-          {stripeStatus === 'incomplete' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-orange-800">⚠ 口座登録が未完了です</p>
-                <p className="text-sm text-orange-700">Stripeでの情報入力が完了していません。続きを入力してください</p>
+              <div className="flex items-center gap-2">
+                {ratingStats.count > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA]">
+                    <span className="text-[11px] text-[#888]">評価</span>
+                    <span className="text-[13px] text-[#FBBF24]">{'★'.repeat(Math.round(ratingStats.avg))}<span className="text-[#E5E5E5]">{'★'.repeat(5 - Math.round(ratingStats.avg))}</span></span>
+                    <span className="text-[11px] text-[#666]">{ratingStats.avg.toFixed(1)}（{ratingStats.count}件）</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => navigate('/dashboard/employee/manual')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#F0F0F0] transition-colors cursor-pointer"
+                >
+                  <i className="ri-book-open-line text-[13px] text-[#888]"></i>
+                  <span className="text-[11px] font-semibold text-[#666]">マニュアル</span>
+                </button>
               </div>
-              <button
-                onClick={startStripeOnboarding}
-                disabled={connectLoading}
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition disabled:opacity-50 text-sm whitespace-nowrap"
-              >
-                {connectLoading ? '処理中...' : '登録を続ける'}
-              </button>
             </div>
-          )}
-          {stripeStatus === 'pending' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-              <p className="text-blue-700 text-sm">⏳ 口座情報を確認中です（Stripeの審査待ち）</p>
-            </div>
-          )}
-          {stripeStatus === 'active' && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 flex items-center justify-between">
-              <p className="text-green-700 text-sm">✅ 報酬受取口座: 登録済み（出金可能）</p>
-            </div>
-          )}
 
-          {/* タブ */}
-          <div className="bg-white rounded-lg shadow-sm mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
-                {tabs.map((t) => (
-                  <button
-                    key={t.key}
-                    onClick={() => setActiveTab(t.key)}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === t.key
-                        ? 'border-purple-500 text-purple-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {t.label}
-                    {t.count !== null && <span className="ml-2 bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">{t.count}</span>}
-                  </button>
-                ))}
-              </nav>
+            {/* Stripe alerts (inline) */}
+            {stripeStatus === 'not_created' && (
+              <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-[#FCD34D]/40 bg-[#FFFBEB]">
+                <div>
+                  <p className="text-[12px] font-semibold text-[#92400E]">報酬受取口座が未登録です</p>
+                  <p className="text-[11px] text-[#A16207]">Stripeで口座登録が必要です</p>
+                </div>
+                <button onClick={startStripeOnboarding} disabled={connectLoading}
+                  className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer whitespace-nowrap">
+                  {connectLoading ? '処理中...' : '口座を登録'}
+                </button>
+              </div>
+            )}
+            {stripeStatus === 'incomplete' && (
+              <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-[#FDBA74]/40 bg-[#FFF7ED]">
+                <div>
+                  <p className="text-[12px] font-semibold text-[#9A3412]">口座登録が未完了です</p>
+                  <p className="text-[11px] text-[#C2410C]">情報入力を完了してください</p>
+                </div>
+                <button onClick={startStripeOnboarding} disabled={connectLoading}
+                  className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer whitespace-nowrap">
+                  {connectLoading ? '処理中...' : '登録を続ける'}
+                </button>
+              </div>
+            )}
+            {stripeStatus === 'pending' && (
+              <div className="mt-4 px-3.5 py-2.5 rounded-lg border border-[#93C5FD]/40 bg-[#EFF6FF]">
+                <p className="text-[11px] text-[#1D4ED8]">口座情報を確認中です（Stripeの審査待ち）</p>
+              </div>
+            )}
+            {stripeStatus === 'active' && (
+              <div className="mt-4 px-3.5 py-2.5 rounded-lg border border-[#6EE7B7]/40 bg-[#F0FDF4]">
+                <p className="text-[11px] text-[#059669]">報酬受取口座: 登録済み（出金可能）</p>
+              </div>
+            )}
+
+            {/* Tabs */}
+            <div className="flex gap-1 mt-5">
+              {tabs.map((t) => (
+                <button key={t.key} onClick={() => setActiveTab(t.key)}
+                  className={`px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-colors cursor-pointer ${
+                    activeTab === t.key
+                      ? 'bg-[#111] text-white'
+                      : 'text-[#888] hover:bg-[#F5F5F5] hover:text-[#111]'
+                  }`}>
+                  {t.label}
+                  {t.count !== null && (
+                    <span className={`ml-1.5 text-[11px] ${activeTab === t.key ? 'text-white/60' : 'text-[#CCC]'}`}>{t.count}</span>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
+        </section>
 
-          {dataLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">読み込み中...</p>
-            </div>
-          ) : (
-            <>
-              {/* 受注可能 */}
-              {activeTab === 'available' && (
-                <div className="space-y-4">
-                  {availableOrders.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                      <p className="text-4xl mb-4">📋</p>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">受注可能な案件はありません</h3>
-                      <p className="text-gray-600">新しい案件が入ると表示されます</p>
-                    </div>
-                  ) : (
-                    availableOrders.map((order) => (
-                      <div key={order.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {order.current_rank} → {order.target_rank}
-                            </h3>
-                            <p className="text-gray-600">{order.game_title} / {order.service_type || 'ランク代行'}</p>
-                          </div>
-                          {getStatusBadge(order.status)}
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 mb-4">
-                          <div>
-                            <span className="text-sm text-gray-500">報酬</span>
-                            <p className="font-bold text-green-600">¥{(order.price || 0).toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">ゲーム</span>
-                            <p className="font-medium">{order.game_title}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">依頼日</span>
-                            <p className="font-medium">{new Date(order.created_at).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleAccept(order.id)}
-                          disabled={actionLoading === order.id}
-                          className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition disabled:opacity-50 font-medium"
-                        >
-                          {actionLoading === order.id ? '処理中...' : 'この案件を受注する'}
-                        </button>
-                      </div>
-                    ))
-                  )}
+        {/* ═══ Content ═══ */}
+        <section className="pb-20">
+          <div className="max-w-3xl mx-auto px-6 pt-6">
+
+            {dataLoading && (
+              <div className="py-20 text-center">
+                <div className="relative w-8 h-8 mx-auto mb-3">
+                  <div className="absolute inset-0 border-2 border-[#E5E5E5] rounded-full" />
+                  <div className="absolute inset-0 border-2 border-transparent border-t-[#111] rounded-full"
+                    style={{ animation: 'emp-spin 0.7s linear infinite' }} />
                 </div>
-              )}
+                <p className="text-[12px] text-[#999]">読み込み中...</p>
+              </div>
+            )}
 
-              {/* 自分の案件 */}
-              {activeTab === 'mine' && (
-                <div className="space-y-4">
-                  {myOrders.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                      <p className="text-4xl mb-4">🎮</p>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">担当中の案件はありません</h3>
-                      <p className="text-gray-600">「受注可能」タブから案件を受注してください</p>
-                    </div>
-                  ) : (
-                    myOrders.map((order) => (
-                      <div key={order.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {order.current_rank} → {order.target_rank}
-                            </h3>
-                            <p className="text-gray-600">{order.game_title} / {order.service_type || 'ランク代行'}</p>
-                          </div>
-                          {getStatusBadge(order.status)}
+            {!dataLoading && (
+              <>
+                {/* 受注可能 */}
+                {activeTab === 'available' && (
+                  <div className="space-y-3">
+                    {availableOrders.length === 0 ? (
+                      <div className="py-16 text-center">
+                        <div className="w-14 h-14 rounded-full bg-[#F5F5F5] mx-auto mb-4 flex items-center justify-center">
+                          <i className="ri-file-list-3-line text-xl text-[#999]"></i>
                         </div>
-                        <div className="grid grid-cols-3 gap-4 mb-4">
-                          <div>
-                            <span className="text-sm text-gray-500">報酬</span>
-                            <p className="font-bold text-green-600">¥{(order.price || 0).toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">ゲーム</span>
-                            <p className="font-medium">{order.game_title}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">依頼日</span>
-                            <p className="font-medium">{new Date(order.created_at).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                          {order.status === 'assigned' && (
-                            <button
-                              onClick={() => handleStatusChange(order.id, 'in_progress')}
-                              disabled={actionLoading === order.id}
-                              className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition disabled:opacity-50 font-medium"
-                            >
-                              {actionLoading === order.id ? '処理中...' : '作業開始'}
-                            </button>
-                          )}
-                          {order.status === 'in_progress' && (
-                            <button
-                              onClick={() => handleStatusChange(order.id, 'completed')}
-                              disabled={actionLoading === order.id}
-                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50 font-medium"
-                            >
-                              {actionLoading === order.id ? '処理中...' : '作業完了'}
-                            </button>
-                          )}
-                          {order.chat_thread_id && (
-                            <button
-                              onClick={() => navigate(`/chat/${order.chat_thread_id}`)}
-                              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition font-medium"
-                            >
-                              💬 チャット
-                            </button>
-                          )}
-                          <button
-                            onClick={() => { setDisputeOrderId(order.id); setShowDispute(true); }}
-                            className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition font-medium"
-                          >
-                            紛争を報告
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {/* 完了履歴 */}
-              {activeTab === 'history' && (
-                <div className="space-y-4">
-                  {historyOrders.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                      <p className="text-4xl mb-4">📊</p>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">完了した案件はありません</h3>
-                    </div>
-                  ) : (
-                    historyOrders.map((order) => (
-                      <div key={order.id} className="bg-white rounded-lg shadow-sm p-6">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {order.current_rank} → {order.target_rank}
-                            </h3>
-                            <p className="text-gray-600">{order.game_title} / {order.service_type || 'ランク代行'}</p>
-                            <p className="text-sm text-gray-400 mt-1">{new Date(order.created_at).toLocaleDateString()}</p>
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(order.status)}
-                            <p className="font-bold text-green-600 mt-2">¥{(order.price || 0).toLocaleString()}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {/* 残高・出金 */}
-              {activeTab === 'wallet' && (
-                <div className="space-y-6">
-                  {/* 残高カード */}
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <p className="text-sm text-gray-500 mb-1">現在の残高</p>
-                    <p className="text-4xl font-bold text-green-600 mb-4">¥{balance.toLocaleString()}</p>
-
-                    {stripeStatus !== 'active' ? (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                        <p className="text-yellow-800 font-medium mb-1">
-                          {stripeStatus === 'not_created' ? '⚠ 銀行口座が未登録です' :
-                           stripeStatus === 'incomplete' ? '⚠ 口座登録が未完了です' :
-                           '⏳ 口座審査中です'}
-                        </p>
-                        <p className="text-sm text-yellow-700 mb-3">
-                          {stripeStatus === 'pending' ? 'Stripeの審査が完了するまでお待ちください' : '出金するには口座登録を完了してください'}
-                        </p>
-                        {stripeStatus !== 'pending' && (
-                          <button
-                            onClick={startStripeOnboarding}
-                            disabled={connectLoading}
-                            className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition disabled:opacity-50 text-sm"
-                          >
-                            {connectLoading ? '処理中...' : stripeStatus === 'incomplete' ? '登録を続ける' : '口座を登録する'}
-                          </button>
-                        )}
+                        <p className="text-[15px] font-semibold text-[#111] mb-1.5">受注可能な案件はありません</p>
+                        <p className="text-[13px] text-[#888]">新しい案件が入ると表示されます</p>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setShowWithdrawModal(true)}
-                        disabled={balance <= 0}
-                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition disabled:opacity-50 font-medium"
-                      >
-                        出金申請
-                      </button>
-                    )}
-                  </div>
-
-                  {/* 口座状態 */}
-                  <div className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-3 h-3 rounded-full ${
-                        stripeStatus === 'active' ? 'bg-green-500' :
-                        stripeStatus === 'pending' ? 'bg-blue-500' :
-                        stripeStatus === 'incomplete' ? 'bg-orange-500' : 'bg-yellow-500'
-                      }`}></span>
-                      <span className="text-gray-700">銀行口座: {
-                        stripeStatus === 'active' ? '登録済み（出金可能）' :
-                        stripeStatus === 'pending' ? '審査中' :
-                        stripeStatus === 'incomplete' ? '登録未完了' : '未登録'
-                      }</span>
-                    </div>
-                    {stripeStatus !== 'not_created' && (
-                      <button
-                        onClick={startStripeOnboarding}
-                        className="text-purple-600 text-sm hover:underline"
-                      >
-                        口座情報を更新
-                      </button>
-                    )}
-                  </div>
-
-                  {/* 履歴 */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">取引履歴</h3>
-                    {withdrawals.length === 0 ? (
-                      <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-500">
-                        取引履歴はまだありません
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {withdrawals.map((w) => (
-                          <div key={w.id} className="bg-white rounded-lg shadow-sm p-4 flex justify-between items-center">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className={`text-lg ${w.type === 'earning' ? '📥' : '📤'}`}>
-                                  {w.type === 'earning' ? '📥' : '📤'}
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                  {w.type === 'earning' ? '報酬' : '出金'}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                  w.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {w.status === 'completed' ? '完了' : '処理中'}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">{w.description || ''}</p>
-                              <p className="text-xs text-gray-400">{new Date(w.created_at).toLocaleString()}</p>
+                      availableOrders.map((order, idx) => (
+                        <div key={order.id}
+                          className="rounded-lg bg-white border border-[#E5E5E5] overflow-hidden hover:border-[#CCC] transition-colors duration-200"
+                          style={{ animation: `emp-fadeUp 0.35s ease ${0.04 * idx}s both` }}>
+                          <div className="p-4 sm:p-5">
+                            <div className="flex items-center gap-1.5 mb-2 text-[12px] text-[#666]">
+                              <span className="font-semibold text-[#111]">{order.game_title || 'Brawl Stars'}</span>
+                              <span className="text-[#CCC]">/</span>
+                              <span>{getServiceLabel(order.service_type || '')}</span>
+                              <span className="ml-auto">{getStatusBadge(order.status)}</span>
                             </div>
-                            <p className={`font-bold text-lg ${w.type === 'earning' ? 'text-green-600' : 'text-red-600'}`}>
-                              {w.type === 'earning' ? '+' : '-'}¥{(w.amount || 0).toLocaleString()}
-                            </p>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[16px] font-bold text-[#111]">{order.current_rank || '—'}</span>
+                                <i className="ri-arrow-right-s-line text-[13px] text-[#CCC]"></i>
+                                <span className="text-[16px] font-bold text-[#111]">{order.target_rank || '—'}</span>
+                              </div>
+                              <span className="shrink-0 text-right">
+                                <span className="block text-[9px] text-[#999]">報酬</span>
+                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * 0.8).toLocaleString()}</span>
+                              </span>
+                            </div>
+                            {getOrderDetails(order).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mb-3">
+                                {getOrderDetails(order).map((tag, ti) => (
+                                  <span key={ti} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F5F5F5] text-[10px] text-[#666]">
+                                    <span className="text-[#999]">{tag.label}</span>
+                                    <span className="font-semibold text-[#111]">{tag.value}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-[#BBB]">{new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                              <button onClick={() => handleAccept(order.id)} disabled={actionLoading === order.id}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#111] text-white hover:bg-[#333] transition-colors disabled:opacity-40">
+                                {actionLoading === order.id ? '処理中...' : 'この案件を受注する'}
+                              </button>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))
                     )}
                   </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                )}
 
-        {/* 出金モーダル */}
+                {/* 自分の案件 */}
+                {activeTab === 'mine' && (
+                  <div className="space-y-3">
+                    {myOrders.length === 0 ? (
+                      <div className="py-16 text-center">
+                        <div className="w-14 h-14 rounded-full bg-[#F5F5F5] mx-auto mb-4 flex items-center justify-center">
+                          <i className="ri-gamepad-line text-xl text-[#999]"></i>
+                        </div>
+                        <p className="text-[15px] font-semibold text-[#111] mb-1.5">担当中の案件はありません</p>
+                        <p className="text-[13px] text-[#888]">「受注可能」タブから案件を受注してください</p>
+                      </div>
+                    ) : (
+                      myOrders.map((order, idx) => (
+                        <div key={order.id}
+                          className="rounded-lg bg-white border border-[#E5E5E5] overflow-hidden hover:border-[#CCC] transition-colors duration-200 cursor-pointer"
+                          onClick={() => navigate(`/dashboard/employee/order/${order.id}`)}
+                          style={{ animation: `emp-fadeUp 0.35s ease ${0.04 * idx}s both` }}>
+                          <div className="p-4 sm:p-5">
+                            <div className="flex items-center gap-1.5 mb-2 text-[12px] text-[#666]">
+                              <span className="font-semibold text-[#111]">{order.game_title || 'Brawl Stars'}</span>
+                              <span className="text-[#CCC]">/</span>
+                              <span>{getServiceLabel(order.service_type || '')}</span>
+                              <span className="ml-auto">{getStatusBadge(order.status)}</span>
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[16px] font-bold text-[#111]">{order.current_rank || '—'}</span>
+                                <i className="ri-arrow-right-s-line text-[13px] text-[#CCC]"></i>
+                                <span className="text-[16px] font-bold text-[#111]">{order.target_rank || '—'}</span>
+                              </div>
+                              <span className="shrink-0 text-right">
+                                <span className="block text-[9px] text-[#999]">報酬</span>
+                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * 0.8).toLocaleString()}</span>
+                              </span>
+                            </div>
+                            {getOrderDetails(order).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mb-3">
+                                {getOrderDetails(order).map((tag, ti) => (
+                                  <span key={ti} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F5F5F5] text-[10px] text-[#666]">
+                                    <span className="text-[#999]">{tag.label}</span>
+                                    <span className="font-semibold text-[#111]">{tag.value}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="text-[10px] text-[#BBB]">{new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 pt-3 border-t border-[#F0F0F0]" onClick={(e) => e.stopPropagation()}>
+                              {order.status === 'assigned' && (
+                                <button onClick={() => handleStatusChange(order.id, 'in_progress')} disabled={actionLoading === order.id}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#D97706] text-white hover:bg-[#B45309] transition-colors disabled:opacity-40">
+                                  <i className="ri-play-line text-[11px]"></i>{actionLoading === order.id ? '処理中...' : '作業開始'}
+                                </button>
+                              )}
+                              {order.status === 'in_progress' && (
+                                <button onClick={() => handleStatusChange(order.id, 'completed')} disabled={actionLoading === order.id}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-40">
+                                  <i className="ri-check-double-line text-[11px]"></i>{actionLoading === order.id ? '処理中...' : '作業完了'}
+                                </button>
+                              )}
+                              {order.chat_thread_id && (
+                                <button onClick={() => navigate(`/chat/${order.chat_thread_id}`)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer text-[#111] border border-[#E0E0E0] hover:bg-[#F5F5F5] transition-colors">
+                                  <i className="ri-message-3-line text-[11px]"></i>チャット
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* 完了履歴 */}
+                {activeTab === 'history' && (
+                  <div className="space-y-3">
+                    {historyOrders.length === 0 ? (
+                      <div className="py-16 text-center">
+                        <div className="w-14 h-14 rounded-full bg-[#F5F5F5] mx-auto mb-4 flex items-center justify-center">
+                          <i className="ri-history-line text-xl text-[#999]"></i>
+                        </div>
+                        <p className="text-[15px] font-semibold text-[#111] mb-1.5">完了した案件はありません</p>
+                      </div>
+                    ) : (
+                      historyOrders.map((order, idx) => (
+                        <div key={order.id}
+                          className="rounded-lg bg-white border border-[#E5E5E5] overflow-hidden hover:border-[#CCC] transition-colors duration-200 cursor-pointer"
+                          onClick={() => navigate(`/dashboard/employee/order/${order.id}`)}
+                          style={{ animation: `emp-fadeUp 0.35s ease ${0.04 * idx}s both` }}>
+                          <div className="p-4 sm:p-5">
+                            <div className="flex items-center gap-1.5 mb-2 text-[12px] text-[#666]">
+                              <span className="font-semibold text-[#111]">{order.game_title || 'Brawl Stars'}</span>
+                              <span className="text-[#CCC]">/</span>
+                              <span>{getServiceLabel(order.service_type || '')}</span>
+                              <span className="ml-auto">{getStatusBadge(order.status)}</span>
+                            </div>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[16px] font-bold text-[#111]">{order.current_rank || '—'}</span>
+                                <i className="ri-arrow-right-s-line text-[13px] text-[#CCC]"></i>
+                                <span className="text-[16px] font-bold text-[#111]">{order.target_rank || '—'}</span>
+                              </div>
+                              <span className="shrink-0 text-right">
+                                <span className="block text-[9px] text-[#999]">報酬</span>
+                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * 0.8).toLocaleString()}</span>
+                              </span>
+                            </div>
+                            {getOrderDetails(order).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+                                {getOrderDetails(order).map((tag, ti) => (
+                                  <span key={ti} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F5F5F5] text-[10px] text-[#666]">
+                                    <span className="text-[#999]">{tag.label}</span>
+                                    <span className="font-semibold text-[#111]">{tag.value}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-[10px] text-[#BBB]">{new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                              {order.chat_thread_id && (
+                                <button onClick={(e) => { e.stopPropagation(); navigate(`/chat/${order.chat_thread_id}`); }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold rounded-md cursor-pointer text-[#111] border border-[#E0E0E0] hover:bg-[#F5F5F5] transition-colors">
+                                  <i className="ri-message-3-line text-[11px]"></i>チャット
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* 残高・出金 */}
+                {activeTab === 'wallet' && (
+                  <div className="space-y-3">
+                    {/* 残高カード */}
+                    <div className="rounded-lg bg-white border border-[#E5E5E5] p-5">
+                      <p className="text-[11px] text-[#888] mb-1">現在の残高</p>
+                      <p className="text-[28px] font-bold text-[#111] mb-4">¥{balance.toLocaleString()}</p>
+
+                      {stripeStatus !== 'active' ? (
+                        <div className="px-3.5 py-2.5 rounded-lg border border-[#FCD34D]/40 bg-[#FFFBEB] mb-4">
+                          <p className="text-[12px] font-semibold text-[#92400E] mb-0.5">
+                            {stripeStatus === 'not_created' ? '銀行口座が未登録です' :
+                             stripeStatus === 'incomplete' ? '口座登録が未完了です' :
+                             '口座審査中です'}
+                          </p>
+                          <p className="text-[11px] text-[#A16207] mb-2.5">
+                            {stripeStatus === 'pending' ? 'Stripeの審査が完了するまでお待ちください' : '出金するには口座登録を完了してください'}
+                          </p>
+                          {stripeStatus !== 'pending' && (
+                            <button onClick={startStripeOnboarding} disabled={connectLoading}
+                              className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer">
+                              {connectLoading ? '処理中...' : stripeStatus === 'incomplete' ? '登録を続ける' : '口座を登録する'}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <button onClick={() => setShowWithdrawModal(true)} disabled={balance <= 0}
+                          className="px-5 py-2.5 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer">
+                          出金申請
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 口座状態 */}
+                    <div className="rounded-lg bg-white border border-[#E5E5E5] p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full" style={{
+                          background: stripeStatus === 'active' ? '#059669' :
+                            stripeStatus === 'pending' ? '#2563EB' :
+                            stripeStatus === 'incomplete' ? '#D97706' : '#D97706'
+                        }} />
+                        <span className="text-[12px] text-[#666]">銀行口座: {
+                          stripeStatus === 'active' ? '登録済み（出金可能）' :
+                          stripeStatus === 'pending' ? '審査中' :
+                          stripeStatus === 'incomplete' ? '登録未完了' : '未登録'
+                        }</span>
+                      </div>
+                      {stripeStatus !== 'not_created' && (
+                        <button onClick={startStripeOnboarding}
+                          className="text-[11px] text-[#888] hover:text-[#111] transition-colors cursor-pointer">
+                          口座情報を更新
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 取引履歴 */}
+                    <div className="pt-3">
+                      <h3 className="text-[14px] font-bold text-[#111] mb-3">取引履歴</h3>
+                      {withdrawals.length === 0 ? (
+                        <div className="py-12 text-center">
+                          <p className="text-[13px] text-[#999]">取引履歴はまだありません</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {withdrawals.map((w) => (
+                            <div key={w.id} className="rounded-lg bg-white border border-[#E5E5E5] p-4 flex justify-between items-center">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <i className={`${w.type === 'earning' ? 'ri-arrow-down-line text-[#059669]' : 'ri-arrow-up-line text-[#DC2626]'} text-[13px]`}></i>
+                                  <span className="text-[12px] font-semibold text-[#111]">
+                                    {w.type === 'earning' ? '報酬' : '出金'}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold"
+                                    style={{
+                                      color: w.status === 'completed' ? '#059669' : w.status === 'rejected' ? '#DC2626' : '#D97706',
+                                      background: w.status === 'completed' ? '#F0FDF4' : w.status === 'rejected' ? '#FEF2F2' : '#FFFBEB',
+                                    }}>
+                                    {w.status === 'completed' ? '完了' : w.status === 'rejected' ? '却下' : '処理中'}
+                                  </span>
+                                </div>
+                                {w.description && <p className="text-[10px] text-[#999] mt-1">{w.description}</p>}
+                                <p className="text-[10px] text-[#BBB] mt-0.5">{new Date(w.created_at).toLocaleString()}</p>
+                              </div>
+                              <p className={`text-[14px] font-bold ${w.type === 'earning' ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
+                                {w.type === 'earning' ? '+' : '-'}¥{(w.amount || 0).toLocaleString()}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* ═══ 出金モーダル ═══ */}
         {showWithdrawModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-md p-6">
-              <h2 className="text-xl font-bold mb-2">📤 出金申請</h2>
-              <p className="text-gray-600 text-sm mb-4">登録済みの銀行口座に振り込まれます</p>
-
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-500">現在の残高</p>
-                <p className="text-2xl font-bold text-green-600">¥{balance.toLocaleString()}</p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); }}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[#F0F0F0]">
+                <h2 className="text-[15px] font-bold text-[#111]">出金申請</h2>
+                <p className="text-[11px] text-[#999] mt-0.5">登録済みの銀行口座に振り込まれます</p>
               </div>
+              <div className="p-6">
+                <div className="rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] p-4 mb-4">
+                  <p className="text-[11px] text-[#888]">現在の残高</p>
+                  <p className="text-[22px] font-bold text-[#111]">¥{balance.toLocaleString()}</p>
+                </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">出金額（円）</label>
-                <input
-                  type="number"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="例: 5000"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  max={balance}
-                />
-                <button
-                  onClick={() => setWithdrawAmount(String(balance))}
-                  className="text-sm text-purple-600 hover:underline mt-1"
-                >
-                  全額出金
-                </button>
-              </div>
+                <div className="mb-4">
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1.5">出金額（円）</label>
+                  <input type="number"
+                    className="w-full border border-[#E5E5E5] rounded-lg p-3 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111] transition-colors"
+                    placeholder="例: 5000" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} max={balance} />
+                  <button onClick={() => setWithdrawAmount(String(balance))}
+                    className="text-[11px] text-[#888] hover:text-[#111] transition-colors mt-1 cursor-pointer">
+                    全額出金
+                  </button>
+                </div>
 
-              {withdrawAmount && parseInt(withdrawAmount) > balance && (
-                <p className="text-red-600 text-sm mb-4">⚠ 残高を超えています</p>
-              )}
+                {withdrawAmount && parseInt(withdrawAmount) > balance && (
+                  <p className="text-[11px] text-[#DC2626] mb-4">残高を超えています</p>
+                )}
 
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleWithdraw}
-                  disabled={withdrawLoading || !withdrawAmount || parseInt(withdrawAmount) <= 0 || parseInt(withdrawAmount) > balance}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-                >
-                  {withdrawLoading ? '処理中...' : '出金する'}
-                </button>
+                <div className="flex justify-end gap-2.5 pt-1">
+                  <button onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); }}
+                    className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
+                    キャンセル
+                  </button>
+                  <button onClick={handleWithdraw}
+                    disabled={withdrawLoading || !withdrawAmount || parseInt(withdrawAmount) <= 0 || parseInt(withdrawAmount) > balance}
+                    className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                    {withdrawLoading ? '処理中...' : '出金する'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* 紛争モーダル */}
-        {showDispute && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-md p-6">
-              <h2 className="text-xl font-bold mb-4">紛争を報告</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">理由</label>
-                  <input
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="例: 依頼者と連絡が取れない"
-                    value={disputeReason}
-                    onChange={(e) => setDisputeReason(e.target.value)}
-                  />
+        {/* ═══ 受注確認モーダル ═══ */}
+        {confirmAcceptOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setConfirmAcceptOrder(null)}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[#F0F0F0]">
+                <h2 className="text-[15px] font-bold text-[#111]">受注確認</h2>
+                <p className="text-[11px] text-[#999] mt-0.5">この案件を受注しますか？</p>
+              </div>
+              <div className="p-6">
+                <div className="rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] p-4 mb-4 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-[12px] text-[#666]">
+                    <span className="font-semibold text-[#111]">{confirmAcceptOrder.game_title || 'Brawl Stars'}</span>
+                    <span className="text-[#CCC]">/</span>
+                    <span>{getServiceLabel(confirmAcceptOrder.service_type || '')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[16px] font-bold text-[#111]">{confirmAcceptOrder.current_rank || '—'}</span>
+                    <i className="ri-arrow-right-s-line text-[13px] text-[#CCC]"></i>
+                    <span className="text-[16px] font-bold text-[#111]">{confirmAcceptOrder.target_rank || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E5E5E5]">
+                    <span className="text-[11px] text-[#888]">報酬額</span>
+                    <span className="text-[15px] font-bold text-[#059669]">¥{Math.floor((confirmAcceptOrder.price || 0) * 0.8).toLocaleString()}</span>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">詳細</label>
-                  <textarea
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    rows={4}
-                    placeholder="状況を詳しく説明してください"
-                    value={disputeDesc}
-                    onChange={(e) => setDisputeDesc(e.target.value)}
-                  />
+
+                <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-lg bg-[#FFFBEB] border border-[#FCD34D]/40 mb-4">
+                  <i className="ri-error-warning-line text-[13px] text-[#D97706] mt-0.5 shrink-0"></i>
+                  <span className="text-[11px] text-[#92400E]">受注後のキャンセルは原則できません。対応可能な場合のみ受注してください。</span>
+                </div>
+
+                <div className="flex justify-end gap-2.5">
+                  <button onClick={() => setConfirmAcceptOrder(null)}
+                    className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
+                    キャンセル
+                  </button>
+                  <button onClick={handleAcceptConfirmed}
+                    className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors cursor-pointer">
+                    受注する
+                  </button>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => { setShowDispute(false); setDisputeReason(''); setDisputeDesc(''); }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleCreateDispute}
-                  disabled={!disputeReason}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
-                >
-                  紛争を作成
-                </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ 紛争モーダル ═══ */}
+        {showDispute && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowDispute(false)}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[#F0F0F0]">
+                <h2 className="text-[15px] font-bold text-[#111]">問題を報告する</h2>
+                <p className="text-[11px] text-[#999] mt-0.5">管理者が内容を確認し対応します</p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1.5">理由</label>
+                  <input className="w-full border border-[#E5E5E5] rounded-lg p-3 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111] transition-colors placeholder:text-[#CCC]"
+                    placeholder="例: 依頼者と連絡が取れない" value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1.5">詳細（任意）</label>
+                  <textarea className="w-full border border-[#E5E5E5] rounded-lg p-3 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111] transition-colors resize-none placeholder:text-[#CCC]"
+                    rows={4} placeholder="状況を詳しく説明してください" value={disputeDesc} onChange={(e) => setDisputeDesc(e.target.value)} />
+                </div>
+                <div className="flex justify-end gap-2.5 pt-1">
+                  <button onClick={() => { setShowDispute(false); setDisputeReason(''); setDisputeDesc(''); }}
+                    className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
+                    キャンセル
+                  </button>
+                  <button onClick={handleCreateDispute} disabled={!disputeReason}
+                    className="px-4 py-2 text-[12px] font-semibold bg-[#DC2626] text-white rounded-lg hover:bg-[#B91C1C] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                    報告する
+                  </button>
+                </div>
               </div>
             </div>
           </div>

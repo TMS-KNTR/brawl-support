@@ -18,7 +18,7 @@ type AdminLogEntry = {
   meta_json?: Record<string, unknown> | null;
 };
 
-/** アクションの日本語ラベル（よくあるものを定義） */
+/** アクションの日本語ラベル */
 function actionLabel(action: string): string {
   const map: Record<string, string> = {
     REQUEST_ACCEPTED: '受注承諾',
@@ -32,8 +32,40 @@ function actionLabel(action: string): string {
     ROLE_CHANGED: 'ロール変更',
     LOGIN: 'ログイン',
     LOGOUT: 'ログアウト',
+    user_warning: 'ユーザー警告',
+    user_ban: 'ユーザーBAN',
+    user_unban: 'ユーザーBAN解除',
+    user_role_changed: 'ロール変更',
+    warning_reset: '警告リセット',
+    order_force_cancelled: '注文 強制キャンセル+返金',
+    order_force_completed: '注文 強制完了+支払い',
+    order_force_cancelled_fallback: '注文 キャンセル（返金エラー）',
+    order_force_completed_fallback: '注文 完了（支払いエラー）',
+    order_status_changed: '注文 ステータス変更',
+    dispute_resolved: '紛争 解決',
+    dispute_closed: '紛争 却下',
+    system_setting_changed: 'システム設定 変更',
+    BROADCAST_NOTIFICATION: '一斉通知 送信',
+    WITHDRAWAL_APPROVED: '出金 承認',
+    WITHDRAWAL_REJECTED: '出金 却下',
+    BALANCE_ADJUSTED: '残高 調整',
   };
   return map[action] || action;
+}
+
+/** 対象タイプの日本語ラベル */
+function targetTypeLabel(targetType: string): string {
+  const map: Record<string, string> = {
+    user: 'ユーザー',
+    order: '注文',
+    dispute: '紛争',
+    system: 'システム',
+    notification: '通知',
+    withdrawal: '出金',
+    balance: '残高',
+    setting: '設定',
+  };
+  return map[targetType] || targetType;
 }
 
 export default function AdminLogsPage() {
@@ -165,7 +197,7 @@ export default function AdminLogsPage() {
                     <option value="all">すべて</option>
                     {uniqueTargetTypes.map((t) => (
                       <option key={t} value={t}>
-                        {t}
+                        {targetTypeLabel(t)}
                       </option>
                     ))}
                   </select>
@@ -199,10 +231,9 @@ export default function AdminLogsPage() {
                             <span className="font-medium text-gray-900">
                               {actionLabel(log.action)}
                             </span>
-                            <span className="text-xs text-gray-400 font-mono">({log.action})</span>
                             {log.target_type && (
                               <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
-                                {log.target_type}
+                                {targetTypeLabel(log.target_type)}
                               </span>
                             )}
                           </div>

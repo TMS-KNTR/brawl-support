@@ -3,114 +3,238 @@ import { useAuth } from '../../../contexts/AuthContext';
 export default function Hero() {
   const { user } = useAuth();
 
-  const handleCreateOrder = () => {
-    if (user) {
-      window.REACT_APP_NAVIGATE('/order/new');
-    } else {
-      window.REACT_APP_NAVIGATE('/register');
-    }
+  const handleCTA = () => {
+    window.REACT_APP_NAVIGATE(user ? '/order/new' : '/register');
   };
 
-  const handleJoinAsWorker = () => {
-    if (user) {
-      window.REACT_APP_NAVIGATE('/dashboard/worker');
-    } else {
-      window.REACT_APP_NAVIGATE('/register');
-    }
+  const scrollToHowItWorks = () => {
+    const el = document.getElementById('how-it-works');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
-    <section 
-      className="relative min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat"
-      style={{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('https://readdy.ai/api/search-image?query=Professional%20gaming%20setup%20with%20Brawl%20Stars%20game%20interface%20on%20multiple%20monitors%2C%20modern%20esports%20environment%20with%20purple%20and%20blue%20lighting%2C%20high-tech%20gaming%20room%20with%20clean%20minimalist%20design%2C%20professional%20competitive%20gaming%20atmosphere&width=1920&height=1080&seq=hero-bg&orientation=landscape')`
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Brawl Stars
-            </span>
-            <br />
-            <span className="text-white">代行サービス</span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl mb-8 text-gray-200 leading-relaxed">
-            安全・匿名・前払い決済で信頼できるランク代行
-            <br />
-            プロの代行者があなたの目標ランクまでサポート
+    <section className="relative pt-[72px] overflow-hidden">
+      <style>{`
+        @keyframes hero-fadeUp {
+          from { opacity: 0; transform: translateY(28px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes hero-fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes hero-glow-pulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        @keyframes hero-line-expand {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }
+        @keyframes hero-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-12px); }
+        }
+        @keyframes hero-scan {
+          0% { top: -8%; }
+          100% { top: 108%; }
+        }
+        @keyframes hero-shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes hero-particle-drift {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-180px) translateX(40px); opacity: 0; }
+        }
+        .hero-heading-line {
+          animation: hero-fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+        .hero-subtitle {
+          animation: hero-fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+          opacity: 0;
+        }
+        .hero-cta-group {
+          animation: hero-fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.55s forwards;
+          opacity: 0;
+        }
+        .hero-label {
+          animation: hero-fadeIn 0.8s ease 0.1s forwards;
+          opacity: 0;
+        }
+        .hero-btn-primary {
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .hero-btn-primary::before {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          background: linear-gradient(135deg, #8B7AFF, #5B3AE8, #3D1FA8, #5B3AE8);
+          background-size: 300% 300%;
+          border-radius: inherit;
+          z-index: -1;
+          animation: hero-shimmer 4s ease infinite;
+        }
+        .hero-btn-primary::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(139,122,255,0.15), transparent 60%);
+          border-radius: inherit;
+          opacity: 0;
+          transition: opacity 0.3s;
+        }
+        .hero-btn-primary:hover::after {
+          opacity: 1;
+        }
+        .hero-btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 0 32px rgba(91,58,232,0.5), 0 0 64px rgba(91,58,232,0.2);
+        }
+        .hero-btn-secondary {
+          position: relative;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .hero-btn-secondary::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          padding: 1px;
+          background: linear-gradient(135deg, #2A2A40, #5B3AE8, #2A2A40);
+          background-size: 200% 200%;
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          animation: hero-shimmer 6s ease infinite;
+        }
+        .hero-btn-secondary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 0 24px rgba(91,58,232,0.25);
+        }
+        .hero-divider {
+          animation: hero-line-expand 1s cubic-bezier(0.16, 1, 0.3, 1) 0.7s forwards;
+          transform: scaleX(0);
+        }
+      `}</style>
+
+      {/* ===== Background ===== */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-[#080810]" />
+        <img
+          src="/hero-bg.webp"
+          alt="GEMSUKE ゲーム代行サービス"
+          className="absolute inset-0 w-full h-full object-cover object-center opacity-60"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#080810]/40 via-[#080810]/30 to-[#080810]/60" />
+
+        {/* Radial glow behind text */}
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[40%] w-[700px] h-[500px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse, rgba(91,58,232,0.18) 0%, transparent 70%)',
+            animation: 'hero-glow-pulse 5s ease-in-out infinite',
+          }}
+        />
+
+        {/* Scan line */}
+        <div
+          className="absolute left-0 right-0 h-[1px] pointer-events-none"
+          style={{
+            background: 'linear-gradient(90deg, transparent, rgba(139,122,255,0.25) 30%, rgba(139,122,255,0.25) 70%, transparent)',
+            animation: 'hero-scan 4s linear infinite',
+          }}
+        />
+
+        {/* Floating particles */}
+        {[...Array(6)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: `${2 + (i % 3)}px`,
+              height: `${2 + (i % 3)}px`,
+              background: i % 2 === 0 ? '#8B7AFF' : '#5B3AE8',
+              left: `${15 + i * 13}%`,
+              bottom: `${10 + (i % 4) * 8}%`,
+              animation: `hero-particle-drift ${5 + i * 1.2}s ease-in-out ${i * 0.8}s infinite`,
+              filter: 'blur(0.5px)',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ===== Content ===== */}
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 pt-28 pb-36 lg:pt-36 lg:pb-44">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Label */}
+          <p
+            className="hero-label text-[11px] font-bold tracking-[0.3em] uppercase text-[#8B7AFF] mb-8"
+            style={{ fontFamily: '"Orbitron", sans-serif' }}
+          >
+            Gaming Support Platform
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <button
-              onClick={handleCreateOrder}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 whitespace-nowrap"
+          {/* Main heading */}
+          <h1 className="mb-7">
+            <span
+              className="hero-heading-line block text-[clamp(2rem,6vw,4.5rem)] font-extrabold leading-[1.05] text-white"
+              style={{ fontFamily: '"Orbitron", sans-serif', animationDelay: '0.15s' }}
             >
-              <i className="ri-add-circle-line mr-2"></i>
-              依頼を作成
-            </button>
-            
-            <button
-              onClick={handleJoinAsWorker}
-              className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/20 transition-all duration-200 border border-white/20 whitespace-nowrap"
+              ゲームの代行を
+            </span>
+            <span
+              className="hero-heading-line block text-[clamp(2rem,6vw,4.5rem)] font-extrabold leading-[1.05] text-white"
+              style={{ fontFamily: '"Orbitron", sans-serif', animationDelay: '0.3s' }}
             >
-              <i className="ri-user-star-line mr-2"></i>
-              代行者として参加
-            </button>
+              プロに任せよう
+            </span>
+          </h1>
+
+          {/* Decorative divider */}
+          <div className="flex justify-center mb-7">
+            <div
+              className="hero-divider h-[1px] w-24"
+              style={{
+                background: 'linear-gradient(90deg, transparent, #5B3AE8, transparent)',
+              }}
+            />
           </div>
 
-          {/* 3ステップ */}
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="ri-file-text-line text-2xl text-white"></i>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">1. 依頼作成</h3>
-              <p className="text-gray-300">現在ランクと目標ランクを選択して依頼を作成</p>
-            </div>
-            
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="ri-secure-payment-line text-2xl text-white"></i>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">2. 安全決済</h3>
-              <p className="text-gray-300">Stripe決済でエスクロー風の安全な前払い</p>
-            </div>
-            
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="ri-trophy-line text-2xl text-white"></i>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">3. 代行完了</h3>
-              <p className="text-gray-300">プロの代行者が匿名チャットで進捗報告</p>
-            </div>
-          </div>
+          {/* Subtitle */}
+          <p className="hero-subtitle text-[15px] sm:text-[16px] text-[#9090B0] leading-relaxed max-w-lg mx-auto mb-12 font-medium">
+            厳選されたプロプレイヤーがあなたの目標を確実に達成。
+            <br />
+            安全な決済と匿名チャットで、安心のお取引を提供します。
+          </p>
 
-          {/* 信頼表示 */}
-          <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-gray-300">
-            <div className="flex items-center">
-              <i className="ri-shield-check-line mr-2 text-green-400"></i>
-              Stripe決済
-            </div>
-            <div className="flex items-center">
-              <i className="ri-user-forbid-line mr-2 text-blue-400"></i>
-              完全匿名
-            </div>
-            <div className="flex items-center">
-              <i className="ri-refund-line mr-2 text-yellow-400"></i>
-              返金保証
-            </div>
+          {/* CTA buttons */}
+          <div className="hero-cta-group flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
-              onClick={() => window.REACT_APP_NAVIGATE('/compliance')}
-              className="flex items-center hover:text-white transition-colors cursor-pointer"
+              onClick={handleCTA}
+              className="hero-btn-primary w-full sm:w-auto px-10 py-4 bg-[#5B3AE8] text-white text-[13px] font-bold tracking-wider uppercase rounded-md cursor-pointer"
+              style={{ fontFamily: '"Orbitron", sans-serif', letterSpacing: '0.1em' }}
             >
-              <i className="ri-file-shield-line mr-2 text-purple-400"></i>
-              コンプライアンス
+              無料で始める
+            </button>
+            <button
+              onClick={scrollToHowItWorks}
+              className="hero-btn-secondary w-full sm:w-auto px-10 py-4 text-[13px] font-bold tracking-wider uppercase text-[#9090B0] hover:text-white rounded-md cursor-pointer bg-transparent"
+              style={{ fontFamily: '"Orbitron", sans-serif', letterSpacing: '0.1em' }}
+            >
+              使い方を見る
             </button>
           </div>
         </div>
       </div>
+
+      {/* Bottom gradient fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent" />
     </section>
   );
 }
