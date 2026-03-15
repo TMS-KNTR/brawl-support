@@ -252,7 +252,6 @@ export function useAuthImpl() {
             role: 'customer',
             warning_count: 0,
             is_banned: false,
-            is_banned: false,
           }),
         5000
       )
