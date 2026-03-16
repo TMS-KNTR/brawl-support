@@ -47,8 +47,19 @@ const STATUS: Record<string, { label: string; color: string; progress: number }>
 };
 const fallbackStatus = { label: '不明', color: '#9CA3AF', progress: 0 };
 
+/** ステータスを小文字に正規化 */
+function normalizeStatus(status: string): string {
+  const s = (status || '').toLowerCase();
+  if (s === 'canceled') return 'cancelled';
+  if (s === 'paid_unassigned') return 'paid';
+  if (s === 'claimed') return 'assigned';
+  if (s === 'delivered') return 'completed';
+  return s;
+}
+
 /* ── Service type config ── */
 const SERVICE_TYPES: Record<string, { label: string; icon: string }> = {
+  'rank':         { label: 'ガチバトル上げ', icon: 'ri-sword-line' },
   'trophy':       { label: 'トロフィー上げ', icon: 'ri-trophy-line' },
   'trophy-push':  { label: 'トロフィー上げ', icon: 'ri-trophy-line' },
   'rank-push':    { label: 'ランク上げ',     icon: 'ri-vip-crown-line' },
@@ -106,9 +117,9 @@ export default function CustomerDashboardPage() {
         const thread = Array.isArray(order.chat_threads) ? order.chat_threads[0] : order.chat_threads;
         return { ...order, chat_thread_id: thread?.id ?? null };
       });
-      const chatEligibleStatuses = ['paid', 'PAID', 'PAYMENT_PENDING', 'assigned', 'in_progress', 'completed'];
+      const chatEligibleStatuses = ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed'];
       const needThreadIds = ordersWithChatId.filter(
-        (o) => !o.chat_thread_id && chatEligibleStatuses.includes(String(o.status))
+        (o) => !o.chat_thread_id && chatEligibleStatuses.includes(normalizeStatus(o.status))
       );
       if (needThreadIds.length > 0) {
         try {
@@ -132,7 +143,7 @@ export default function CustomerDashboardPage() {
   };
 
   const handleConfirmComplete = async (orderId: string) => {
-    if (!window.confirm('代行が完了したことを確認しますか？\n\n※ 確認すると従業員に報酬が支払われます。')) return;
+    if (!window.confirm('代行が完了したことを確認しますか？\n\n※ 確認すると代行者に報酬が支払われます。')) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('confirm-order', {
@@ -159,7 +170,7 @@ export default function CustomerDashboardPage() {
     if (!order) return;
     if (!window.confirm('紛争として報告しますか？')) return;
     const { error } = await supabase.from('disputes').insert({
-      order_id: disputeOrderId, customer_id: user?.id, employee_id: order.employee_id,
+      order_id: disputeOrderId, customer_id: user?.id, employee_id: order.employee_id || null,
       status: 'open', reason: disputeReason, description: disputeDesc,
     });
     if (error) alert('紛争作成に失敗: ' + error.message);
@@ -168,7 +179,8 @@ export default function CustomerDashboardPage() {
   };
 
   const handleSubmitRating = async () => {
-    if (!user || !ratingOrderId || !ratingWorkerId || !ratingScore) return;
+    if (!user || !ratingOrderId || !ratingScore) return;
+    if (!ratingWorkerId) { alert('代行者が割り当てられていないため評価できません。'); setShowRating(false); return; }
     if (!ratingComment.trim()) { alert('コメントを入力してください。'); return; }
     setRatingSaving(true);
     try {
@@ -185,7 +197,7 @@ export default function CustomerDashboardPage() {
   };
 
   const isTerminal = (status: string) =>
-    ['CANCELED', 'cancelled', 'DISPUTED', 'REFUNDED'].includes(status);
+    ['cancelled', 'disputed', 'refunded'].includes(normalizeStatus(status));
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -193,12 +205,13 @@ export default function CustomerDashboardPage() {
     setRefreshing(false);
   };
 
-  const activeStatuses = ['assigned', 'in_progress', 'CLAIMED', 'IN_PROGRESS', 'paid', 'PAID', 'PAYMENT_PENDING', 'PAID_UNASSIGNED', 'open', 'pending'];
-  const doneStatuses = ['completed', 'confirmed', 'COMPLETED', 'CONFIRMED', 'CANCELED', 'cancelled', 'DISPUTED', 'REFUNDED'];
+  const activeStatuses = ['assigned', 'in_progress', 'paid', 'payment_pending', 'open', 'pending'];
+  const doneStatuses = ['completed', 'confirmed', 'cancelled', 'disputed', 'refunded'];
 
   const filteredOrders = orders.filter((o) => {
-    if (filter === 'active') return activeStatuses.includes(o.status);
-    if (filter === 'done') return doneStatuses.includes(o.status);
+    const ns = normalizeStatus(o.status);
+    if (filter === 'active') return activeStatuses.includes(ns);
+    if (filter === 'done') return doneStatuses.includes(ns);
     return true;
   });
 
@@ -357,8 +370,9 @@ export default function CustomerDashboardPage() {
                   const svc = SERVICE_TYPES[order.service_type] || fallbackService;
                   const terminal = isTerminal(order.status);
 
-                  const chatVisible = order.chat_thread_id && ['paid', 'PAYMENT_PENDING', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(order.status);
-                  const canConfirm = order.status === 'completed' && !order.is_paid_out;
+                  const ns = normalizeStatus(order.status);
+                  const chatVisible = order.chat_thread_id && ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(ns);
+                  const canConfirm = ns === 'completed' && !order.is_paid_out;
                   const canDispute = false; // 詳細ページのみで表示
                   const dateStr = new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -523,7 +537,7 @@ export default function CustomerDashboardPage() {
                     value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)}>
                     <option value="">選択してください</option>
                     <option value="作業が進まない">作業が進まない</option>
-                    <option value="従業員と連絡が取れない">従業員と連絡が取れない</option>
+                    <option value="代行者と連絡が取れない">代行者と連絡が取れない</option>
                     <option value="作業内容が依頼と異なる">作業内容が依頼と異なる</option>
                     <option value="アカウントに問題が発生した">アカウントに問題が発生した</option>
                     <option value="その他">その他</option>

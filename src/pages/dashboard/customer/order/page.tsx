@@ -32,6 +32,17 @@ const STATUS: Record<string, { label: string; color: string; progress: number }>
 };
 const fallbackStatus = { label: '不明', color: '#9CA3AF', progress: 0 };
 
+/** ステータスを小文字に正規化 */
+function normalizeStatus(status: string): string {
+  const s = (status || '').toLowerCase();
+  // バックエンドの表記揺れを吸収
+  if (s === 'canceled') return 'cancelled';
+  if (s === 'paid_unassigned') return 'paid';
+  if (s === 'claimed') return 'assigned';
+  if (s === 'delivered') return 'completed';
+  return s;
+}
+
 const SERVICE_TYPES: Record<string, string> = {
   'rank':         'ガチバトル上げ',
   'trophy':       'トロフィー上げ',
@@ -118,7 +129,7 @@ export default function OrderDetailPage() {
     if (!order || !disputeReason) return;
     if (!window.confirm('紛争として報告しますか？')) return;
     const { error } = await supabase.from('disputes').insert({
-      order_id: order.id, customer_id: user?.id, employee_id: order.employee_id,
+      order_id: order.id, customer_id: user?.id, employee_id: order.employee_id || null,
       status: 'open', reason: disputeReason, description: disputeDesc,
     });
     if (error) alert('紛争作成に失敗: ' + error.message);
@@ -128,6 +139,7 @@ export default function OrderDetailPage() {
 
   const handleSubmitRating = async () => {
     if (!user || !order || !ratingScore) return;
+    if (!order.employee_id) { alert('代行者が割り当てられていないため評価できません。'); setShowRating(false); return; }
     if (!ratingComment.trim()) { alert('コメントを入力してください。'); return; }
     setRatingSaving(true);
     try {
@@ -177,7 +189,7 @@ export default function OrderDetailPage() {
   }, [order]);
 
   const isTerminal = (status: string) =>
-    ['CANCELED', 'cancelled', 'DISPUTED', 'REFUNDED'].includes(status);
+    ['cancelled', 'disputed', 'refunded'].includes(normalizeStatus(status));
 
   if (loading) {
     return (
@@ -226,9 +238,10 @@ export default function OrderDetailPage() {
   const currentStepIdx = STEPS.findIndex(step => s.progress < step.min);
   const activeIdx = currentStepIdx === -1 ? STEPS.length - 1 : Math.max(0, currentStepIdx - 1);
 
-  const chatVisible = chatThreadId && ['paid', 'PAYMENT_PENDING', 'assigned', 'in_progress', 'completed'].includes(order.status);
-  const canConfirm = order.status === 'completed' && !order.is_paid_out;
-  const canDispute = ['paid', 'assigned', 'in_progress', 'completed'].includes(order.status);
+  const ns = normalizeStatus(order.status);
+  const chatVisible = chatThreadId && ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(ns);
+  const canConfirm = ns === 'completed' && !order.is_paid_out;
+  const canDispute = ['paid', 'assigned', 'in_progress', 'completed'].includes(ns);
 
   const createdAt = new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   const updatedAt = order.updated_at
