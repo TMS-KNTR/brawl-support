@@ -4,7 +4,7 @@ export default function BrawlStarsHero() {
     <section 
       className="relative min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat"
       style={{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('https://readdy.ai/api/search-image?query=Brawl%20Stars%20epic%20battle%20arena%20with%20colorful%20cartoon%20characters%20fighting%2C%20vibrant%20game%20environment%20with%20power-ups%20and%20trophies%2C%20professional%20mobile%20gaming%20championship%20atmosphere%2C%20dynamic%20action%20scene%20with%20brawlers%20in%20combat&width=1920&height=1080&seq=brawlstars-hero&orientation=landscape')`
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/brawl-stars.webp')`
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">

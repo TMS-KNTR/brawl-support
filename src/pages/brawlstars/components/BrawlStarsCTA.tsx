@@ -1,5 +1,7 @@
+import { useNavigate } from 'react-router-dom';
 
 export default function BrawlStarsCTA() {
+  const navigate = useNavigate();
   return (
     <section className="py-20 bg-gradient-to-r from-yellow-500 to-orange-600">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
@@ -20,7 +22,7 @@ export default function BrawlStarsCTA() {
             今すぐ注文する
           </button>
           <button 
-            onClick={() => window.REACT_APP_NAVIGATE('/games')}
+            onClick={() => navigate('/games')}
             className="px-8 py-4 bg-white/20 backdrop-blur-sm text-white rounded-full font-bold hover:bg-white/30 transition-all duration-300 whitespace-nowrap"
           >
             <i className="ri-arrow-left-line mr-2"></i>
