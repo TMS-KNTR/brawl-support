@@ -182,13 +182,6 @@ export default function Features() {
                 }}
               />
 
-              {/* PayPay background logo */}
-              {i === 0 && (
-                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                  <img src="/paypay-logo.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-[0.12]" />
-                </div>
-              )}
-
               {/* Top accent shimmer on hover */}
               <div
                 className="feat-accent-line absolute top-0 left-0 right-0 h-[2px] opacity-0"
