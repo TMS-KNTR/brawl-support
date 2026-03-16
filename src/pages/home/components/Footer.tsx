@@ -19,34 +19,32 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-[12px] text-[#888] leading-relaxed mb-6 max-w-xs font-medium">
-              プロゲーマーによる安全・確実なゲーム代行サービス。Brawl Stars専門のマーケットプレイス。
+              プロの代行者による安全・確実なゲーム代行サービス。
             </p>
             <div className="flex gap-2">
-              {[
-                { icon: 'ri-twitter-x-fill', href: '#' },
-                { icon: 'ri-discord-fill', href: '#' },
-                { icon: 'ri-youtube-fill', href: '#' },
-              ].map((s, i) => (
-                <a
+              {['ri-twitter-x-fill', 'ri-discord-fill', 'ri-youtube-fill'].map((icon, i) => (
+                <div
                   key={i}
-                  href={s.href}
-                  className="w-8 h-8 border border-[#333] rounded flex items-center justify-center text-[#666] hover:text-white hover:border-[#555] transition-all duration-300 cursor-pointer"
+                  className="w-8 h-8 border border-[#333] rounded flex items-center justify-center text-[#555]"
                 >
-                  <i className={`${s.icon} text-xs`}></i>
-                </a>
+                  <i className={`${icon} text-xs`}></i>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Support */}
+          {/* Service */}
           <div>
             <h3
               className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#666] mb-5"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
-              サポート
+              サービス
             </h3>
             <ul className="space-y-3">
+              <li><Link to="/games" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">対応ゲーム</Link></li>
+              <li><Link to="/order/new" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">依頼する</Link></li>
+              <li><Link to="/register" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">新規登録</Link></li>
               <li>
                 <a href="mailto:gemusuke.official@gmail.com" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 cursor-pointer font-medium">
                   お問い合わせ

@@ -1,10 +1,12 @@
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 
 export default function Hero() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleCTA = () => {
-    window.REACT_APP_NAVIGATE(user ? '/order/new' : '/register');
+    navigate(user ? '/order/new' : '/register');
   };
 
   const scrollToHowItWorks = () => {

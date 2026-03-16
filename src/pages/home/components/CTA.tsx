@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 
 function useReveal(threshold = 0.2) {
@@ -19,6 +20,7 @@ function useReveal(threshold = 0.2) {
 
 export default function CTA() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const section = useReveal(0.15);
 
   return (
@@ -230,7 +232,7 @@ export default function CTA() {
           }}
         >
           <button
-            onClick={() => window.REACT_APP_NAVIGATE(user ? '/order/new' : '/register')}
+            onClick={() => navigate(user ? '/order/new' : '/register')}
             className="cta-btn-primary w-full sm:w-auto px-10 py-4 bg-[#5B3AE8] hover:bg-[#4F2FD8] text-white text-[12px] font-bold tracking-[0.1em] uppercase rounded-lg cursor-pointer"
             style={{ fontFamily: '"Orbitron", sans-serif' }}
           >
@@ -238,7 +240,7 @@ export default function CTA() {
             <i className="ri-arrow-right-line text-sm ml-2"></i>
           </button>
           <button
-            onClick={() => window.REACT_APP_NAVIGATE('/games')}
+            onClick={() => navigate('/games')}
             className="cta-btn-ghost w-full sm:w-auto px-10 py-4 text-[12px] font-bold tracking-[0.1em] uppercase text-[#8B7AFF]/70 border border-[#2A2A45] rounded-lg cursor-pointer"
             style={{ fontFamily: '"Orbitron", sans-serif' }}
           >

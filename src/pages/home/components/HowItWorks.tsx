@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 
 /* ── Scroll-reveal hook ── */
@@ -44,6 +45,8 @@ function useLineProgress() {
 }
 
 export default function HowItWorks() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const steps = [
     {
       num: '01',
@@ -83,7 +86,6 @@ export default function HowItWorks() {
     },
   ];
 
-  const { user } = useAuth();
   const header = useReveal(0.3);
   const cta = useReveal(0.3);
   const { containerRef, progress } = useLineProgress();
@@ -300,7 +302,7 @@ export default function HowItWorks() {
           }}
         >
           <button
-            onClick={() => window.REACT_APP_NAVIGATE(user ? '/order/new' : '/register')}
+            onClick={() => navigate(user ? '/order/new' : '/register')}
             className="hiw-cta-btn inline-flex items-center gap-2.5 px-8 py-3.5 bg-[#5B3AE8] hover:bg-[#4F2FD8] text-white text-[12px] font-bold tracking-[0.1em] uppercase rounded-lg transition-all duration-300 cursor-pointer"
             style={{ fontFamily: '"Orbitron", sans-serif' }}
           >

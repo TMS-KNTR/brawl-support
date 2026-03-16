@@ -8,7 +8,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -24,7 +23,6 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
 
-    if (!username.trim()) { setError('ユーザー名を入力してください'); return }
     if (!email.trim()) { setError('メールアドレスを入力してください'); return }
     if (!allChecksPassed) { setError('パスワード要件を満たしてください'); return }
     if (password !== confirmPassword) { setError('パスワードが一致しません'); return }
@@ -35,7 +33,7 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
         options: {
-          data: { username: username.trim() },
+          data: {},
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
@@ -160,21 +158,6 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] mb-1.5 tracking-wider uppercase"
-                style={{ fontFamily: '"Rajdhani", sans-serif' }}>
-                ユーザー名
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="表示名を入力"
-                className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
-                style={{ fontFamily: '"Rajdhani", sans-serif' }}
-              />
-            </div>
-
             <div>
               <label className="block text-[11px] font-bold text-[#6B7280] mb-1.5 tracking-wider uppercase"
                 style={{ fontFamily: '"Rajdhani", sans-serif' }}>

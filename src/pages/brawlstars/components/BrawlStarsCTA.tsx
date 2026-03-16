@@ -20,7 +20,7 @@ export default function BrawlStarsCTA() {
             今すぐ注文する
           </button>
           <button 
-            onClick={() => window.REACT_APP_NAVIGATE('/services')}
+            onClick={() => window.REACT_APP_NAVIGATE('/games')}
             className="px-8 py-4 bg-white/20 backdrop-blur-sm text-white rounded-full font-bold hover:bg-white/30 transition-all duration-300 whitespace-nowrap"
           >
             <i className="ri-arrow-left-line mr-2"></i>

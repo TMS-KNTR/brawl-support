@@ -19,7 +19,6 @@ const OrderNewPage = lazy(() => import('../pages/order/new/page'))
 const PaymentSuccessPage = lazy(() => import('../pages/payment-success/page'))
 
 // Services / Games
-const ServicesPage = lazy(() => import('../pages/services/page'))
 const GamesPage = lazy(() => import('../pages/games/page'))
 
 // Legal
@@ -64,7 +63,6 @@ const routes: RouteObject[] = [
   { path: '/register', element: <RegisterPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/auth/callback', element: <AuthCallbackPage /> },
-  { path: '/services', element: <ServicesPage /> },
   { path: '/games', element: <GamesPage /> },
   { path: '/games/brawl-stars', element: <BrawlStarsPage /> },
   { path: '/legal/terms', element: <TermsPage /> },

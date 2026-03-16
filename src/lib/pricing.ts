@@ -35,7 +35,7 @@ const RANKED_SEGMENTS: PricingSegment[] = [
  * 1に近いほど安くなる（minPrice側に寄る）
  *
  * @param power11Count パワー11キャラ数（0〜100）
- * @param buffyCount   バフィー数（0〜36）
+ * @param buffyCount   バフィー数（0〜12）
  * @returns 割引率 0〜1
  */
 function calcDiscountRatio(power11Count: number, buffyCount: number): number {
