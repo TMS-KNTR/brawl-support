@@ -12,10 +12,11 @@ export default function PaymentSuccessPage() {
   const [chatThreadId, setChatThreadId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!sessionId || !user) {
-      if (!sessionId) setStatus('error')
+    if (!sessionId) {
+      setStatus('error')
       return
     }
+    if (!user) return // userロード待ち（loadingのまま）
 
     // DBで注文の支払いステータスを確認（Webhookで更新されるまでリトライ）
     let attempts = 0

@@ -91,7 +91,7 @@ const routes: RouteObject[] = [
   {
     path: '/notifications',
     element: (
-      <ProtectedRoute allowedRoles={['customer', 'employee', 'worker', 'admin']}>
+      <ProtectedRoute allowedRoles={['customer', 'employee', 'admin']}>
         <NotificationsPage />
       </ProtectedRoute>
     ),
@@ -101,7 +101,7 @@ const routes: RouteObject[] = [
   {
     path: '/account',
     element: (
-      <ProtectedRoute allowedRoles={['customer', 'employee', 'worker', 'admin']}>
+      <ProtectedRoute allowedRoles={['customer', 'employee', 'admin']}>
         <AccountPage />
       </ProtectedRoute>
     ),
@@ -111,7 +111,7 @@ const routes: RouteObject[] = [
   {
     path: '/chat/:threadId',
     element: (
-      <ProtectedRoute allowedRoles={['customer', 'employee', 'worker', 'admin']}>
+      <ProtectedRoute allowedRoles={['customer', 'employee', 'admin']}>
         <ChatPage />
       </ProtectedRoute>
     ),

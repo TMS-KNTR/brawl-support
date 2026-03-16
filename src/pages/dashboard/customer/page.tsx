@@ -233,7 +233,7 @@ export default function CustomerDashboardPage() {
 
   if (loading && loadingTimeout) {
     return (
-      <ProtectedRoute allowedRoles={['customer', 'client', 'admin']}>
+      <ProtectedRoute allowedRoles={['customer', 'admin']}>
         <div className="min-h-screen bg-white">
           <Header />
           <div className="max-w-3xl mx-auto px-6 pt-32 pb-20 text-center">
@@ -252,7 +252,7 @@ export default function CustomerDashboardPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['customer', 'client', 'admin']}>
+    <ProtectedRoute allowedRoles={['customer', 'admin']}>
       <div className="min-h-screen bg-[#FAFAFA]">
         <style>{`
           @keyframes mc-fadeUp {

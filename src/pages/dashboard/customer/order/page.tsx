@@ -196,7 +196,7 @@ export default function OrderDetailPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute allowedRoles={['customer', 'client', 'admin']}>
+      <ProtectedRoute allowedRoles={['customer', 'admin']}>
         <div className="min-h-screen bg-[#FAFAFA]">
           <Header />
           <div className="pt-[72px]">
@@ -216,7 +216,7 @@ export default function OrderDetailPage() {
 
   if (error || !order) {
     return (
-      <ProtectedRoute allowedRoles={['customer', 'client', 'admin']}>
+      <ProtectedRoute allowedRoles={['customer', 'admin']}>
         <div className="min-h-screen bg-[#FAFAFA]">
           <Header />
           <div className="pt-[72px]">
@@ -252,7 +252,7 @@ export default function OrderDetailPage() {
     : null;
 
   return (
-    <ProtectedRoute allowedRoles={['customer', 'client', 'admin']}>
+    <ProtectedRoute allowedRoles={['customer', 'admin']}>
       <div className="min-h-screen bg-[#FAFAFA]">
         <Header />
 

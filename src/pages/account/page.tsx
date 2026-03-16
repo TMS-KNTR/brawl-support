@@ -205,7 +205,7 @@ export default function AccountPage() {
     : '—';
 
   return (
-    <ProtectedRoute allowedRoles={['customer', 'client', 'employee', 'worker', 'admin']}>
+    <ProtectedRoute allowedRoles={['customer', 'employee', 'admin']}>
       <div className="min-h-screen bg-[#FAFAFA]">
         <style>{`
           @keyframes fadeUp {
