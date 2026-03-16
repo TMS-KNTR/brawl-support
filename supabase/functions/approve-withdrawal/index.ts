@@ -50,18 +50,26 @@ serve(async (req: Request) => {
     if (withdrawal.status !== "pending") throw new Error("この申請は既に処理済みです");
 
     if (action === "reject") {
-      // 却下：残高を戻す
+      // 却下：残高を戻す（楽観的ロックで競合防止）
       const { data: profile } = await supabase
         .from("profiles")
         .select("balance")
         .eq("id", withdrawal.user_id)
         .single();
 
-      const restoredBalance = (profile?.balance || 0) + withdrawal.amount;
-      await supabase
+      const currentBalance = profile?.balance || 0;
+      const restoredBalance = currentBalance + withdrawal.amount;
+      const { data: updated, error: updateError } = await supabase
         .from("profiles")
         .update({ balance: restoredBalance })
-        .eq("id", withdrawal.user_id);
+        .eq("id", withdrawal.user_id)
+        .eq("balance", currentBalance)
+        .select("balance")
+        .single();
+
+      if (updateError || !updated) {
+        throw new Error("残高が変更されました。再度お試しください。");
+      }
 
       await supabase
         .from("withdrawals")

@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
     const todayISO = today.toISOString();
 
     const [ordersRes, disputesRes, withdrawalsRes, bannedRes, todayOrdersRes] = await Promise.all([
-      supabase.from('orders').select('id, status, price').in('status', ['paid', 'assigned', 'in_progress']),
+      supabase.from('orders').select('id, status, price').in('status', ['paid', 'pending', 'open', 'assigned', 'in_progress']),
       supabase.from('disputes').select('id').eq('status', 'open'),
       supabase.from('withdrawals').select('id, amount').eq('type', 'withdrawal').eq('status', 'pending'),
       supabase.from('profiles').select('id').eq('is_banned', true),
@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
     const withdrawals = withdrawalsRes.data ?? [];
 
     setKpi({
-      pendingOrders: orders.filter(o => o.status === 'paid').length,
+      pendingOrders: orders.filter(o => ['paid', 'pending', 'open'].includes(o.status)).length,
       inProgressOrders: orders.filter(o => o.status === 'in_progress' || o.status === 'assigned').length,
       openDisputes: disputesRes.data?.length ?? 0,
       pendingWithdrawals: withdrawals.length,

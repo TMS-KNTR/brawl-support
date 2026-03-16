@@ -129,8 +129,8 @@ export default function AdminDisputesPage() {
       }
 
       const newStatus = resolveAction === 'refund' ? 'resolved_refund'
-        : resolveAction === 'payout' ? 'resolved_release'
-        : 'resolved_release';
+        : resolveAction === 'payout' ? 'resolved_payout'
+        : 'resolved_dismissed';
 
       const updateResult = await supabase
         .from('disputes')
@@ -163,7 +163,7 @@ export default function AdminDisputesPage() {
   async function closeDismiss(id: string) {
     if (!window.confirm('この紛争を却下（クローズ）しますか？')) return;
     const { error } = await supabase.from('disputes').update({
-      status: 'resolved_release',
+      status: 'resolved_dismissed',
       resolution: 'dismissed',
       resolution_note: '管理者により却下',
       resolved_at: new Date().toISOString(),
@@ -179,6 +179,8 @@ export default function AdminDisputesPage() {
       open: { color: 'bg-red-100 text-red-800', text: '未解決' },
       'need-more-info': { color: 'bg-yellow-100 text-yellow-800', text: '情報待ち' },
       'resolved_refund': { color: 'bg-green-100 text-green-800', text: '解決済（返金）' },
+      'resolved_payout': { color: 'bg-green-100 text-green-800', text: '解決済（支払）' },
+      'resolved_dismissed': { color: 'bg-gray-100 text-gray-800', text: '却下' },
       'resolved_release': { color: 'bg-green-100 text-green-800', text: '解決済' },
     };
     const cfg = map[status] || { color: 'bg-gray-100 text-gray-800', text: status };
