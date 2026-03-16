@@ -130,6 +130,12 @@ export default function EmployeeOrderDetailPage() {
 
   const handleCreateDispute = async () => {
     if (!order || !disputeReason || disputeLoading) return;
+    const invalidStatuses = ['cancelled', 'CANCELED', 'DISPUTED', 'REFUNDED', 'confirmed', 'CONFIRMED'];
+    if (invalidStatuses.includes(order.status)) {
+      alert('この注文は紛争を作成できない状態です。');
+      setShowDispute(false); setDisputeReason(''); setDisputeDesc('');
+      return;
+    }
     if (!window.confirm('紛争として報告しますか？\n\n管理者が内容を確認し対応します。')) return;
     setDisputeLoading(true);
     try {

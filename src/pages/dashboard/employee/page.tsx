@@ -348,6 +348,12 @@ function EmployeeDashboardContent() {
     if (!disputeOrderId || !disputeReason || disputeLoading) return;
     const order = myOrders.find((o) => o.id === disputeOrderId);
     if (!order) return;
+    const invalidStatuses = ['cancelled', 'CANCELED', 'DISPUTED', 'REFUNDED', 'confirmed', 'CONFIRMED'];
+    if (invalidStatuses.includes(order.status)) {
+      alert('この注文は紛争を作成できない状態です。');
+      setShowDispute(false); setDisputeReason(''); setDisputeDesc(''); setDisputeOrderId(null);
+      return;
+    }
     if (!window.confirm('紛争として報告しますか？\n\n管理者が内容を確認し対応します。')) return;
 
     setDisputeLoading(true);
@@ -375,10 +381,13 @@ function EmployeeDashboardContent() {
     }
   };
 
+  const MIN_WITHDRAW_AMOUNT = 300;
+
   /** 出金申請 */
   const handleWithdraw = async () => {
     const amount = parseInt(withdrawAmount);
     if (!amount || amount <= 0) { alert('出金額を入力してください'); return; }
+    if (amount < MIN_WITHDRAW_AMOUNT) { alert(`最低出金額は¥${MIN_WITHDRAW_AMOUNT.toLocaleString()}です`); return; }
     if (amount > balance) { alert('残高が不足しています'); return; }
     if (stripeStatus !== 'active') { alert('先に銀行口座の登録を完了してください'); return; }
     if (!window.confirm(`¥${amount.toLocaleString()} を出金しますか？\n\n登録済みの銀行口座に振り込まれます。`)) return;
@@ -402,7 +411,7 @@ function EmployeeDashboardContent() {
         setBalance(result.new_balance);
         setShowWithdrawModal(false);
         setWithdrawAmount('');
-        fetchAll();
+        await fetchAll();
       } else {
         throw new Error(result?.error || '出金に失敗しました');
       }
@@ -909,6 +918,9 @@ function EmployeeDashboardContent() {
                 {withdrawAmount && parseInt(withdrawAmount) > balance && (
                   <p className="text-[11px] text-[#DC2626] mb-4">残高を超えています</p>
                 )}
+                {withdrawAmount && parseInt(withdrawAmount) > 0 && parseInt(withdrawAmount) < MIN_WITHDRAW_AMOUNT && (
+                  <p className="text-[11px] text-[#D97706] mb-4">最低出金額は¥{MIN_WITHDRAW_AMOUNT.toLocaleString()}です</p>
+                )}
 
                 <div className="flex justify-end gap-2.5 pt-1">
                   <button onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); }}
@@ -916,7 +928,7 @@ function EmployeeDashboardContent() {
                     キャンセル
                   </button>
                   <button onClick={handleWithdraw}
-                    disabled={withdrawLoading || !withdrawAmount || parseInt(withdrawAmount) <= 0 || parseInt(withdrawAmount) > balance}
+                    disabled={withdrawLoading || !withdrawAmount || parseInt(withdrawAmount) < MIN_WITHDRAW_AMOUNT || parseInt(withdrawAmount) > balance}
                     className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
                     {withdrawLoading ? '処理中...' : '出金する'}
                   </button>

@@ -41,8 +41,10 @@ serve(async (req: Request) => {
       throw new Error("従業員権限が必要です");
     }
 
+    const MIN_WITHDRAW = 300;
     const { amount } = await req.json();
     if (!amount || amount <= 0) throw new Error("出金額を指定してください");
+    if (amount < MIN_WITHDRAW) throw new Error(`最低出金額は¥${MIN_WITHDRAW.toLocaleString()}です`);
 
     const currentBalance = profile?.balance || 0;
     if (amount > currentBalance) throw new Error(`残高不足です（残高: ¥${currentBalance.toLocaleString()}）`);
@@ -51,12 +53,20 @@ serve(async (req: Request) => {
       throw new Error("銀行口座が未登録です。先に口座登録を行ってください。");
     }
 
-    // 残高を仮押さえ（減らす）
+    // 残高を仮押さえ（減らす）— 楽観的ロックで競合を防止
     const newBalance = currentBalance - amount;
-    await supabase
+    if (newBalance < 0) throw new Error("残高不足です");
+    const { data: updated, error: updateError } = await supabase
       .from("profiles")
       .update({ balance: newBalance })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .eq("balance", currentBalance)
+      .select("balance")
+      .single();
+
+    if (updateError || !updated) {
+      throw new Error("残高が変更されました。再度お試しください。");
+    }
 
     // 出金申請を pending で記録（管理者の承認待ち）
     await supabase.from("withdrawals").insert({
