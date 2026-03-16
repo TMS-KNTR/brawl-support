@@ -22,12 +22,26 @@ export default function Footer() {
               プロの代行者による安全・確実なゲーム代行サービス。
             </p>
             <div className="flex gap-2">
-              {['ri-twitter-x-fill', 'ri-discord-fill', 'ri-youtube-fill'].map((icon, i) => (
+              {[
+                { icon: 'ri-twitter-x-fill', url: 'https://x.com/nxpyzo' },
+                { icon: 'ri-discord-fill', url: null },
+                { icon: 'ri-youtube-fill', url: null },
+              ].map((item, i) => item.url ? (
+                <a
+                  key={i}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-8 h-8 border border-[#333] rounded flex items-center justify-center text-[#555] hover:text-white hover:border-[#555] transition-colors"
+                >
+                  <i className={`${item.icon} text-xs`}></i>
+                </a>
+              ) : (
                 <div
                   key={i}
-                  className="w-8 h-8 border border-[#333] rounded flex items-center justify-center text-[#555]"
+                  className="w-8 h-8 border border-[#333] rounded flex items-center justify-center text-[#555] opacity-40"
                 >
-                  <i className={`${icon} text-xs`}></i>
+                  <i className={`${item.icon} text-xs`}></i>
                 </div>
               ))}
             </div>
