@@ -204,6 +204,13 @@ export default function Features() {
                 <p className="text-[12px] text-[#9890B8] leading-relaxed font-medium">
                   {f.desc}
                 </p>
+                {i === 0 && (
+                  <div className="flex items-center gap-2 mt-4">
+                    <img src="/paypay-logo.jpg" alt="PayPay" className="h-6 rounded" />
+                    <i className="ri-visa-line text-[20px] text-[#9890B8]"></i>
+                    <i className="ri-mastercard-line text-[20px] text-[#9890B8]"></i>
+                  </div>
+                )}
               </div>
             </div>
           ))}
