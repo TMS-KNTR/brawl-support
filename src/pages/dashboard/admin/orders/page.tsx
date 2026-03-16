@@ -4,6 +4,7 @@ import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
+import Pagination from '../../../../components/base/Pagination';
 
 export default function AdminOrdersPage() {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [processing, setProcessing] = useState<string | null>(null); // 処理中のorder_id
   const [feeRate, setFeeRate] = useState(0.20);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     supabase
@@ -50,6 +53,10 @@ export default function AdminOrdersPage() {
       return matchSearch && matchStatus;
     });
   }, [orders, search, statusFilter]);
+
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   /** Edge Functionを呼ぶヘルパー（エラー詳細を取得するため直接fetch） */
   async function callEdgeFunction(functionName: string, body: any) {
@@ -222,7 +229,7 @@ export default function AdminOrdersPage() {
               {filtered.length === 0 ? (
                 <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500">該当する注文がありません</div>
               ) : (
-                filtered.map((o) => {
+                paged.map((o) => {
                   const isProcessing = processing === o.id;
                   const totalPrice = o.price || o.total_price || 0;
                   return (
@@ -299,6 +306,7 @@ export default function AdminOrdersPage() {
               )}
             </div>
           )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
         <Footer />
       </div>

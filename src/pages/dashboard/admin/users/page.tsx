@@ -4,6 +4,7 @@ import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
+import Pagination from '../../../../components/base/Pagination';
 
 function normalizeRole(role: string): string {
   if (role === 'client') return 'customer';
@@ -27,6 +28,8 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   // 警告モーダル
   const [showWarnModal, setShowWarnModal] = useState(false);
@@ -58,6 +61,10 @@ export default function AdminUsersPage() {
       return matchSearch && matchRole;
     });
   }, [users, search, roleFilter]);
+
+  useEffect(() => { setPage(1); }, [search, roleFilter]);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   /** 警告を与える（2回で自動BAN） */
   async function giveWarning() {
@@ -217,7 +224,7 @@ export default function AdminUsersPage() {
               {filtered.length === 0 ? (
                 <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500">該当するユーザーがいません</div>
               ) : (
-                filtered.map((u) => {
+                paged.map((u) => {
                   const normalized = normalizeRole(u.role);
                   const warningCount = u.warning_count || 0;
                   return (
@@ -287,6 +294,7 @@ export default function AdminUsersPage() {
               )}
             </div>
           )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
 
         {/* 警告モーダル */}

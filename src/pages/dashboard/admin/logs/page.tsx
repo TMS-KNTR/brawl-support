@@ -4,6 +4,7 @@ import { supabase } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
+import Pagination from '../../../../components/base/Pagination';
 
 /** 監査ログ1件（admin_logs テーブルの想定カラム） */
 type AdminLogEntry = {
@@ -76,6 +77,8 @@ export default function AdminLogsPage() {
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [targetTypeFilter, setTargetTypeFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     loadLogs();
@@ -119,6 +122,12 @@ export default function AdminLogsPage() {
       return matchSearch && matchAction && matchTargetType;
     });
   }, [logs, search, actionFilter, targetTypeFilter]);
+
+  // フィルタ変更でページリセット
+  useEffect(() => { setPage(1); }, [search, actionFilter, targetTypeFilter]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const uniqueActions = useMemo(() => {
     const set = new Set(logs.map((l) => l.action).filter(Boolean));
@@ -218,7 +227,7 @@ export default function AdminLogsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filtered.map((log) => {
+                  {paged.map((log) => {
                     const actorId = log.actor_id ?? log.actor_user_id;
                     const meta = log.meta_json && Object.keys(log.meta_json).length > 0;
                     return (
@@ -264,6 +273,7 @@ export default function AdminLogsPage() {
                   })}
                 </div>
               )}
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </>
           )}
         </div>

@@ -4,6 +4,7 @@ import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
+import Pagination from '../../../../components/base/Pagination';
 
 type Withdrawal = {
   id: string;
@@ -42,6 +43,8 @@ export default function AdminWithdrawalsPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'withdrawal' | 'earning'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'rejected'>('all');
   const [tab, setTab] = useState<'history' | 'balances'>('history');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   // 処理中の承認/却下
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -100,6 +103,10 @@ export default function AdminWithdrawalsPage() {
       return matchSearch && matchType && matchStatus;
     });
   }, [withdrawals, search, typeFilter, statusFilter, employees]);
+
+  useEffect(() => { setPage(1); }, [search, typeFilter, statusFilter]);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   /* ── 統計 ── */
   const stats = useMemo(() => {
@@ -355,7 +362,7 @@ export default function AdminWithdrawalsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filtered.map((w) => {
+                  {paged.map((w) => {
                     const emp = employees[w.user_id];
                     const displayName = emp?.username || emp?.full_name || w.user_id.slice(0, 8) + '...';
                     const st = STATUS_LABELS[w.status] || { label: w.status, color: 'bg-gray-50 text-gray-600' };
@@ -426,6 +433,7 @@ export default function AdminWithdrawalsPage() {
                   })}
                 </div>
               )}
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </>
           ) : (
             /* ── 従業員残高タブ ── */

@@ -4,6 +4,7 @@ import { supabase, logAdminAction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
+import Pagination from '../../../../components/base/Pagination';
 
 type Notification = {
   id: string;
@@ -46,6 +47,8 @@ export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
   const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'read' | 'emailed' | 'no_email'>('all');
 
   /* ── 一斉通知モーダル ── */
@@ -124,6 +127,10 @@ export default function AdminNotificationsPage() {
       return matchSearch && matchType && matchStatus;
     });
   }, [notifications, search, typeFilter, statusFilter, profiles]);
+
+  useEffect(() => { setPage(1); }, [search, typeFilter, statusFilter]);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   /* ── 統計 ── */
   const stats = useMemo(() => {
@@ -358,7 +365,7 @@ export default function AdminNotificationsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.map((n) => {
+              {paged.map((n) => {
                 const profile = profiles[n.user_id];
                 const displayName = profile?.username || profile?.full_name || n.user_id.slice(0, 8) + '...';
                 return (
@@ -421,6 +428,7 @@ export default function AdminNotificationsPage() {
               })}
             </div>
           )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
 
         {/* ── 一斉通知モーダル ── */}
