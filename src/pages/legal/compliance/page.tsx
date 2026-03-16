@@ -46,7 +46,7 @@ export default function CompliancePage() {
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">支払方法</td>
-                  <td className="px-6 py-4 text-gray-900">クレジットカード（Stripe決済）</td>
+                  <td className="px-6 py-4 text-gray-900">クレジットカード、PayPay（Stripe決済）</td>
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">支払時期</td>
@@ -75,16 +75,13 @@ export default function CompliancePage() {
 
           <h2 className="text-2xl font-semibold text-gray-900 mt-12 mb-4">コンプライアンス・注意事項</h2>
 
-          <div className="bg-red-50 border-l-4 border-red-500 p-6 mb-8">
-            <h3 className="text-lg font-semibold text-red-800 mb-2">重要な警告</h3>
-            <p className="text-red-700">
-              本サービスはゲーム代行サービスであり、対象ゲームの利用規約に抵触する可能性があります。
-              利用は完全に自己責任となり、アカウントBANなどのリスクを十分ご理解の上ご利用ください。
-            </p>
-          </div>
+          <p className="text-sm text-gray-500 mb-8 border-l-2 border-gray-300 pl-4">
+            本サービスはゲーム代行サービスであり、対象ゲームの利用規約に抵触する可能性があります。
+            利用は完全に自己責任となり、アカウントBANなどのリスクを十分ご理解の上ご利用ください。
+          </p>
 
           <h3 className="text-xl font-semibold text-gray-900 mt-8 mb-4">ゲーム規約との関係</h3>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6 text-yellow-800 space-y-2">
+          <div className="text-gray-700 mb-6 space-y-2">
             <p>・代行サービスはSupercell社のBrawl Stars利用規約に抵触する可能性があります</p>
             <p>・アカウント共有は多くのゲームで禁止されている行為です</p>
             <p>・規約違反によりアカウントが永久停止される可能性があります</p>
@@ -112,7 +109,7 @@ export default function CompliancePage() {
           </div>
 
           <h3 className="text-xl font-semibold text-gray-900 mt-8 mb-4">禁止事項</h3>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6 text-red-700 space-y-2">
+          <div className="text-gray-700 mb-6 space-y-2">
             <p>・チャットでの個人情報（電話番号、SNS ID等）の交換（ただし、代行作業に必要なゲームアカウント情報・引き継ぎ用メールアドレスの共有は除く）</p>
             <p>・プラットフォーム外での直接取引</p>
             <p>・虚偽情報による登録や取引</p>

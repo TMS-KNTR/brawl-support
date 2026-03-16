@@ -13,19 +13,17 @@ export default function PrivacyPage() {
         <div className="prose prose-lg max-w-none">
           <h1 className="text-4xl font-bold text-gray-900 mb-8">プライバシーポリシー</h1>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <p className="text-blue-700">
-              げむ助（以下「当サービス」）は、ユーザーの個人情報を適切に保護し安全に管理いたします。
-              本ポリシーでは個人情報の収集、利用、保護について説明します。
-            </p>
-          </div>
+          <p className="text-sm text-gray-500 mb-8 border-l-2 border-gray-300 pl-4">
+            げむ助（以下「当サービス」）は、ユーザーの個人情報を適切に保護し安全に管理いたします。
+            本ポリシーでは個人情報の収集、利用、保護について説明します。
+          </p>
 
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">第1条（収集する情報）</h2>
           <div className="text-gray-700 mb-6 space-y-2">
             <p>当サービスでは以下の情報を収集します。</p>
             <p>・<strong>アカウント情報</strong> — メールアドレス、ユーザー名</p>
             <p>・<strong>注文情報</strong> — 注文内容、ゲームアカウント情報（代行に必要な範囲のみ）</p>
-            <p>・<strong>決済情報</strong> — Stripe社を通じた決済記録（クレジットカード情報は当サービスでは保存しません）</p>
+            <p>・<strong>決済情報</strong> — Stripe社を通じた決済記録（クレジットカード・PayPay等の情報は当サービスでは保存しません）</p>
             <p>・<strong>チャット情報</strong> — サービス内でのメッセージ内容</p>
             <p>・<strong>利用ログ</strong> — アクセス日時、IPアドレス、ブラウザ情報</p>
           </div>
@@ -53,7 +51,7 @@ export default function PrivacyPage() {
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">第4条（決済情報の取扱い）</h2>
           <div className="text-gray-700 mb-6 space-y-2">
             <p>当サービスではStripe社の決済システムを利用しています。</p>
-            <p>・クレジットカード情報は当サービスのサーバーには一切保存されません</p>
+            <p>・クレジットカード・PayPay等の決済情報は当サービスのサーバーには一切保存されません</p>
             <p>・すべての決済情報はStripe社により安全に管理されます</p>
             <p>・PCI DSS準拠の高いセキュリティ基準で保護されています</p>
           </div>
@@ -99,10 +97,9 @@ export default function PrivacyPage() {
           </p>
 
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">第10条（お問い合わせ）</h2>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
-            <p className="font-semibold text-gray-800 mb-2">お問い合わせ窓口</p>
-            <p className="text-gray-700">げむ助 運営</p>
-            <p className="text-gray-700">メール：gemusuke.official@gmail.com</p>
+          <div className="text-gray-700 mb-6 space-y-1">
+            <p>げむ助 運営</p>
+            <p>メール：gemusuke.official@gmail.com</p>
           </div>
 
           <div className="mt-12 flex justify-center gap-6">

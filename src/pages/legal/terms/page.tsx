@@ -13,13 +13,10 @@ export default function TermsPage() {
         <div className="prose prose-lg max-w-none">
           <h1 className="text-4xl font-bold text-gray-900 mb-8">利用規約</h1>
 
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold text-red-800 mb-3">重要な注意事項</h2>
-            <p className="text-red-700">
-              本サービスはゲーム代行サービスであり、ゲーム運営会社の利用規約に抵触する可能性があります。
-              サービスの利用は完全に自己責任となります。アカウントBAN等のリスクを十分にご理解の上ご利用ください。
-            </p>
-          </div>
+          <p className="text-sm text-gray-500 mb-8 border-l-2 border-gray-300 pl-4">
+            本サービスはゲーム代行サービスであり、ゲーム運営会社の利用規約に抵触する可能性があります。
+            サービスの利用は完全に自己責任となります。アカウントBAN等のリスクを十分にご理解の上ご利用ください。
+          </p>
 
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">第1条（適用）</h2>
           <p className="text-gray-700 mb-6">
@@ -56,7 +53,7 @@ export default function TermsPage() {
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">第5条（料金・支払い）</h2>
           <div className="text-gray-700 mb-6 space-y-2">
             <p>1. 代行料金はサービスページに表示された金額（税込）とします。</p>
-            <p>2. 支払いはStripe決済（クレジットカード）による前払い制です。</p>
+            <p>2. 支払いはStripe決済（クレジットカード、PayPay）による前払い制です。</p>
             <p>3. 決済完了後に注文が確定し、従業員が受注可能な状態になります。</p>
           </div>
 
