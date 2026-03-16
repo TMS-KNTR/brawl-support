@@ -166,9 +166,7 @@ export default function Features() {
               key={i}
               className="feat-primary-card group relative rounded-2xl p-7 overflow-hidden"
               style={{
-                background: i === 0
-                  ? '#CC0029'
-                  : 'linear-gradient(145deg, #1A1A2E 0%, #12082A 60%, #1A0E3A 100%)',
+                background: 'linear-gradient(145deg, #1A1A2E 0%, #12082A 60%, #1A0E3A 100%)',
                 opacity: primaryGrid.visible ? 1 : 0,
                 animation: primaryGrid.visible
                   ? `feat-scaleIn 0.65s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.12}s forwards`
@@ -177,36 +175,32 @@ export default function Features() {
               }}
             >
               {/* Subtle nebula glow inside card */}
-              {i !== 0 && (
-                <div
-                  className="absolute inset-0 opacity-40 pointer-events-none"
-                  style={{
-                    background: `radial-gradient(ellipse 70% 60% at ${30 + i * 25}% 80%, rgba(91,58,232,0.15) 0%, transparent 70%)`,
-                  }}
-                />
-              )}
+              <div
+                className="absolute inset-0 opacity-40 pointer-events-none"
+                style={{
+                  background: `radial-gradient(ellipse 70% 60% at ${30 + i * 25}% 80%, rgba(91,58,232,0.15) 0%, transparent 70%)`,
+                }}
+              />
 
               {/* PayPay background logo */}
               {i === 0 && (
                 <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                  <img src="/paypay-logo.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-lighten" />
+                  <img src="/paypay-logo.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-[0.12]" />
                 </div>
               )}
 
               {/* Top accent shimmer on hover */}
-              {i !== 0 && (
-                <div
-                  className="feat-accent-line absolute top-0 left-0 right-0 h-[2px] opacity-0"
-                  style={{
-                    background: 'linear-gradient(105deg, transparent 30%, rgba(139,122,255,0.6) 45%, rgba(196,181,253,0.8) 50%, rgba(139,122,255,0.6) 55%, transparent 70%)',
-                    backgroundSize: '200% 100%',
-                  }}
-                />
-              )}
+              <div
+                className="feat-accent-line absolute top-0 left-0 right-0 h-[2px] opacity-0"
+                style={{
+                  background: 'linear-gradient(105deg, transparent 30%, rgba(139,122,255,0.6) 45%, rgba(196,181,253,0.8) 50%, rgba(139,122,255,0.6) 55%, transparent 70%)',
+                  backgroundSize: '200% 100%',
+                }}
+              />
 
               <div className="relative z-10">
-                <div className={`feat-icon-box w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-all duration-300 ${i === 0 ? 'bg-white/20' : 'bg-[#5B3AE8]/15'}`}>
-                  <i className={`${f.icon} feat-card-icon text-lg ${i === 0 ? 'text-white' : 'text-[#8B7AFF]'} transition-all duration-300`}></i>
+                <div className="feat-icon-box w-11 h-11 rounded-xl bg-[#5B3AE8]/15 flex items-center justify-center mb-5 transition-all duration-300">
+                  <i className={`${f.icon} feat-card-icon text-lg text-[#8B7AFF] transition-all duration-300`}></i>
                 </div>
                 <h3
                   className="text-[15px] font-bold text-white mb-2 tracking-wide"
@@ -214,7 +208,7 @@ export default function Features() {
                 >
                   {f.title}
                 </h3>
-                <p className={`text-[12px] leading-relaxed font-medium ${i === 0 ? 'text-white/70' : 'text-[#9890B8]'}`}>
+                <p className="text-[12px] text-[#9890B8] leading-relaxed font-medium">
                   {f.desc}
                 </p>
               </div>
