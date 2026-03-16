@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { supabase } from '../../../../lib/supabase';
+import { calcRankedPrice, calcTrophyPrice } from '../../../../lib/pricing';
+import type { BrawlerStrength } from '../../../../data/brawlers';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -31,6 +33,7 @@ const STATUS: Record<string, { label: string; color: string; progress: number }>
 const fallbackStatus = { label: '不明', color: '#9CA3AF', progress: 0 };
 
 const SERVICE_TYPES: Record<string, string> = {
+  'rank':         'ガチバトル上げ',
   'trophy':       'トロフィー上げ',
   'trophy-push':  'トロフィー上げ',
   'rank-push':    'ランク上げ',
@@ -93,7 +96,7 @@ export default function OrderDetailPage() {
 
   const handleConfirmComplete = async () => {
     if (!order) return;
-    if (!window.confirm('代行が完了したことを確認しますか？\n\n※ 確認すると従業員に報酬が支払われます。')) return;
+    if (!window.confirm('代行が完了したことを確認しますか？\n\n※ 確認すると代行者に報酬が支払われます。')) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('confirm-order', {
@@ -139,6 +142,39 @@ export default function OrderDetailPage() {
       alert('評価の送信に失敗しました: ' + (e.message || '不明なエラー'));
     } finally { setRatingSaving(false); }
   };
+
+  /** notesから料金内訳・注文パラメータを再計算 */
+  const orderDetails = useMemo(() => {
+    if (!order) return null;
+    const currentVal = Number(order.current_rank);
+    const targetVal = Number(order.target_rank);
+    if (isNaN(currentVal) || isNaN(targetVal) || targetVal <= currentVal) return null;
+
+    const notes: string = order.notes || '';
+
+    if (order.service_type === 'rank') {
+      const p11Match = notes.match(/ハイチャ解放×(\d+)体/);
+      const bufMatch = notes.match(/バフィー3つ解放×(\d+)体/);
+      const power11 = p11Match ? Number(p11Match[1]) : 0;
+      const buffy = bufMatch ? Number(bufMatch[1]) : 0;
+      const pricing = calcRankedPrice(currentVal, targetVal, power11, buffy);
+      return { ...pricing, type: 'rank' as const, power11, buffy };
+    }
+
+    if (order.service_type === 'trophy') {
+      const strMatch = notes.match(/（(強い|普通|弱い)）/);
+      const nameMatch = notes.match(/キャラ: (.+?)（/);
+      const strengthLabels: Record<string, string> = { '強い': '強い', '普通': '普通', '弱い': '弱い' };
+      const strengthMap: Record<string, BrawlerStrength> = { '強い': 'strong', '普通': 'normal', '弱い': 'weak' };
+      const strengthJa = strMatch ? strMatch[1] : '普通';
+      const strength: BrawlerStrength = strengthMap[strengthJa] || 'normal';
+      const brawlerName = nameMatch ? nameMatch[1] : null;
+      const pricing = calcTrophyPrice(currentVal, targetVal, strength);
+      return { ...pricing, type: 'trophy' as const, brawlerName, strengthJa };
+    }
+
+    return null;
+  }, [order]);
 
   const isTerminal = (status: string) =>
     ['CANCELED', 'cancelled', 'DISPUTED', 'REFUNDED'].includes(status);
@@ -192,7 +228,7 @@ export default function OrderDetailPage() {
 
   const chatVisible = chatThreadId && ['paid', 'PAYMENT_PENDING', 'assigned', 'in_progress', 'completed'].includes(order.status);
   const canConfirm = order.status === 'completed' && !order.is_paid_out;
-  const canDispute = true;
+  const canDispute = ['paid', 'assigned', 'in_progress', 'completed'].includes(order.status);
 
   const createdAt = new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   const updatedAt = order.updated_at
@@ -282,16 +318,44 @@ export default function OrderDetailPage() {
               {/* Details grid */}
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#F0F0F0]">
                 <div>
-                  <p className="text-[10px] font-medium text-[#999] mb-0.5">料金</p>
-                  <p className="text-[15px] font-bold text-[#111]">¥{(order.price || 0).toLocaleString()}</p>
-                </div>
-                <div>
                   <p className="text-[10px] font-medium text-[#999] mb-0.5">ステータス</p>
                   <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: s.color }}>
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
                     {s.label}
                   </span>
                 </div>
+                <div>
+                  <p className="text-[10px] font-medium text-[#999] mb-0.5">代行者</p>
+                  <p className="text-[12px] font-medium text-[#333]">
+                    {order.employee_id ? '割当済' : '未割当'}
+                  </p>
+                </div>
+                {orderDetails?.type === 'rank' && (
+                  <>
+                    <div>
+                      <p className="text-[10px] font-medium text-[#999] mb-0.5">ハイチャ解放</p>
+                      <p className="text-[12px] font-medium text-[#333]">{orderDetails.power11}体</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-medium text-[#999] mb-0.5">バフィー3つ解放</p>
+                      <p className="text-[12px] font-medium text-[#333]">{orderDetails.buffy}体</p>
+                    </div>
+                  </>
+                )}
+                {orderDetails?.type === 'trophy' && (
+                  <>
+                    {orderDetails.brawlerName && (
+                      <div>
+                        <p className="text-[10px] font-medium text-[#999] mb-0.5">キャラ</p>
+                        <p className="text-[12px] font-medium text-[#333]">{orderDetails.brawlerName}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[10px] font-medium text-[#999] mb-0.5">キャラ強度</p>
+                      <p className="text-[12px] font-medium text-[#333]">{orderDetails.strengthJa}</p>
+                    </div>
+                  </>
+                )}
                 <div>
                   <p className="text-[10px] font-medium text-[#999] mb-0.5">注文日時</p>
                   <p className="text-[12px] font-medium text-[#333]">{createdAt}</p>
@@ -302,17 +366,32 @@ export default function OrderDetailPage() {
                     <p className="text-[12px] font-medium text-[#333]">{updatedAt}</p>
                   </div>
                 )}
-                <div>
-                  <p className="text-[10px] font-medium text-[#999] mb-0.5">代行者</p>
-                  <p className="text-[12px] font-medium text-[#333]">
-                    {order.employee_id ? '割当済' : '未割当'}
-                  </p>
-                </div>
-                <div>
+                <div className="col-span-2">
                   <p className="text-[10px] font-medium text-[#999] mb-0.5">注文ID</p>
                   <p className="text-[11px] font-mono text-[#999] truncate">{order.id}</p>
                 </div>
               </div>
+
+              {/* Price breakdown */}
+              {orderDetails && orderDetails.breakdown.length > 0 && (
+                <div className="pt-4 mt-4 border-t border-[#F0F0F0]">
+                  <p className="text-[10px] font-medium text-[#999] mb-2.5">料金内訳</p>
+                  <div className="space-y-1.5">
+                    {orderDetails.breakdown.map((seg, i) => (
+                      <div key={i} className="flex items-center justify-between py-1">
+                        <span className="text-[12px] text-[#555]">
+                          {seg.from.toLocaleString()} → {seg.to.toLocaleString()}
+                        </span>
+                        <span className="text-[12px] font-semibold text-[#111]">¥{seg.price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-[#E5E5E5]">
+                    <span className="text-[12px] font-semibold text-[#333]">合計</span>
+                    <span className="text-[15px] font-bold text-[#111]">¥{orderDetails.total.toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -361,7 +440,7 @@ export default function OrderDetailPage() {
                     value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)}>
                     <option value="">選択してください</option>
                     <option value="作業が進まない">作業が進まない</option>
-                    <option value="従業員と連絡が取れない">従業員と連絡が取れない</option>
+                    <option value="代行者と連絡が取れない">代行者と連絡が取れない</option>
                     <option value="作業内容が依頼と異なる">作業内容が依頼と異なる</option>
                     <option value="アカウントに問題が発生した">アカウントに問題が発生した</option>
                     <option value="その他">その他</option>
