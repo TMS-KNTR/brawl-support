@@ -299,6 +299,10 @@ function EmployeeDashboardContent() {
   /** ステータス変更（作業開始・作業完了）Edge Function 経由で RLS をバイパス */
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     if (!user?.id) return;
+    const confirmMsg = newStatus === 'in_progress'
+      ? 'この案件の作業を開始しますか？'
+      : '作業完了として報告しますか？\n\n※ 依頼者が確認後に報酬が支払われます。';
+    if (!window.confirm(confirmMsg)) return;
     setActionLoading(orderId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -327,6 +331,7 @@ function EmployeeDashboardContent() {
     if (!disputeOrderId || !disputeReason) return;
     const order = myOrders.find((o) => o.id === disputeOrderId);
     if (!order) return;
+    if (!window.confirm('紛争として報告しますか？\n\n管理者が内容を確認し対応します。')) return;
 
     const { error } = await supabase.from('disputes').insert({
       order_id: disputeOrderId,
