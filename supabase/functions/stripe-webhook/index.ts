@@ -48,84 +48,98 @@ serve(async (req: Request) => {
 
     if (event.type === "checkout.session.completed") {
       const session: any = event.data.object;
-      const orderId = session.metadata?.order_id;
+      const meta = session.metadata || {};
+      const customerId = meta.customer_id;
+      const paymentIntentId = session.payment_intent;
 
-      console.log("Checkout completed. order_id:", orderId);
+      console.log("Checkout completed. customer_id:", customerId, "payment_intent:", paymentIntentId);
 
-      if (orderId) {
-        // 注文の現在のステータスを確認（自動キャンセル済みなら更新しない）
-        const { data: currentOrder } = await supabase
-          .from("orders")
-          .select("status, is_refunded")
-          .eq("id", orderId)
-          .single();
+      if (!customerId) {
+        console.warn("No customer_id in session metadata");
+        return new Response(JSON.stringify({ received: true, skipped: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
 
-        if (currentOrder?.status === "cancelled") {
-          console.warn("Order already cancelled, skipping update:", orderId);
-          // 既にキャンセル+返金済みならスキップ。未返金なら返金が必要
-          if (!currentOrder.is_refunded && session.payment_intent) {
-            console.log("Refunding cancelled order that was just paid:", orderId);
-            await stripe.refunds.create({ payment_intent: session.payment_intent });
-            await supabase
-              .from("orders")
-              .update({ is_refunded: true, payment_intent_id: session.payment_intent, refunded_at: new Date().toISOString() })
-              .eq("id", orderId);
-          }
-          return new Response(JSON.stringify({ received: true, skipped: true }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
+      // メタデータから注文情報を取得
+      const totalPrice = Number(meta.total_price) || 0;
+      const payoutAmount = Number(meta.payout_amount) || 0;
 
-        // payment_intentを保存（返金に必要）
-        const paymentIntentId = session.payment_intent;
-        console.log("Payment Intent ID:", paymentIntentId);
+      // 冪等性: 同じsession_idで既に注文が作成されていないか確認
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("stripe_checkout_session_id", session.id)
+        .maybeSingle();
 
-        const { error } = await supabase
+      if (existingOrder) {
+        console.log("Order already exists for session:", session.id);
+        // 既存の注文をpaidに更新（念のため）
+        await supabase
           .from("orders")
           .update({ status: "paid", payment_intent_id: paymentIntentId })
-          .eq("id", orderId);
-
-        if (error) {
-          console.error("Failed to update order:", error);
-          return new Response(JSON.stringify({ error: "DB update failed" }), { status: 500 });
-        }
-
-        console.log("Order updated to paid:", orderId);
-
-        // チャットスレッドを自動作成（まだ存在しない場合のみ）
-        const { data: existingThread } = await supabase
-          .from("chat_threads")
-          .select("id")
-          .eq("order_id", orderId)
-          .maybeSingle();
-
-        if (!existingThread) {
-          // order情報を取得して参加者を設定
-          const { data: orderData } = await supabase
-            .from("orders")
-            .select("user_id, employee_id")
-            .eq("id", orderId)
-            .single();
-
-          const participants = [orderData?.user_id].filter(Boolean);
-
-          const { error: threadError } = await supabase
-            .from("chat_threads")
-            .insert({
-              order_id: orderId,
-              participants: participants,
-            });
-
-          if (threadError) {
-            console.error("Failed to create chat thread:", threadError);
-          } else {
-            console.log("Chat thread created for order:", orderId);
-          }
-        }
-      } else {
-        console.warn("No order_id in session metadata");
+          .eq("id", existingOrder.id);
+        return new Response(JSON.stringify({ received: true, existing: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
+
+      // 注文を作成（決済完了済み）
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: customerId,
+          current_rank: meta.current_rank || null,
+          target_rank: meta.target_rank || null,
+          game_title: "Brawl Stars",
+          service_type: meta.service_type || "trophy",
+          price: totalPrice,
+          payout_amount: payoutAmount,
+          platform_fee: Number(meta.platform_fee) || 0,
+          status: "paid",
+          payment_intent_id: paymentIntentId,
+          stripe_checkout_session_id: session.id,
+          notes: meta.notes || null,
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error("Failed to create order:", orderError);
+        return new Response(JSON.stringify({ error: "Order creation failed" }), { status: 500 });
+      }
+
+      console.log("Order created:", order.id);
+
+      // チャットスレッドを作成
+      const { error: threadError } = await supabase
+        .from("chat_threads")
+        .insert({
+          order_id: order.id,
+          participants: [customerId],
+        });
+
+      if (threadError) {
+        console.error("Failed to create chat thread:", threadError);
+      } else {
+        console.log("Chat thread created for order:", order.id);
+      }
+
+      // 監査ログ
+      await supabase.from("admin_logs").insert({
+        actor_user_id: customerId,
+        action: "ORDER_CREATED",
+        target_type: "order",
+        target_id: order.id,
+        meta_json: {
+          currentRank: meta.current_rank,
+          targetRank: meta.target_rank,
+          totalPrice,
+          sessionId: session.id,
+        },
+      }).catch(() => {});
     }
 
     return new Response(JSON.stringify({ received: true }), {

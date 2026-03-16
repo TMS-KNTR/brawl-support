@@ -363,11 +363,9 @@ export default function OrderPage() {
         currentRank: mode === 'rank' ? String(current) : String(currentTrophy),
         targetRank: mode === 'rank' ? String(target) : String(targetTrophy),
         serviceType: mode === 'rank' ? 'rank' : 'trophy',
-        region: mode,
         notes: mode === 'rank'
           ? `ガチバトル上げ: ハイチャ解放×${power11Count}体, バフィー3つ解放×${buffyCount}体`
           : `トロフィー上げ: キャラ: ${selectedBrawler?.name ?? '未選択'}（${selectedBrawler ? STRENGTH_LABELS[selectedBrawler.strength] : ''}）`,
-        credentials: { username: '', password: '', notes: '' },
         totalPrice,
       })
 

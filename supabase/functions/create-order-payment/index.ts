@@ -7,20 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-/** AES-GCM で文字列を暗号化（Base64エンコード） */
-async function encryptCredential(plaintext: string): Promise<string> {
-  const secret = Deno.env.get("CREDENTIAL_ENCRYPTION_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const keyData = new TextEncoder().encode(secret.slice(0, 32).padEnd(32, '0'));
-  const key = await crypto.subtle.importKey("raw", keyData, "AES-GCM", false, ["encrypt"]);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plaintext));
-  // iv + ciphertext を結合してBase64
-  const combined = new Uint8Array(iv.length + new Uint8Array(encrypted).length);
-  combined.set(iv, 0);
-  combined.set(new Uint8Array(encrypted), iv.length);
-  return btoa(String.fromCharCode(...combined));
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -77,56 +63,7 @@ serve(async (req) => {
     const serverPlatformFee = Math.round(totalPrice * feeRate)
     const serverSubtotal = totalPrice - serverPlatformFee
 
-    // 注文を作成
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: user.id,
-        current_rank: currentRank,
-        target_rank: targetRank,
-        game_title: 'Brawl Stars',
-        service_type: serviceType || 'trophy',
-        price: totalPrice,
-        payout_amount: serverSubtotal,
-        status: 'PAYMENT_PENDING',
-        notes: notes || null
-      })
-      .select()
-      .single()
-
-    if (orderError) throw orderError
-
-    // チャットスレッドを作成
-    const { error: chatThreadError } = await supabase
-      .from('chat_threads')
-      .insert({
-        order_id: order.id,
-        participants: [user.id],
-        last_message_at: new Date().toISOString()
-      })
-
-    if (chatThreadError) {
-      console.error('チャットスレッド作成エラー:', chatThreadError)
-    }
-
-    // 認証情報保管庫を作成（AES-GCM暗号化）
-    if (credentials?.username && credentials?.password) {
-      const encryptedPassword = await encryptCredential(credentials.password);
-      const { error: vaultError } = await supabase
-        .from('credential_vaults')
-        .insert({
-          order_id: order.id,
-          username: credentials.username,
-          password_encrypted: encryptedPassword,
-          notes: credentials.notes || '',
-          masked_preview: `${credentials.username.substring(0, 2)}***`,
-          visible_to: JSON.stringify([])
-        })
-
-      if (vaultError) throw vaultError
-    }
-
-    // Stripe Checkoutセッションを作成（冪等性キー付き）
+    // Stripe Checkoutセッションを作成（注文はWebhookで決済完了後に作成）
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'paypay'],
       line_items: [
@@ -135,7 +72,7 @@ serve(async (req) => {
             currency: 'jpy',
             product_data: {
               name: `Brawl Stars代行 ${currentRank} → ${targetRank}`,
-              description: `地域: ${region || '指定なし'}`,
+              description: `${serviceType === 'rank' ? 'ガチバトル上げ' : 'トロフィー上げ'}`,
             },
             unit_amount: totalPrice,
           },
@@ -146,44 +83,23 @@ serve(async (req) => {
       success_url: `${req.headers.get('origin') || Deno.env.get('SITE_URL')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin') || Deno.env.get('SITE_URL')}/dashboard/customer`,
       metadata: {
-        order_id: order.id,
         customer_id: user.id,
+        current_rank: currentRank,
+        target_rank: targetRank,
+        service_type: serviceType || 'trophy',
+        notes: notes || '',
+        total_price: String(totalPrice),
+        payout_amount: String(serverSubtotal),
+        platform_fee: String(serverPlatformFee),
       },
     }, {
-      idempotencyKey: `checkout-${order.id}`,
+      idempotencyKey: `checkout-${user.id}-${Date.now()}`,
     })
-
-    // 注文にCheckoutセッションIDを保存（payment_intent_idはWebhookで正確な値を上書き）
-    await supabase
-      .from('orders')
-      .update({
-        stripe_checkout_session_id: session.id,
-        payment_intent_id: (session.payment_intent as string) || null,
-        status: 'PAYMENT_PENDING'
-      })
-      .eq('id', order.id)
-
-    // 監査ログを記録（admin_logs に統一）
-    await supabase
-      .from('admin_logs')
-      .insert({
-        actor_user_id: user.id,
-        action: 'ORDER_CREATED',
-        target_type: 'order',
-        target_id: order.id,
-        meta_json: {
-          currentRank,
-          targetRank,
-          totalPrice,
-          sessionId: session.id
-        }
-      })
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          orderId: order.id,
           checkoutUrl: session.url
         }
       }),
