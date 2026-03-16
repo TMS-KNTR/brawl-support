@@ -68,10 +68,12 @@ serve(async (req: Request) => {
     }
 
     // オンボーディングリンクを生成
+    const siteUrl = Deno.env.get("SITE_URL") || "https://gemsuke.com";
+    const fallbackUrl = `${siteUrl}/dashboard/employee`;
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: return_url || "http://localhost:3000/dashboard/employee",
-      return_url: return_url || "http://localhost:3000/dashboard/employee",
+      refresh_url: return_url || fallbackUrl,
+      return_url: return_url || fallbackUrl,
       type: "account_onboarding",
     });
 

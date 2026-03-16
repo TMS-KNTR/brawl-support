@@ -126,7 +126,7 @@ serve(async (req) => {
       if (vaultError) throw vaultError
     }
 
-    // Stripe Checkoutセッションを作成
+    // Stripe Checkoutセッションを作成（冪等性キー付き）
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -149,6 +149,8 @@ serve(async (req) => {
         order_id: order.id,
         customer_id: user.id,
       },
+    }, {
+      idempotencyKey: `checkout-${order.id}`,
     })
 
     // 注文にCheckoutセッションIDを保存（payment_intent_idはWebhookで正確な値を上書き）

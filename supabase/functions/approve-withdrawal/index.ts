@@ -106,13 +106,36 @@ serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const transfer = await stripe.transfers.create({
-      amount: withdrawal.amount,
-      currency: "jpy",
-      destination: empProfile.stripe_account_id,
-      description: `出金承認 ¥${withdrawal.amount.toLocaleString()}`,
-      metadata: { user_id: withdrawal.user_id, withdrawal_id },
-    });
+    let transfer;
+    try {
+      transfer = await stripe.transfers.create({
+        amount: withdrawal.amount,
+        currency: "jpy",
+        destination: empProfile.stripe_account_id,
+        description: `出金承認 ¥${withdrawal.amount.toLocaleString()}`,
+        metadata: { user_id: withdrawal.user_id, withdrawal_id },
+      }, {
+        idempotencyKey: `withdraw-${withdrawal_id}`,
+      });
+    } catch (stripeErr: any) {
+      // Stripe送金失敗 → 残高を戻してwithdrawalをfailedに
+      console.error("Stripe transfer failed, rolling back:", stripeErr.message);
+      const { data: currentProfile } = await supabase
+        .from("profiles")
+        .select("balance")
+        .eq("id", withdrawal.user_id)
+        .single();
+      await supabase
+        .from("profiles")
+        .update({ balance: (currentProfile?.balance || 0) + withdrawal.amount })
+        .eq("id", withdrawal.user_id);
+      await supabase
+        .from("withdrawals")
+        .update({ status: "failed", description: `送金失敗: ${stripeErr.message}` })
+        .eq("id", withdrawal_id);
+
+      throw new Error(`Stripe送金に失敗しました: ${stripeErr.message}。残高は返還されています。`);
+    }
 
     await supabase
       .from("withdrawals")

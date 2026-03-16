@@ -60,6 +60,8 @@ serve(async (req: Request) => {
     if (order.payment_intent_id) {
       refundResult = await stripe.refunds.create({
         payment_intent: order.payment_intent_id,
+      }, {
+        idempotencyKey: `refund-${order.id}`,
       });
       console.log("Stripe refund created:", refundResult.id);
     } else if (order.stripe_checkout_session_id || order.stripe_session_id) {
@@ -69,6 +71,8 @@ serve(async (req: Request) => {
       if (session.payment_intent) {
         refundResult = await stripe.refunds.create({
           payment_intent: session.payment_intent as string,
+        }, {
+          idempotencyKey: `refund-${order.id}`,
         });
         console.log("Stripe refund created via session:", refundResult.id);
       } else {
