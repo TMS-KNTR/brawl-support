@@ -71,7 +71,7 @@ const fallbackService = { label: '代行', icon: 'ri-gamepad-line' };
 
 export default function CustomerDashboardPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -218,6 +218,18 @@ export default function CustomerDashboardPage() {
     if (filter === 'done') return doneStatuses.includes(ns);
     return true;
   });
+
+  if (userProfile?.is_banned) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <i className="ri-forbid-line text-3xl text-[#DC2626] mb-3 block"></i>
+          <h2 className="text-[16px] font-bold text-[#111] mb-2">アカウントが停止されています</h2>
+          <p className="text-[13px] text-[#666]">お問い合わせください。</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && loadingTimeout) {
     return (

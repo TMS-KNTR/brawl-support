@@ -43,6 +43,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!user || !userProfile || loading) return
+    if (userProfile.is_banned) {
+      setErrorMsg('このアカウントは停止されています。お問い合わせください。')
+      supabase.auth.signOut()
+      return
+    }
     const role = normalizeRole(userProfile.role)
     if (role === 'admin') navigate('/dashboard/admin', { replace: true })
     else if (role === 'employee') navigate('/dashboard/employee', { replace: true })
@@ -66,9 +71,15 @@ export default function LoginPage() {
       if (data.user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, is_banned')
           .eq('id', data.user.id)
           .single()
+        if (profile?.is_banned) {
+          await supabase.auth.signOut()
+          setErrorMsg('このアカウントは停止されています。お問い合わせください。')
+          setSubmitting(false)
+          return
+        }
         const role = normalizeRole(profile?.role)
         if (role === 'admin') navigate('/dashboard/admin', { replace: true })
         else if (role === 'employee') navigate('/dashboard/employee', { replace: true })

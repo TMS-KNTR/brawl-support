@@ -7,6 +7,7 @@ import ProtectedRoute from '../components/base/ProtectedRoute'
 const HomePage = lazy(() => import('../pages/home/page'))
 const LoginPage = lazy(() => import('../pages/auth/login'))
 const RegisterPage = lazy(() => import('../pages/auth/register'))
+const ForgotPasswordPage = lazy(() => import('../pages/auth/forgot-password'))
 const AuthCallbackPage = lazy(() => import('../pages/auth/callback'))
 const NotFoundPage = lazy(() => import('../pages/NotFound'))
 
@@ -61,6 +62,7 @@ const routes: RouteObject[] = [
   { path: '/', element: <HomePage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/auth/callback', element: <AuthCallbackPage /> },
   { path: '/services', element: <ServicesPage /> },
   { path: '/games', element: <GamesPage /> },
