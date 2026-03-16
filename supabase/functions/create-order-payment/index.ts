@@ -7,6 +7,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/** AES-GCM で文字列を暗号化（Base64エンコード） */
+async function encryptCredential(plaintext: string): Promise<string> {
+  const secret = Deno.env.get("CREDENTIAL_ENCRYPTION_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const keyData = new TextEncoder().encode(secret.slice(0, 32).padEnd(32, '0'));
+  const key = await crypto.subtle.importKey("raw", keyData, "AES-GCM", false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plaintext));
+  // iv + ciphertext を結合してBase64
+  const combined = new Uint8Array(iv.length + new Uint8Array(encrypted).length);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -95,14 +109,15 @@ serve(async (req) => {
       console.error('チャットスレッド作成エラー:', chatThreadError)
     }
 
-    // 認証情報保管庫を作成
+    // 認証情報保管庫を作成（AES-GCM暗号化）
     if (credentials?.username && credentials?.password) {
+      const encryptedPassword = await encryptCredential(credentials.password);
       const { error: vaultError } = await supabase
         .from('credential_vaults')
         .insert({
           order_id: order.id,
           username: credentials.username,
-          password_encrypted: credentials.password, // 実際の実装では暗号化が必要
+          password_encrypted: encryptedPassword,
           notes: credentials.notes || '',
           masked_preview: `${credentials.username.substring(0, 2)}***`,
           visible_to: JSON.stringify([])
@@ -136,11 +151,12 @@ serve(async (req) => {
       },
     })
 
-    // 注文にPayment IntentIDを更新
+    // 注文にCheckoutセッションIDを保存（payment_intent_idはWebhookで正確な値を上書き）
     await supabase
       .from('orders')
       .update({
-        payment_intent_id: session.payment_intent as string || session.id,
+        stripe_checkout_session_id: session.id,
+        payment_intent_id: (session.payment_intent as string) || null,
         status: 'PAYMENT_PENDING'
       })
       .eq('id', order.id)

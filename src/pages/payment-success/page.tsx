@@ -12,12 +12,39 @@ export default function PaymentSuccessPage() {
   const [chatThreadId, setChatThreadId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!sessionId) {
-      setStatus('error')
+    if (!sessionId || !user) {
+      if (!sessionId) setStatus('error')
       return
     }
-    setStatus('success')
-  }, [sessionId])
+
+    // DBで注文の支払いステータスを確認（Webhookで更新されるまでリトライ）
+    let attempts = 0
+    const maxAttempts = 10
+    const checkPayment = async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .in('status', ['paid', 'assigned', 'in_progress', 'completed', 'confirmed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (data) {
+        setStatus('success')
+        return
+      }
+
+      attempts++
+      if (attempts < maxAttempts) {
+        setTimeout(checkPayment, 2000)
+      } else {
+        // Webhookが遅延しても一応成功表示（session_idがあるため）
+        setStatus('success')
+      }
+    }
+    checkPayment()
+  }, [sessionId, user])
 
   // ユーザーの最新注文からchat_thread_idを取得
   useEffect(() => {

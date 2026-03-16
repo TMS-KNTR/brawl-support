@@ -34,16 +34,15 @@ serve(async (req: Request) => {
 
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
+    if (!webhookSecret) {
+      console.error("STRIPE_WEBHOOK_SECRET is not configured");
+      return new Response(JSON.stringify({ error: "Webhook secret not configured" }), { status: 500 });
+    }
+
     let event: Stripe.Event;
 
-    if (webhookSecret) {
-      // 署名検証（本番用） - Deno環境ではasync版を使う
-      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-    } else {
-      // 署名検証スキップ（テスト用フォールバック）
-      console.warn("STRIPE_WEBHOOK_SECRET not set, parsing event without verification");
-      event = JSON.parse(body);
-    }
+    // 署名検証 - Deno環境ではasync版を使う
+    event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
 
     console.log("Webhook event received:", event.type);
 
