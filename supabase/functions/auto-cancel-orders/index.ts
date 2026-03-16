@@ -7,6 +7,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+/** Stripe API呼び出しをリトライ */
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const isRetryable = err.type === "StripeConnectionError" || err.type === "StripeAPIError" || err.code === "ECONNRESET";
+      if (i < maxRetries && isRetryable) {
+        console.warn(`[retry] Stripe API failed, retrying (${i + 1}/${maxRetries})...`);
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -87,17 +105,17 @@ Deno.serve(async (req: Request) => {
           const sessionId = order.stripe_checkout_session_id || order.stripe_session_id;
 
           if (paymentIntentId) {
-            refundResult = await stripe.refunds.create({ payment_intent: paymentIntentId }, {
+            refundResult = await withRetry(() => stripe.refunds.create({ payment_intent: paymentIntentId }, {
               idempotencyKey: `auto-cancel-refund-${order.id}`,
-            });
+            }));
           } else if (sessionId) {
-            const session = await stripe.checkout.sessions.retrieve(sessionId);
+            const session = await withRetry(() => stripe.checkout.sessions.retrieve(sessionId));
             if (session.payment_intent) {
-              refundResult = await stripe.refunds.create({
+              refundResult = await withRetry(() => stripe.refunds.create({
                 payment_intent: session.payment_intent as string,
               }, {
                 idempotencyKey: `auto-cancel-refund-${order.id}`,
-              });
+              }));
             }
           }
         }

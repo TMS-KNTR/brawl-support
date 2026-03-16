@@ -39,7 +39,7 @@ serve(async (req: Request) => {
     if (maintenanceSetting?.value === true || maintenanceSetting?.value === 'true') {
       return new Response(
         JSON.stringify({ success: false, error: "現在メンテナンス中のため、受注できません" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 

@@ -7,6 +7,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Stripe API呼び出しをリトライ（一時的なネットワークエラー対策） */
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const isRetryable = err.type === "StripeConnectionError" || err.type === "StripeAPIError" || err.code === "ECONNRESET";
+      if (i < maxRetries && isRetryable) {
+        console.warn(`[retry] Stripe API failed, retrying (${i + 1}/${maxRetries})...`);
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -58,22 +76,21 @@ serve(async (req: Request) => {
     // payment_intent_idがある場合 → Stripeで返金
     let refundResult = null;
     if (order.payment_intent_id) {
-      refundResult = await stripe.refunds.create({
+      refundResult = await withRetry(() => stripe.refunds.create({
         payment_intent: order.payment_intent_id,
       }, {
         idempotencyKey: `refund-${order.id}`,
-      });
+      }));
       console.log("Stripe refund created:", refundResult.id);
     } else if (order.stripe_checkout_session_id || order.stripe_session_id) {
-      // payment_intent_idが無い場合、セッションから取得を試みる
       const sessionId = order.stripe_checkout_session_id || order.stripe_session_id;
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const session = await withRetry(() => stripe.checkout.sessions.retrieve(sessionId));
       if (session.payment_intent) {
-        refundResult = await stripe.refunds.create({
+        refundResult = await withRetry(() => stripe.refunds.create({
           payment_intent: session.payment_intent as string,
         }, {
           idempotencyKey: `refund-${order.id}`,
-        });
+        }));
         console.log("Stripe refund created via session:", refundResult.id);
       } else {
         throw new Error("payment_intentが見つかりません。Stripeダッシュボードから手動で返金してください。");
@@ -111,7 +128,7 @@ serve(async (req: Request) => {
     console.error("Refund error:", err.message);
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }
 });

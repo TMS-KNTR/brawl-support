@@ -107,13 +107,14 @@ serve(async (req: Request) => {
       order_id: order_id,
     });
 
-    await supabase.from("notifications").insert({
+    const { error: notifError } = await supabase.from("notifications").insert({
       user_id: employeeId,
       type: "order_confirmed",
       title: "依頼者が完了を確認しました",
       body: `報酬 ¥${payoutAmount.toLocaleString()} が残高に反映されました。`,
       link_url: "/dashboard/employee",
     });
+    if (notifError) console.error("通知挿入失敗:", notifError.message);
 
     const secret = Deno.env.get("INTERNAL_NOTIFICATION_SECRET");
     const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification-email`;
@@ -136,6 +137,8 @@ serve(async (req: Request) => {
       } catch (e) {
         console.error("send-notification-email:", e);
       }
+    } else {
+      console.warn("INTERNAL_NOTIFICATION_SECRET未設定のためメール通知をスキップ");
     }
 
     return new Response(
@@ -150,7 +153,7 @@ serve(async (req: Request) => {
     console.error("Confirm order error:", err.message);
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }
 });

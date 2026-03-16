@@ -7,6 +7,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Stripe API呼び出しをリトライ */
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const isRetryable = err.type === "StripeConnectionError" || err.type === "StripeAPIError" || err.code === "ECONNRESET";
+      if (i < maxRetries && isRetryable) {
+        console.warn(`[retry] Stripe API failed, retrying (${i + 1}/${maxRetries})...`);
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -107,14 +125,14 @@ serve(async (req: Request) => {
     });
 
     // Stripeアカウントの状態を確認（送金可能か）
-    const account = await stripe.accounts.retrieve(empProfile.stripe_account_id);
+    const account = await withRetry(() => stripe.accounts.retrieve(empProfile.stripe_account_id));
     if (!account.payouts_enabled) {
       throw new Error("従業員のStripeアカウントが送金可能な状態ではありません（審査中または未完了）");
     }
 
     let transfer;
     try {
-      transfer = await stripe.transfers.create({
+      transfer = await withRetry(() => stripe.transfers.create({
         amount: withdrawal.amount,
         currency: "jpy",
         destination: empProfile.stripe_account_id,
@@ -122,7 +140,7 @@ serve(async (req: Request) => {
         metadata: { user_id: withdrawal.user_id, withdrawal_id },
       }, {
         idempotencyKey: `withdraw-${withdrawal_id}`,
-      });
+      }));
     } catch (stripeErr: any) {
       // Stripe送金失敗 → 残高を戻してwithdrawalをfailedに
       console.error("Stripe transfer failed, rolling back:", stripeErr.message);
