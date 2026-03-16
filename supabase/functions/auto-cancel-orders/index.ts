@@ -87,12 +87,16 @@ Deno.serve(async (req: Request) => {
           const sessionId = order.stripe_checkout_session_id || order.stripe_session_id;
 
           if (paymentIntentId) {
-            refundResult = await stripe.refunds.create({ payment_intent: paymentIntentId });
+            refundResult = await stripe.refunds.create({ payment_intent: paymentIntentId }, {
+              idempotencyKey: `auto-cancel-refund-${order.id}`,
+            });
           } else if (sessionId) {
             const session = await stripe.checkout.sessions.retrieve(sessionId);
             if (session.payment_intent) {
               refundResult = await stripe.refunds.create({
                 payment_intent: session.payment_intent as string,
+              }, {
+                idempotencyKey: `auto-cancel-refund-${order.id}`,
               });
             }
           }

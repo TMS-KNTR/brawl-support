@@ -70,12 +70,15 @@ serve(async (req: Request) => {
     const currentBalance = empProfile?.balance || 0;
     const newBalance = currentBalance + payoutAmount;
 
-    const { error: balanceError } = await supabase
+    const { data: balanceUpdated, error: balanceError } = await supabase
       .from("profiles")
       .update({ balance: newBalance })
-      .eq("id", employeeId);
+      .eq("id", employeeId)
+      .eq("balance", currentBalance)
+      .select("balance")
+      .single();
 
-    if (balanceError) throw new Error("残高更新に失敗: " + balanceError.message);
+    if (balanceError || !balanceUpdated) throw new Error("残高が変更されました。再度お試しください。");
 
     // 注文を確認済みに更新
     await supabase

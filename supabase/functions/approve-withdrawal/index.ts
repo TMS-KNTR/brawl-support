@@ -106,6 +106,12 @@ serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
+    // Stripeアカウントの状態を確認（送金可能か）
+    const account = await stripe.accounts.retrieve(empProfile.stripe_account_id);
+    if (!account.payouts_enabled) {
+      throw new Error("従業員のStripeアカウントが送金可能な状態ではありません（審査中または未完了）");
+    }
+
     let transfer;
     try {
       transfer = await stripe.transfers.create({

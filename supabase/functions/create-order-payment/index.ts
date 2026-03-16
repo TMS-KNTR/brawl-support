@@ -101,7 +101,7 @@ serve(async (req) => {
       .from('chat_threads')
       .insert({
         order_id: order.id,
-        participants: JSON.stringify([user.id]),
+        participants: [user.id],
         last_message_at: new Date().toISOString()
       })
 
