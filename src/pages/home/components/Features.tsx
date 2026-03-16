@@ -21,27 +21,28 @@ export default function Features() {
   const primary = [
     {
       icon: 'ri-shield-check-line',
+      highlight: 'PayPay',
       title: 'PayPay対応の安全決済',
-      desc: 'クレジットカード・PayPayに対応。エスクロー方式で代行完了まで代金を安全に保全。',
+      desc: 'カード不要。PayPayでかんたん決済。エスクロー方式で代行完了まで代金を安全に保全。',
     },
     {
       icon: 'ri-chat-private-line',
+      highlight: '0件',
       title: '完全匿名チャット',
-      desc: '個人情報を一切公開せずにやり取り可能。アカウント引き継ぎも専用チャットで安全に。',
+      desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。引き継ぎも専用チャットで安全に。',
     },
     {
       icon: 'ri-star-line',
+      highlight: '99%',
       title: 'プロの技術',
-      desc: '厳正な審査を通過した実力派プレイヤーのみが在籍。高い成功率を維持。',
+      desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。',
     },
   ];
 
   const secondary = [
-    { icon: 'ri-time-line', title: '24時間対応', desc: 'いつでも依頼可能。プロの代行者が迅速に受注・対応。' },
-    { icon: 'ri-money-dollar-circle-line', title: '明確な料金', desc: '追加料金なし。依頼時に料金が確定するため安心。' },
-    { icon: 'ri-refund-line', title: '全額返金保証', desc: '目標未達成の場合は全額返金。リスクゼロ。' },
-    { icon: 'ri-gamepad-line', title: '複数タイトル対応', desc: '様々なゲームに対応。対応タイトルは順次拡大中。' },
-    { icon: 'ri-lock-line', title: 'アカウント保護', desc: '情報は暗号化して厳重に管理。万全のセキュリティ。' },
+    { icon: 'ri-time-line', title: '24時間対応', desc: 'いつでも依頼OK' },
+    { icon: 'ri-refund-line', title: '全額返金保証', desc: '未達成なら返金' },
+    { icon: 'ri-lock-line', title: 'アカウント保護', desc: '暗号化で厳重管理' },
   ];
 
   const header = useReveal(0.3);
@@ -50,7 +51,6 @@ export default function Features() {
 
   return (
     <section className="py-24 bg-white overflow-hidden">
-      {/* Keyframe animations */}
       <style>{`
         @keyframes feat-fadeUp {
           from { opacity: 0; transform: translateY(32px); }
@@ -64,17 +64,13 @@ export default function Features() {
           from { opacity: 0; transform: scale(0.92) translateY(20px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
-        @keyframes feat-iconPulse {
-          0%, 100% { transform: scale(1); }
-          50%      { transform: scale(1.12); }
+        @keyframes feat-countUp {
+          from { opacity: 0; transform: translateY(12px) scale(0.9); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes feat-shimmer {
           0%   { background-position: -200% center; }
           100% { background-position: 200% center; }
-        }
-        @keyframes feat-glowBreathe {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(91,58,232,0); }
-          50%      { box-shadow: 0 0 20px 2px rgba(91,58,232,0.08); }
         }
         .feat-primary-card {
           transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), box-shadow 0.45s ease;
@@ -85,17 +81,9 @@ export default function Features() {
             0 20px 40px rgba(18,8,42,0.25),
             0 0 30px rgba(91,58,232,0.15);
         }
-        .feat-primary-card:hover .feat-icon-box {
-          animation: feat-iconPulse 0.6s cubic-bezier(0.22,1,0.36,1);
-          background: rgba(91,58,232,0.3);
-        }
         .feat-primary-card:hover .feat-accent-line {
           opacity: 1;
           animation: feat-shimmer 1s ease forwards;
-        }
-        .feat-primary-card:hover .feat-card-icon {
-          color: #C4B5FD;
-          filter: drop-shadow(0 0 6px rgba(139,122,255,0.4));
         }
         .feat-secondary-card {
           transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease, border-color 0.3s ease;
@@ -103,17 +91,7 @@ export default function Features() {
         .feat-secondary-card:hover {
           transform: translateY(-4px);
           border-color: rgba(91,58,232,0.3);
-          box-shadow:
-            0 12px 28px rgba(91,58,232,0.08),
-            0 0 0 1px rgba(91,58,232,0.06);
-        }
-        .feat-secondary-card:hover .feat-sec-icon-box {
-          background: #EDE9FE;
-          transform: scale(1.08);
-        }
-        .feat-secondary-card:hover .feat-sec-icon {
-          color: #4F2FD8;
-          filter: drop-shadow(0 0 4px rgba(91,58,232,0.3));
+          box-shadow: 0 12px 28px rgba(91,58,232,0.08);
         }
       `}</style>
 
@@ -159,8 +137,8 @@ export default function Features() {
           </p>
         </div>
 
-        {/* Top 3 primary features */}
-        <div ref={primaryGrid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Top 3 primary features with big numbers */}
+        <div ref={primaryGrid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
           {primary.map((f, i) => (
             <div
               key={i}
@@ -174,7 +152,7 @@ export default function Features() {
                 animationFillMode: 'both',
               }}
             >
-              {/* Subtle nebula glow inside card */}
+              {/* Nebula glow */}
               <div
                 className="absolute inset-0 opacity-40 pointer-events-none"
                 style={{
@@ -182,7 +160,7 @@ export default function Features() {
                 }}
               />
 
-              {/* Top accent shimmer on hover */}
+              {/* Shimmer line */}
               <div
                 className="feat-accent-line absolute top-0 left-0 right-0 h-[2px] opacity-0"
                 style={{
@@ -192,9 +170,24 @@ export default function Features() {
               />
 
               <div className="relative z-10">
-                <div className="feat-icon-box w-11 h-11 rounded-xl bg-[#5B3AE8]/15 flex items-center justify-center mb-5 transition-all duration-300">
-                  <i className={`${f.icon} feat-card-icon text-lg text-[#8B7AFF] transition-all duration-300`}></i>
-                </div>
+                {/* Big highlight number */}
+                <p
+                  className="text-[40px] font-extrabold leading-none mb-3"
+                  style={{
+                    fontFamily: '"Orbitron", sans-serif',
+                    background: 'linear-gradient(135deg, #C4B5FD 0%, #8B7AFF 50%, #5B3AE8 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    opacity: primaryGrid.visible ? 1 : 0,
+                    animation: primaryGrid.visible
+                      ? `feat-countUp 0.6s cubic-bezier(0.22,1,0.36,1) ${0.3 + i * 0.15}s forwards`
+                      : 'none',
+                    animationFillMode: 'both',
+                  }}
+                >
+                  {f.highlight}
+                </p>
+
                 <h3
                   className="text-[15px] font-bold text-white mb-2 tracking-wide"
                   style={{ fontFamily: '"Rajdhani", sans-serif' }}
@@ -209,12 +202,12 @@ export default function Features() {
           ))}
         </div>
 
-        {/* Bottom 5 secondary features */}
-        <div ref={secondaryGrid.ref} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* Bottom 3 secondary features */}
+        <div ref={secondaryGrid.ref} className="grid grid-cols-3 gap-3">
           {secondary.map((f, i) => (
             <div
               key={i}
-              className="feat-secondary-card group rounded-xl border border-[#E8E4F3] p-5"
+              className="feat-secondary-card group rounded-xl border border-[#E8E4F3] p-5 text-center"
               style={{
                 opacity: secondaryGrid.visible ? 1 : 0,
                 animation: secondaryGrid.visible
@@ -223,16 +216,16 @@ export default function Features() {
                 animationFillMode: 'both',
               }}
             >
-              <div className="feat-sec-icon-box w-9 h-9 rounded-lg bg-[#F3F0FF] flex items-center justify-center mb-3.5 transition-all duration-300">
-                <i className={`${f.icon} feat-sec-icon text-sm text-[#5B3AE8] transition-all duration-300`}></i>
+              <div className="w-10 h-10 rounded-lg bg-[#F3F0FF] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[#EDE9FE] group-hover:scale-110">
+                <i className={`${f.icon} text-sm text-[#5B3AE8] transition-all duration-300`}></i>
               </div>
               <h3
-                className="text-[12px] font-bold text-[#1A1A2E] tracking-wide mb-1.5"
+                className="text-[12px] font-bold text-[#1A1A2E] tracking-wide mb-1"
                 style={{ fontFamily: '"Rajdhani", sans-serif' }}
               >
                 {f.title}
               </h3>
-              <p className="text-[10px] text-[#8A7DA8] leading-relaxed font-medium">
+              <p className="text-[10px] text-[#8A7DA8] font-medium">
                 {f.desc}
               </p>
             </div>
