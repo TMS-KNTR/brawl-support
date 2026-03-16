@@ -60,7 +60,12 @@ export default function AdminMetricsPage() {
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
             </div>
-          ) : stats && (
+          ) : !stats ? (
+            <div className="text-center py-16">
+              <p className="text-gray-500 text-lg mb-2">データを取得できませんでした</p>
+              <button onClick={loadMetrics} className="text-purple-600 hover:underline text-sm">再試行</button>
+            </div>
+          ) : (
             <>
               <h2 className="text-xl font-semibold mb-4 text-gray-700">売上</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

@@ -101,6 +101,15 @@ export default function AdminDisputesPage() {
 
   async function executeResolve() {
     if (!resolveTarget) return;
+
+    const price = resolveTarget.order?.price || resolveTarget.order?.total_price || 0;
+    const confirmMsg = resolveAction === 'refund'
+      ? `依頼者に ¥${price.toLocaleString()} を返金します。実行しますか？`
+      : resolveAction === 'payout'
+      ? `従業員に報酬（¥${Math.floor(price * (1 - feeRate)).toLocaleString()}）を支払います。実行しますか？`
+      : '金銭の移動なしで紛争を解決済みにします。実行しますか？';
+    if (!window.confirm(confirmMsg)) return;
+
     setResolveLoading(true);
 
     try {

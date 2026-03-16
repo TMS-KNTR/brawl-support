@@ -1,8 +1,8 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
-import { invokeEdgeFunction } from '../../../lib/supabase'
+import { invokeEdgeFunction, supabase } from '../../../lib/supabase'
 import { calcRankedPrice, calcTrophyPrice } from '../../../lib/pricing'
 import { BRAWLERS, STRENGTH_LABELS, STRENGTH_COLORS } from '../../../data/brawlers'
 import Header from '../../home/components/Header'
@@ -17,7 +17,7 @@ const RANK_TIERS = [
   { name: 'エリート',    from: 4500,  to: 6000,  color: '#A855F7' },
   { name: 'レジェンド',   from: 6000,  to: 8250,  color: '#EF4444' },
   { name: 'マスター',    from: 8250,  to: 11250, color: '#FBBF24' },
-  { name: 'プロ',       from: 11250, to: 11250, color: '#10B981' },
+  { name: 'プロ',       from: 11250, to: 99999, color: '#10B981' },
 ]
 
 function getTierName(pt: number) {
@@ -286,6 +286,12 @@ function DualSlider({
 export default function OrderPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [maintenance, setMaintenance] = useState(false)
+
+  useEffect(() => {
+    supabase.from('system_settings').select('value').eq('key', 'maintenance_mode').single()
+      .then(({ data }) => { if (data?.value === 'true') setMaintenance(true) })
+  }, [])
 
   const [mode, setMode] = useState<'rank' | 'trophy'>('rank')
 
@@ -341,6 +347,11 @@ export default function OrderPage() {
 
     if (totalPrice <= 0) {
       setError('目標値は現在値より大きく設定してください')
+      return
+    }
+
+    if (maintenance) {
+      setError('現在メンテナンス中のため、新規注文を受け付けていません。')
       return
     }
 
@@ -890,10 +901,15 @@ export default function OrderPage() {
             </div>
           )}
 
+          {maintenance && (
+            <div className="mt-6 px-4 py-3 rounded-lg border border-[#FCD34D]/40 bg-[#FFFBEB] text-center">
+              <p className="text-[12px] font-semibold text-[#92400E]">現在メンテナンス中のため、新規注文を受け付けていません。</p>
+            </div>
+          )}
           <button
             onClick={handlePayment}
-            disabled={isSubmitting || totalPrice <= 0}
-            className="order-pay-btn mt-6 w-full bg-[#10B981] text-white py-4 rounded-xl font-bold text-[14px] tracking-wider cursor-pointer"
+            disabled={isSubmitting || totalPrice <= 0 || maintenance}
+            className="order-pay-btn mt-6 w-full bg-[#10B981] text-white py-4 rounded-xl font-bold text-[14px] tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">

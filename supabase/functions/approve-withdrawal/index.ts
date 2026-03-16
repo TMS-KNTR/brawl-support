@@ -76,6 +76,14 @@ serve(async (req: Request) => {
         .update({ status: "rejected", description: `出金却下 ¥${withdrawal.amount.toLocaleString()}` })
         .eq("id", withdrawal_id);
 
+      // 従業員に通知
+      await supabase.from("notifications").insert({
+        user_id: withdrawal.user_id,
+        type: "withdrawal_rejected",
+        title: "出金申請が却下されました",
+        body: `¥${withdrawal.amount.toLocaleString()} の出金申請が却下されました。残高に返還されています。`,
+      }).catch(() => {});
+
       return new Response(
         JSON.stringify({ success: true, message: "出金申請を却下し、残高を返還しました", new_balance: restoredBalance }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -114,6 +122,14 @@ serve(async (req: Request) => {
         description: `出金完了 ¥${withdrawal.amount.toLocaleString()}`,
       })
       .eq("id", withdrawal_id);
+
+    // 従業員に通知
+    await supabase.from("notifications").insert({
+      user_id: withdrawal.user_id,
+      type: "withdrawal_completed",
+      title: "出金が完了しました",
+      body: `¥${withdrawal.amount.toLocaleString()} の出金が承認され、送金されました。`,
+    }).catch(() => {});
 
     return new Response(
       JSON.stringify({
