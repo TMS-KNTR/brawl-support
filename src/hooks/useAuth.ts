@@ -334,6 +334,11 @@ export function useAuthImpl() {
 
       setUser(sessionUser)
 
+      // INITIAL_SESSIONフラグは、セッションの有無にかかわらず設定する
+      if (event === 'INITIAL_SESSION') {
+        initialSessionHandled = true
+      }
+
       if (!sessionUser?.id) {
         setUserProfile(null)
         setProfileStatus('idle')
@@ -343,7 +348,6 @@ export function useAuthImpl() {
 
       // INITIAL_SESSION: ページ読み込み時の最初のイベント。ここでprofile取得。
       if (event === 'INITIAL_SESSION') {
-        initialSessionHandled = true
         await fetchUserProfile(sessionUser.id)
         if (mounted) setAuthLoading(false)
         return
@@ -357,6 +361,8 @@ export function useAuthImpl() {
           console.log('[auth] SIGNED_IN skipped (waiting for INITIAL_SESSION)')
           return
         }
+        console.log('[auth] SIGNED_IN processing profile fetch')
+        setAuthLoading(true)
         await fetchUserProfile(sessionUser.id)
         if (mounted) setAuthLoading(false)
         return
