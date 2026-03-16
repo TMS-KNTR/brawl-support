@@ -185,11 +185,13 @@ export default function AccountPage() {
       });
       if (signInError) { setDeleteMsg({ type: 'error', text: 'パスワードが正しくありません' }); return; }
 
-      // profileを論理削除（is_banned + deleted marker）
-      await supabase.from('profiles').update({
-        is_banned: true,
-        deleted_at: new Date().toISOString(),
-      }).eq('id', user?.id);
+      // Edge Functionで注文キャンセル・データ匿名化・auth user削除を実行
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('delete-account', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.error && !res.data) throw new Error(res.error.message);
+      if (!res.data?.success) throw new Error(res.data?.error || 'アカウント削除に失敗しました');
 
       await signOut();
       navigate('/');

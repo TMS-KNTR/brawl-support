@@ -42,6 +42,8 @@ function getProfileFromCache(userId: string): UserProfile | null {
     const { id, profile, at } = JSON.parse(raw)
     if (id !== userId || !profile) return null
     if (Date.now() - (at || 0) > PROFILE_CACHE_TTL_MS) return null
+    // BAN済みユーザーはキャッシュを使わない（常にサーバーから最新を取得）
+    if (profile.is_banned) return null
     return { ...profile, id: userId, role: normalizeRole(profile.role) }
   } catch {
     return null
