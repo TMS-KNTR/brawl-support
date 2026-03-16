@@ -21,7 +21,7 @@ export default function Features() {
   const primary = [
     {
       icon: 'ri-shield-check-line',
-      title: '安全な決済',
+      title: 'PayPay対応の安全決済',
       desc: 'クレジットカード・PayPayに対応。エスクロー方式で代行完了まで代金を安全に保全。',
     },
     {
