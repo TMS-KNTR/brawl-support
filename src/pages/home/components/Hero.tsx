@@ -232,6 +232,24 @@ export default function Hero() {
               使い方を見る
             </button>
           </div>
+
+          {/* Payment badges */}
+          <div
+            className="flex items-center justify-center gap-3 mt-8"
+            style={{
+              opacity: 0,
+              animation: 'hero-fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.7s forwards',
+            }}
+          >
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+              <i className="ri-bank-card-line text-[13px] text-[#8B7AFF]"></i>
+              <span className="text-[11px] font-semibold text-white/70">カード決済</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FF0033]/15 backdrop-blur-sm border border-[#FF0033]/20">
+              <span className="text-[12px] font-extrabold text-[#FF0033]">PayPay</span>
+              <span className="text-[11px] font-semibold text-white/70">対応</span>
+            </div>
+          </div>
         </div>
       </div>
 

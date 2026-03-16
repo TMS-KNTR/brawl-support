@@ -21,18 +21,21 @@ export default function Features() {
   const primary = [
     {
       icon: 'ri-shield-check-line',
-      title: '安全な決済',
-      desc: 'クレジットカード・PayPayに対応。エスクロー方式で代行完了まで代金を安全に保全。',
+      title: 'PayPay・カード対応',
+      desc: 'カード不要、PayPayでかんたん決済。エスクロー方式で代行完了まで代金を安全に保全。',
+      badge: 'PayPay',
     },
     {
       icon: 'ri-chat-private-line',
       title: '完全匿名チャット',
       desc: '個人情報を一切公開せずにやり取り可能。アカウント引き継ぎも専用チャットで安全に。',
+      badge: null,
     },
     {
       icon: 'ri-star-line',
       title: 'プロの技術',
       desc: '厳正な審査を通過した実力派プレイヤーのみが在籍。高い成功率を維持。',
+      badge: null,
     },
   ];
 
@@ -192,8 +195,15 @@ export default function Features() {
               />
 
               <div className="relative z-10">
-                <div className="feat-icon-box w-11 h-11 rounded-xl bg-[#5B3AE8]/15 flex items-center justify-center mb-5 transition-all duration-300">
-                  <i className={`${f.icon} feat-card-icon text-lg text-[#8B7AFF] transition-all duration-300`}></i>
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="feat-icon-box w-11 h-11 rounded-xl bg-[#5B3AE8]/15 flex items-center justify-center transition-all duration-300">
+                    <i className={`${f.icon} feat-card-icon text-lg text-[#8B7AFF] transition-all duration-300`}></i>
+                  </div>
+                  {f.badge && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold text-[#FF0033] bg-[#FF0033]/15 border border-[#FF0033]/20">
+                      {f.badge}
+                    </span>
+                  )}
                 </div>
                 <h3
                   className="text-[15px] font-bold text-white mb-2 tracking-wide"
