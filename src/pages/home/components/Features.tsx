@@ -205,10 +205,8 @@ export default function Features() {
                   {f.desc}
                 </p>
                 {i === 0 && (
-                  <div className="flex items-center gap-2 mt-4">
-                    <img src="/paypay-logo.jpg" alt="PayPay" className="h-6 rounded" />
-                    <i className="ri-visa-line text-[20px] text-[#9890B8]"></i>
-                    <i className="ri-mastercard-line text-[20px] text-[#9890B8]"></i>
+                  <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <img src="/paypay-logo.jpg" alt="PayPay" className="absolute right-[-20px] bottom-[-20px] w-[120px] opacity-[0.08] blur-[1px]" />
                   </div>
                 )}
               </div>
