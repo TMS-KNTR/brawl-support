@@ -206,7 +206,7 @@ export default function Features() {
                 </p>
                 {i === 0 && (
                   <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                    <img src="/paypay-logo.jpg" alt="PayPay" className="absolute right-[-20px] bottom-[-20px] w-[120px] opacity-[0.08] blur-[1px]" />
+                    <img src="/paypay-logo.jpg" alt="PayPay" className="absolute inset-0 w-full h-full object-cover opacity-[0.15]" />
                   </div>
                 )}
               </div>
