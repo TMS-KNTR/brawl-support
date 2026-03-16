@@ -70,6 +70,8 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [confirming, setConfirming] = useState(false);
+
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeDesc, setDisputeDesc] = useState('');
@@ -106,8 +108,9 @@ export default function OrderDetailPage() {
   };
 
   const handleConfirmComplete = async () => {
-    if (!order) return;
+    if (!order || confirming) return;
     if (!window.confirm('代行が完了したことを確認しますか？\n\n※ 確認すると代行者に報酬が支払われます。')) return;
+    setConfirming(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('confirm-order', {
@@ -122,7 +125,7 @@ export default function OrderDetailPage() {
           setShowRating(true);
         }
       } else { throw new Error(res.data?.error || '完了確認に失敗しました'); }
-    } catch (err: any) { alert('完了確認に失敗しました: ' + err.message); }
+    } catch (err: any) { alert('完了確認に失敗しました: ' + err.message); } finally { setConfirming(false); }
   };
 
   const handleCreateDispute = async () => {
@@ -419,9 +422,9 @@ export default function OrderDetailPage() {
                     </button>
                   )}
                   {canConfirm && (
-                    <button onClick={handleConfirmComplete}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-lg cursor-pointer bg-[#059669] text-white hover:bg-[#047857] transition-colors">
-                      <i className="ri-check-double-line text-[12px]"></i>完了を確認する
+                    <button onClick={handleConfirmComplete} disabled={confirming}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-lg cursor-pointer bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      {confirming ? <><i className="ri-loader-4-line text-[12px] animate-spin"></i>処理中...</> : <><i className="ri-check-double-line text-[12px]"></i>完了を確認する</>}
                     </button>
                   )}
                   {canDispute && (
