@@ -128,7 +128,7 @@ serve(async (req) => {
 
     // Stripe Checkoutセッションを作成（冪等性キー付き）
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'paypay'],
       line_items: [
         {
           price_data: {
