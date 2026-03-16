@@ -30,6 +30,10 @@ const STATUS: Record<string, { label: string; color: string; progress: number }>
 };
 const fallbackStatus = { label: '不明', color: '#9CA3AF', progress: 0 };
 
+/** プラットフォーム手数料率（payout-employee/confirm-orderのsystem_settingsと合わせる） */
+const PLATFORM_FEE_RATE = 0.20;
+const EMPLOYEE_RATE = 1 - PLATFORM_FEE_RATE;
+
 const SERVICE_TYPES: Record<string, string> = {
   'trophy':       'トロフィー上げ',
   'trophy-push':  'トロフィー上げ',
@@ -60,6 +64,7 @@ export default function EmployeeOrderDetailPage() {
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeDesc, setDisputeDesc] = useState('');
+  const [disputeLoading, setDisputeLoading] = useState(false);
 
   useEffect(() => {
     if (user && orderId) fetchOrder();
@@ -124,14 +129,20 @@ export default function EmployeeOrderDetailPage() {
   };
 
   const handleCreateDispute = async () => {
-    if (!order || !disputeReason) return;
-    const { error } = await supabase.from('disputes').insert({
-      order_id: order.id, customer_id: order.user_id, employee_id: user?.id,
-      status: 'open', reason: disputeReason, description: disputeDesc,
-    });
-    if (error) alert('紛争作成に失敗: ' + error.message);
-    else alert('問題を報告しました。管理者が確認します。');
-    setShowDispute(false); setDisputeReason(''); setDisputeDesc('');
+    if (!order || !disputeReason || disputeLoading) return;
+    if (!window.confirm('紛争として報告しますか？\n\n管理者が内容を確認し対応します。')) return;
+    setDisputeLoading(true);
+    try {
+      const { error } = await supabase.from('disputes').insert({
+        order_id: order.id, customer_id: order.user_id, employee_id: user?.id,
+        status: 'open', reason: disputeReason, description: disputeDesc,
+      });
+      if (error) alert('紛争作成に失敗: ' + error.message);
+      else alert('問題を報告しました。管理者が確認します。');
+      setShowDispute(false); setDisputeReason(''); setDisputeDesc('');
+    } finally {
+      setDisputeLoading(false);
+    }
   };
 
   const isTerminal = (status: string) =>
@@ -279,7 +290,7 @@ export default function EmployeeOrderDetailPage() {
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#F0F0F0]">
                 <div>
                   <p className="text-[10px] font-medium text-[#999] mb-0.5">報酬</p>
-                  <p className="text-[15px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * 0.8).toLocaleString()}</p>
+                  <p className="text-[15px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * EMPLOYEE_RATE).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-medium text-[#999] mb-0.5">ステータス</p>
@@ -371,9 +382,9 @@ export default function EmployeeOrderDetailPage() {
                     className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
                     キャンセル
                   </button>
-                  <button onClick={handleCreateDispute} disabled={!disputeReason}
+                  <button onClick={handleCreateDispute} disabled={!disputeReason || disputeLoading}
                     className="px-4 py-2 text-[12px] font-semibold bg-[#DC2626] text-white rounded-lg hover:bg-[#B91C1C] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-                    報告する
+                    {disputeLoading ? '送信中...' : '報告する'}
                   </button>
                 </div>
               </div>

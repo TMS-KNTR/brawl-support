@@ -35,6 +35,18 @@ export default function EmployeeDashboardPage() {
 
   if (!user) return <Navigate to="/login" replace />;
 
+  if (userProfile?.is_banned) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <i className="ri-forbid-line text-3xl text-[#DC2626] mb-3 block"></i>
+          <h2 className="text-[16px] font-bold text-[#111] mb-2">アカウントが停止されています</h2>
+          <p className="text-[13px] text-[#666]">お問い合わせください。</p>
+        </div>
+      </div>
+    );
+  }
+
   const role = normalizeRole(userProfile?.role);
   if (role !== 'employee' && role !== 'admin') {
     return <Navigate to="/dashboard/customer" replace />;
@@ -42,6 +54,10 @@ export default function EmployeeDashboardPage() {
 
   return <EmployeeDashboardContent />;
 }
+
+/** プラットフォーム手数料率（payout-employee/confirm-orderのsystem_settingsと合わせる） */
+const PLATFORM_FEE_RATE = 0.20;
+const EMPLOYEE_RATE = 1 - PLATFORM_FEE_RATE;
 
 function EmployeeDashboardContent() {
   const { user, userProfile } = useAuth();
@@ -59,6 +75,7 @@ function EmployeeDashboardContent() {
   const [disputeOrderId, setDisputeOrderId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeDesc, setDisputeDesc] = useState('');
+  const [disputeLoading, setDisputeLoading] = useState(false);
 
   // 残高・出金
   const [balance, setBalance] = useState(0);
@@ -328,29 +345,34 @@ function EmployeeDashboardContent() {
 
   /** 紛争作成 */
   const handleCreateDispute = async () => {
-    if (!disputeOrderId || !disputeReason) return;
+    if (!disputeOrderId || !disputeReason || disputeLoading) return;
     const order = myOrders.find((o) => o.id === disputeOrderId);
     if (!order) return;
     if (!window.confirm('紛争として報告しますか？\n\n管理者が内容を確認し対応します。')) return;
 
-    const { error } = await supabase.from('disputes').insert({
-      order_id: disputeOrderId,
-      customer_id: order.user_id,
-      employee_id: user?.id,
-      status: 'open',
-      reason: disputeReason,
-      description: disputeDesc,
-    });
+    setDisputeLoading(true);
+    try {
+      const { error } = await supabase.from('disputes').insert({
+        order_id: disputeOrderId,
+        customer_id: order.user_id,
+        employee_id: user?.id,
+        status: 'open',
+        reason: disputeReason,
+        description: disputeDesc,
+      });
 
-    if (error) {
-      alert('紛争作成に失敗: ' + error.message);
-    } else {
-      alert('紛争を作成しました');
+      if (error) {
+        alert('紛争作成に失敗: ' + error.message);
+      } else {
+        alert('紛争を作成しました');
+      }
+      setShowDispute(false);
+      setDisputeReason('');
+      setDisputeDesc('');
+      setDisputeOrderId(null);
+    } finally {
+      setDisputeLoading(false);
     }
-    setShowDispute(false);
-    setDisputeReason('');
-    setDisputeDesc('');
-    setDisputeOrderId(null);
   };
 
   /** 出金申請 */
@@ -397,7 +419,7 @@ function EmployeeDashboardContent() {
     open:             { label: '募集中',     color: '#2563EB' },
     assigned:         { label: '受注済',     color: '#2563EB' },
     in_progress:      { label: '作業中',     color: '#D97706' },
-    completed:        { label: '完了',       color: '#059669' },
+    completed:        { label: '完了報告済', color: '#059669' },
     confirmed:        { label: '確認済',     color: '#059669' },
     cancelled:        { label: 'キャンセル', color: '#DC2626' },
   };
@@ -598,7 +620,7 @@ function EmployeeDashboardContent() {
                               </div>
                               <span className="shrink-0 text-right">
                                 <span className="block text-[9px] text-[#999]">報酬</span>
-                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * 0.8).toLocaleString()}</span>
+                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * EMPLOYEE_RATE).toLocaleString()}</span>
                               </span>
                             </div>
                             {getOrderDetails(order).length > 0 && (
@@ -657,7 +679,7 @@ function EmployeeDashboardContent() {
                               </div>
                               <span className="shrink-0 text-right">
                                 <span className="block text-[9px] text-[#999]">報酬</span>
-                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * 0.8).toLocaleString()}</span>
+                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * EMPLOYEE_RATE).toLocaleString()}</span>
                               </span>
                             </div>
                             {getOrderDetails(order).length > 0 && (
@@ -731,7 +753,7 @@ function EmployeeDashboardContent() {
                               </div>
                               <span className="shrink-0 text-right">
                                 <span className="block text-[9px] text-[#999]">報酬</span>
-                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * 0.8).toLocaleString()}</span>
+                                <span className="text-[14px] font-bold text-[#059669]">¥{Math.floor((order.price || 0) * EMPLOYEE_RATE).toLocaleString()}</span>
                               </span>
                             </div>
                             {getOrderDetails(order).length > 0 && (
@@ -963,8 +985,15 @@ function EmployeeDashboardContent() {
               <div className="p-6 space-y-4">
                 <div>
                   <label className="block text-[11px] font-semibold text-[#666] mb-1.5">理由</label>
-                  <input className="w-full border border-[#E5E5E5] rounded-lg p-3 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111] transition-colors placeholder:text-[#CCC]"
-                    placeholder="例: 依頼者と連絡が取れない" value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} />
+                  <select className="w-full border border-[#E5E5E5] rounded-lg p-3 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111] transition-colors"
+                    value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)}>
+                    <option value="">選択してください</option>
+                    <option value="依頼者と連絡が取れない">依頼者と連絡が取れない</option>
+                    <option value="依頼内容が不明確">依頼内容が不明確</option>
+                    <option value="アカウントにログインできない">アカウントにログインできない</option>
+                    <option value="作業を継続できない理由がある">作業を継続できない理由がある</option>
+                    <option value="その他">その他</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-[#666] mb-1.5">詳細（任意）</label>
@@ -976,9 +1005,9 @@ function EmployeeDashboardContent() {
                     className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
                     キャンセル
                   </button>
-                  <button onClick={handleCreateDispute} disabled={!disputeReason}
+                  <button onClick={handleCreateDispute} disabled={!disputeReason || disputeLoading}
                     className="px-4 py-2 text-[12px] font-semibold bg-[#DC2626] text-white rounded-lg hover:bg-[#B91C1C] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-                    報告する
+                    {disputeLoading ? '送信中...' : '報告する'}
                   </button>
                 </div>
               </div>
