@@ -330,14 +330,6 @@ export default function Features() {
         />
       ))}
 
-      {/* Scanline */}
-      <div
-        className="absolute left-0 right-0 h-[1px] pointer-events-none z-30"
-        style={{
-          background: 'linear-gradient(90deg, transparent, rgba(139,122,255,0.12) 20%, rgba(139,122,255,0.12) 80%, transparent)',
-          animation: 'feat-scanline 6s linear infinite',
-        }}
-      />
 
       {/* Vignette */}
       <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 120px rgba(26,26,46,0.06)' }} />
@@ -408,7 +400,7 @@ export default function Features() {
 
                 {/* Card surface */}
                 <div
-                  className="relative p-8 pb-7"
+                  className="relative p-8"
                   style={{
                     background: `
                       radial-gradient(ellipse 120% 80% at ${20 + i * 30}% 110%, rgba(91,58,232,0.18) 0%, transparent 50%),
