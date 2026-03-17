@@ -14,19 +14,32 @@ export default function Home() {
       style={{ fontFamily: '"Rajdhani", sans-serif' }}
     >
       <Helmet>
-        <title>GEMSUKE | ゲーム代行サービス - ブロスタ代行ならGEMSUKE</title>
-        <meta name="description" content="ブロスタのランク上げ・トロフィー上げ代行ならGEMSUKE。プロの代行者が安全・確実に目標を達成。安心の決済と匿名チャットで安全なお取引を提供します。" />
-        <meta property="og:title" content="GEMSUKE | ゲーム代行サービス" />
-        <meta property="og:description" content="ブロスタのランク上げ・トロフィー上げ代行ならGEMSUKE。プロの代行者が安全・確実に目標を達成。" />
+        <title>GEMSUKE | ブロスタ代行サービス - ランク上げ・トロフィー上げ代行</title>
+        <meta name="description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行ならGEMSUKE。PayPay対応。プロの代行者が安全・確実に目標を達成。全額返金保証付き。" />
+        <meta name="keywords" content="ブロスタ,代行,Brawl Stars,ランク上げ,トロフィー上げ,ガチバトル,ブロスタ代行,ゲーム代行,GEMSUKE,げむ助,PayPay" />
+        <meta property="og:title" content="GEMSUKE | ブロスタ代行サービス - ランク上げ・トロフィー上げ" />
+        <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならGEMSUKE。PayPay対応・全額返金保証・匿名チャットで安心。" />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="GEMSUKE - ブロスタ代行サービス" />
         <link rel="canonical" href="https://gemsuke.com" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
           "name": "GEMSUKE",
+          "alternateName": "げむ助",
           "url": "https://gemsuke.com",
-          "description": "ブロスタのランク上げ・トロフィー上げ代行サービス",
-          "sameAs": []
+          "description": "ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行サービス。PayPay対応・全額返金保証。",
+          "sameAs": ["https://x.com/nxpyzo"]
+        })}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Service",
+          "name": "ブロスタ代行サービス",
+          "alternateName": "Brawl Stars Boosting Service",
+          "description": "ブロスタのランク上げ・トロフィー上げ・ガチバトル代行。プロプレイヤーが安全・確実に目標を達成。",
+          "provider": { "@type": "Organization", "name": "GEMSUKE", "url": "https://gemsuke.com" },
+          "serviceType": "ゲーム代行",
+          "areaServed": "JP"
         })}</script>
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
