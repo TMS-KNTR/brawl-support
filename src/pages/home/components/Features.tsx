@@ -433,16 +433,6 @@ export default function Features() {
                     style={{ opacity: 0 }}
                   />
 
-                  {/* Hover shimmer */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-[6]">
-                    <div
-                      className="absolute top-0 bottom-0 w-[40%]"
-                      style={{
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-                        animation: 'feat-shimmerSweep 2s ease-in-out infinite',
-                      }}
-                    />
-                  </div>
 
 
                   {/* ── Unique FX ── */}
