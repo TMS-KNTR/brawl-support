@@ -303,11 +303,7 @@ export default function GamesPage() {
                   </div>
 
                   {/* CTA row */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[12px] text-[#606080] font-medium">
-                      <i className="ri-price-tag-3-line mr-1"></i>
-                      ¥2,000〜
-                    </span>
+                  <div className="flex items-center justify-end">
                     <span
                       className="text-[12px] font-bold tracking-wider text-[#8B7AFF] group-hover:text-white transition-colors duration-300"
                       style={{ fontFamily: '"Orbitron", sans-serif' }}
