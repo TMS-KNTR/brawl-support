@@ -563,20 +563,6 @@ export default function Features() {
 
         {/* ══ SECONDARY — CIRCUIT HEXAGONS ══ */}
         <div ref={sub.ref} className="relative">
-          {/* Energy line */}
-          <div className="absolute top-[28px] left-[16%] right-[16%] h-[2px] hidden md:block overflow-hidden" style={{ opacity: sub.visible ? 1 : 0, transition: 'opacity 0.6s ease 0.4s' }}>
-            <div style={{ background: 'linear-gradient(90deg, transparent, #D4D0E8 15%, #D4D0E8 85%, transparent)', height: '100%', width: '100%' }} />
-            {sub.visible && (
-              <div
-                className="absolute top-0 h-full w-[30px] rounded-full"
-                style={{
-                  background: 'linear-gradient(90deg, transparent, #5B3AE8, #8B7AFF, transparent)',
-                  animation: 'feat-energyPulse 3s ease-in-out 0.8s infinite',
-                  boxShadow: '0 0 8px #5B3AE8',
-                }}
-              />
-            )}
-          </div>
 
           <div className="grid grid-cols-3 gap-6">
             {secondary.map((s, i) => (
