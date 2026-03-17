@@ -511,7 +511,7 @@ export default function Features() {
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           animation: grid.visible
-                            ? `feat-numberIn 0.9s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.2}s forwards, feat-holoShift 8s linear ${1.5 + i * 0.5}s infinite`
+                            ? `feat-numberIn 0.9s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.2}s forwards`
                             : 'none',
                           animationFillMode: 'both',
                           opacity: 0,
