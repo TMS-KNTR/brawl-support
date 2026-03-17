@@ -85,14 +85,6 @@ export default function Features() {
           opacity: 1;
           animation: feat-shimmer 1s ease forwards;
         }
-        .feat-secondary-card {
-          transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease, border-color 0.3s ease;
-        }
-        .feat-secondary-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(91,58,232,0.3);
-          box-shadow: 0 12px 28px rgba(91,58,232,0.08);
-        }
       `}</style>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -202,32 +194,30 @@ export default function Features() {
           ))}
         </div>
 
-        {/* Bottom 3 secondary features */}
-        <div ref={secondaryGrid.ref} className="grid grid-cols-3 gap-3">
+        {/* Bottom 3 secondary features — borderless large icon */}
+        <div ref={secondaryGrid.ref} className="grid grid-cols-3 gap-6 mt-2">
           {secondary.map((f, i) => (
             <div
               key={i}
-              className="feat-secondary-card group rounded-xl border border-[#E8E4F3] p-5 text-center"
+              className="flex flex-col items-center py-6"
               style={{
                 opacity: secondaryGrid.visible ? 1 : 0,
                 animation: secondaryGrid.visible
-                  ? `feat-fadeUp 0.55s cubic-bezier(0.22,1,0.36,1) ${0.05 + i * 0.08}s forwards`
+                  ? `feat-fadeUp 0.55s cubic-bezier(0.22,1,0.36,1) ${0.05 + i * 0.1}s forwards`
                   : 'none',
                 animationFillMode: 'both',
               }}
             >
-              <div className="w-10 h-10 rounded-lg bg-[#F3F0FF] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[#EDE9FE] group-hover:scale-110">
-                <i className={`${f.icon} text-sm text-[#5B3AE8] transition-all duration-300`}></i>
-              </div>
-              <h3
-                className="text-[12px] font-bold text-[#1A1A2E] tracking-wide mb-1"
+              <i className={`${f.icon} text-[28px] text-[#5B3AE8] mb-3`}></i>
+              <span
+                className="text-[13px] font-bold text-[#1A1A2E] tracking-wide mb-1"
                 style={{ fontFamily: '"Rajdhani", sans-serif' }}
               >
                 {f.title}
-              </h3>
-              <p className="text-[10px] text-[#8A7DA8] font-medium">
+              </span>
+              <span className="text-[10px] text-[#8A7DA8] font-medium">
                 {f.desc}
-              </p>
+              </span>
             </div>
           ))}
         </div>
