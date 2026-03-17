@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/* ── Scroll-reveal hook ── */
+/* ── Scroll-reveal ── */
 function useReveal(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -17,89 +17,83 @@ function useReveal(threshold = 0.2) {
   return { ref, visible };
 }
 
-/* ── 3D tilt card hook ── */
+/* ── 3D tilt with dynamic shadow ── */
 function useTilt() {
   const ref = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
   const handleMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = ref.current;
+    const glow = glowRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    el.style.transform = `perspective(600px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-8px) scale(1.02)`;
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    const rx = (y - 0.5) * -14;
+    const ry = (x - 0.5) * 14;
+    el.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(20px)`;
+    el.style.boxShadow = `${(x - 0.5) * -30}px ${(y - 0.5) * -30}px 60px rgba(91,58,232,0.2), 0 0 50px rgba(91,58,232,0.08)`;
+    if (glow) {
+      glow.style.opacity = '1';
+      glow.style.background = `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(139,122,255,0.25) 0%, transparent 60%)`;
+    }
   }, []);
   const handleLeave = useCallback(() => {
     const el = ref.current;
-    if (!el) return;
-    el.style.transform = '';
+    const glow = glowRef.current;
+    if (el) { el.style.transform = ''; el.style.boxShadow = ''; }
+    if (glow) glow.style.opacity = '0';
   }, []);
-  return { ref, handleMove, handleLeave };
+  return { ref, glowRef, handleMove, handleLeave };
 }
 
-/* ── Slot-machine number component ── */
-function SlotNumber({ value, visible, delay }: { value: string; visible: boolean; delay: number }) {
+/* ── Glitch slot number ── */
+function GlitchNumber({ value, visible, delay }: { value: string; visible: boolean; delay: number }) {
   const [display, setDisplay] = useState(value);
-  const isNumeric = /^\d+$/.test(value);
+  const [glitch, setGlitch] = useState(false);
+  const isNum = /^\d+$/.test(value);
 
   useEffect(() => {
-    if (!visible || !isNumeric) return;
-    const target = parseInt(value);
-    let frame = 0;
-    const totalFrames = 18;
-    const interval = setInterval(() => {
-      frame++;
-      if (frame >= totalFrames) {
-        setDisplay(value);
-        clearInterval(interval);
-      } else {
-        setDisplay(String(Math.floor(Math.random() * (target + 50))));
-      }
-    }, 40);
-    const timer = setTimeout(() => {
-      /* kick off after delay */
+    if (!visible) return;
+    const t = setTimeout(() => {
+      if (!isNum) { setGlitch(true); setTimeout(() => setGlitch(false), 400); return; }
+      const target = parseInt(value);
+      let f = 0;
+      setGlitch(true);
+      const iv = setInterval(() => {
+        f++;
+        if (f > 20) { setDisplay(value); setGlitch(false); clearInterval(iv); }
+        else setDisplay(String(Math.floor(Math.random() * (target + 80))));
+      }, 35);
+      return () => clearInterval(iv);
     }, delay);
-    return () => { clearInterval(interval); clearTimeout(timer); };
-  }, [visible, value, isNumeric, delay]);
+    return () => clearTimeout(t);
+  }, [visible, value, isNum, delay]);
 
-  return <>{display}</>;
+  return (
+    <span className={glitch ? 'feat-glitch-active' : ''}>{display}</span>
+  );
 }
 
-/* ── Floating particles ── */
-const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
-  id: i,
-  x: 10 + Math.random() * 80,
-  size: 2 + Math.random() * 2,
-  duration: 6 + Math.random() * 8,
-  delay: Math.random() * 5,
-  opacity: 0.15 + Math.random() * 0.25,
+/* ── Star field ── */
+const STARS = Array.from({ length: 40 }, (_, i) => ({
+  id: i, x: Math.random() * 100, y: Math.random() * 100,
+  size: 0.8 + Math.random() * 1.5, dur: 2 + Math.random() * 4, del: Math.random() * 3,
 }));
 
+/* ── Floating particles ── */
+const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
+  id: i, x: 5 + Math.random() * 90, size: 1.5 + Math.random() * 2.5,
+  dur: 7 + Math.random() * 10, del: Math.random() * 6, hue: Math.random() > 0.5,
+}));
+
+const TIERS = ['SSR', 'UR', 'LR'];
+const TIER_COLORS = ['#C4B5FD', '#8B7AFF', '#FFD700'];
+
 export default function Features() {
-  const primary = [
-    {
-      icon: 'ri-shield-check-line',
-      highlight: 'PayPay',
-      highlightSuffix: '',
-      title: 'PayPay対応の安全決済',
-      desc: 'クレジットカード・PayPayに対応。エスクロー方式で代行完了まで代金を安全に保全。',
-      uniqueEffect: 'shield',
-    },
-    {
-      icon: 'ri-chat-private-line',
-      highlight: '0',
-      highlightSuffix: '件',
-      title: '完全匿名チャット',
-      desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。引き継ぎも専用チャットで安全に。',
-      uniqueEffect: 'lock',
-    },
-    {
-      icon: 'ri-star-line',
-      highlight: '99',
-      highlightSuffix: '%',
-      title: 'プロの技術',
-      desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。',
-      uniqueEffect: 'stars',
-    },
+  const cards = [
+    { icon: 'ri-shield-check-line', highlight: 'PayPay', suffix: '', title: 'PayPay対応の安全決済', desc: 'クレジットカード・PayPayに対応。エスクロー方式で代行完了まで代金を安全に保全。', fx: 'shield' },
+    { icon: 'ri-chat-private-line', highlight: '0', suffix: '件', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。引き継ぎも専用チャットで安全に。', fx: 'rings' },
+    { icon: 'ri-star-line', highlight: '99', suffix: '%', title: 'プロの技術', desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。', fx: 'stars' },
   ];
 
   const secondary = [
@@ -109,192 +103,290 @@ export default function Features() {
   ];
 
   const header = useReveal(0.3);
-  const primaryGrid = useReveal(0.1);
-  const secondaryGrid = useReveal(0.15);
-  const tilt0 = useTilt();
-  const tilt1 = useTilt();
-  const tilt2 = useTilt();
-  const tilts = [tilt0, tilt1, tilt2];
+  const grid = useReveal(0.08);
+  const sub = useReveal(0.15);
+  const t0 = useTilt(), t1 = useTilt(), t2 = useTilt();
+  const tilts = [t0, t1, t2];
 
   return (
-    <section className="relative py-28 overflow-hidden">
+    <section className="relative py-32 overflow-hidden">
       <style>{`
-        /* ── Background ── */
-        @keyframes feat-bgShift {
-          0%, 100% { background-position: 0% 50%; }
+        /* ══ BACKGROUND ══ */
+        @keyframes feat-aurora {
+          0%,100% { background-position: 0% 50%; }
+          25% { background-position: 50% 0%; }
           50% { background-position: 100% 50%; }
+          75% { background-position: 50% 100%; }
+        }
+        @keyframes feat-scanline {
+          0% { top: -5%; }
+          100% { top: 105%; }
+        }
+        @keyframes feat-twinkle {
+          0%,100% { opacity: 0.1; }
+          50% { opacity: 0.8; }
+        }
+        @keyframes feat-gridPulse {
+          0%,100% { opacity: 0.02; }
+          50% { opacity: 0.05; }
         }
 
-        /* ── Reveals ── */
+        /* ══ REVEALS ══ */
         @keyframes feat-fadeUp {
           from { opacity: 0; transform: translateY(32px); }
-          to   { opacity: 1; transform: translateY(0); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes feat-headerIn {
-          from { opacity: 0; transform: translateY(20px) rotateX(35deg); }
-          to   { opacity: 1; transform: translateY(0) rotateX(0deg); }
+          from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
+          to { opacity: 1; transform: translateY(0) rotateX(0); }
         }
-        @keyframes feat-cardReveal {
-          from { opacity: 0; transform: scale(0.88) translateY(30px); filter: blur(4px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+        @keyframes feat-materialize {
+          0% { opacity: 0; transform: scale(0.85) translateY(40px); filter: blur(8px) brightness(2); }
+          40% { filter: blur(0) brightness(1.5); }
+          70% { transform: scale(1.02) translateY(-4px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0) brightness(1); }
         }
-        @keyframes feat-numberReveal {
-          0% { opacity: 0; transform: translateY(16px) scale(0.8); filter: blur(6px); }
-          60% { opacity: 1; transform: translateY(-4px) scale(1.05); filter: blur(0); }
-          100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        @keyframes feat-flash {
+          0% { opacity: 0.8; }
+          100% { opacity: 0; }
+        }
+        @keyframes feat-numberIn {
+          0% { opacity: 0; transform: scale(0.5) translateY(20px); filter: blur(10px); }
+          50% { opacity: 1; transform: scale(1.08) translateY(-6px); filter: blur(0); }
+          75% { transform: scale(0.97) translateY(2px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        /* ── Card effects ── */
+        /* ══ CARD FX ══ */
         @keyframes feat-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
+          0%,100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
         }
         @keyframes feat-holoShift {
           0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
+        }
+        @keyframes feat-meshMorph {
+          0%,100% { background-position: 0% 0%; }
+          33% { background-position: 100% 50%; }
+          66% { background-position: 50% 100%; }
         }
         @keyframes feat-shimmerSweep {
-          0% { left: -100%; }
-          100% { left: 200%; }
+          0% { transform: translateX(-100%) skewX(-15deg); }
+          100% { transform: translateX(250%) skewX(-15deg); }
+        }
+        @keyframes feat-chargeVibrate {
+          0%,100% { transform: translateX(0); }
+          25% { transform: translateX(-1px); }
+          75% { transform: translateX(1px); }
         }
 
-        /* ── Unique card effects ── */
-        @keyframes feat-shieldPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(91,58,232,0.3); }
-          50% { box-shadow: 0 0 20px 8px rgba(91,58,232,0.08); }
+        /* Unique FX */
+        @keyframes feat-shieldAura {
+          0%,100% { box-shadow: 0 0 0 0 rgba(91,58,232,0.4), 0 0 0 0 rgba(139,122,255,0.2); }
+          50% { box-shadow: 0 0 24px 8px rgba(91,58,232,0.12), 0 0 40px 16px rgba(139,122,255,0.06); }
         }
-        @keyframes feat-ringExpand {
-          0% { transform: scale(0.6); opacity: 0.6; }
-          100% { transform: scale(1.8); opacity: 0; }
+        @keyframes feat-ringPulse {
+          0% { transform: scale(0.5); opacity: 0.7; border-color: rgba(139,122,255,0.3); }
+          100% { transform: scale(2.2); opacity: 0; border-color: rgba(139,122,255,0); }
         }
-        @keyframes feat-sparkle {
-          0%, 100% { opacity: 0; transform: scale(0); }
-          50% { opacity: 1; transform: scale(1); }
-        }
-
-        /* ── Particles ── */
-        @keyframes feat-particleUp {
-          0% { transform: translateY(0) translateX(0); opacity: 0; }
-          15% { opacity: var(--p-opacity); }
-          85% { opacity: var(--p-opacity); }
-          100% { transform: translateY(-200px) translateX(20px); opacity: 0; }
+        @keyframes feat-starBurst {
+          0%,100% { opacity: 0; transform: scale(0) rotate(0deg); }
+          30% { opacity: 1; transform: scale(1.2) rotate(90deg); }
+          60% { opacity: 0.6; transform: scale(0.8) rotate(180deg); }
         }
 
-        /* ── Secondary bounce ── */
-        @keyframes feat-iconBounce {
-          0% { opacity: 0; transform: translateY(20px) scale(0.7); }
-          60% { transform: translateY(-6px) scale(1.1); }
-          80% { transform: translateY(2px) scale(0.98); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
+        /* Particles */
+        @keyframes feat-particleDrift {
+          0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+          10% { opacity: var(--po,0.3); }
+          80% { opacity: var(--po,0.3); }
+          100% { transform: translateY(-220px) translateX(30px) scale(0.5); opacity: 0; }
         }
 
-        /* ── Card container ── */
-        .feat-card {
-          transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), box-shadow 0.5s ease;
-          animation: feat-float 5s ease-in-out infinite;
-          will-change: transform;
+        /* Secondary */
+        @keyframes feat-hexReveal {
+          0% { opacity: 0; transform: scale(0.4) rotate(-30deg); }
+          60% { transform: scale(1.15) rotate(5deg); }
+          100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
-        .feat-card:nth-child(2) { animation-delay: -1.7s; }
-        .feat-card:nth-child(3) { animation-delay: -3.3s; }
-        .feat-card:hover {
-          animation-play-state: paused;
-          box-shadow:
-            0 24px 48px rgba(18,8,42,0.3),
-            0 0 40px rgba(91,58,232,0.15),
-            inset 0 1px 0 rgba(255,255,255,0.05);
+        @keyframes feat-energyPulse {
+          0% { left: 0%; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { left: 100%; opacity: 0; }
         }
 
-        /* ── Holographic border ── */
-        .feat-holo-border {
-          position: absolute;
-          inset: -1px;
-          border-radius: 1rem;
-          padding: 1px;
-          background: linear-gradient(135deg, #5B3AE8, #8B7AFF, #C4B5FD, #8B7AFF, #5B3AE8);
-          background-size: 300% 300%;
+        /* Glitch */
+        .feat-glitch-active {
+          animation: feat-glitchText 0.1s steps(2) infinite;
+        }
+        @keyframes feat-glitchText {
+          0% { text-shadow: 2px 0 #8B7AFF, -2px 0 #C4B5FD; }
+          50% { text-shadow: -1px 0 #5B3AE8, 1px 0 #FFD700; }
+          100% { text-shadow: 1px 0 #C4B5FD, -1px 0 #8B7AFF; }
+        }
+
+        /* ══ CARD CLASS ══ */
+        .feat-loot-card {
+          transition: transform 0.6s cubic-bezier(0.22,1,0.36,1), box-shadow 0.6s ease;
+          animation: feat-float 6s ease-in-out infinite;
+          will-change: transform, box-shadow;
+          transform-style: preserve-3d;
+        }
+        .feat-loot-card:nth-child(2) { animation-delay: -2s; }
+        .feat-loot-card:nth-child(3) { animation-delay: -4s; }
+        .feat-loot-card:hover {
+          animation: feat-chargeVibrate 0.05s steps(2) 3;
+        }
+
+        /* Holo border */
+        .feat-holo {
+          position: absolute; inset: -1.5px; border-radius: 1.125rem; padding: 1.5px; pointer-events: none;
+          background: linear-gradient(135deg, #5B3AE8, #8B7AFF, #C4B5FD, #FFD700, #8B7AFF, #5B3AE8, #C4B5FD);
+          background-size: 400% 400%;
           -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          opacity: 0;
-          transition: opacity 0.4s ease;
-          pointer-events: none;
+          -webkit-mask-composite: xor; mask-composite: exclude;
+          opacity: 0; transition: opacity 0.5s ease;
         }
-        .feat-card:hover .feat-holo-border {
+        .feat-loot-card:hover .feat-holo {
           opacity: 1;
-          animation: feat-holoShift 3s ease infinite;
+          animation: feat-holoShift 3s linear infinite;
+        }
+
+        /* Noise texture overlay */
+        .feat-noise {
+          position: absolute; inset: 0; border-radius: inherit; pointer-events: none; mix-blend-mode: overlay; opacity: 0.06;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+          background-size: 128px 128px;
+        }
+
+        /* Hexagon clip */
+        .feat-hex {
+          clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
         }
       `}</style>
 
-      {/* ── Background texture ── */}
-      <div className="absolute inset-0 bg-white" />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: 'radial-gradient(circle, #5B3AE8 0.8px, transparent 0.8px)',
-          backgroundSize: '24px 24px',
-        }}
-      />
+      {/* ══ DEEP SPACE BACKGROUND ══ */}
+      <div className="absolute inset-0 bg-[#FAFBFF]" />
+
+      {/* Aurora nebula */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(91,58,232,0.04) 0%, transparent 70%)',
+          background: 'linear-gradient(135deg, rgba(91,58,232,0.03) 0%, rgba(139,122,255,0.02) 25%, transparent 50%, rgba(196,181,253,0.03) 75%, rgba(91,58,232,0.02) 100%)',
+          backgroundSize: '200% 200%',
+          animation: 'feat-aurora 20s ease infinite',
         }}
       />
 
-      {/* ── Floating particles ── */}
-      {PARTICLES.map((p) => (
+      {/* Geometric grid */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(91,58,232,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(91,58,232,0.04) 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
+          animation: 'feat-gridPulse 8s ease infinite',
+        }}
+      />
+
+      {/* Dot grid overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.025]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, #5B3AE8 0.6px, transparent 0.6px)',
+          backgroundSize: '20px 20px',
+        }}
+      />
+
+      {/* Star field */}
+      {STARS.map(s => (
+        <div
+          key={s.id}
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: s.size, height: s.size, left: `${s.x}%`, top: `${s.y}%`,
+            background: s.id % 3 === 0 ? '#8B7AFF' : s.id % 3 === 1 ? '#C4B5FD' : '#5B3AE8',
+            animation: `feat-twinkle ${s.dur}s ease-in-out ${s.del}s infinite`,
+          }}
+        />
+      ))}
+
+      {/* Floating particles */}
+      {PARTICLES.map(p => (
         <div
           key={p.id}
           className="absolute rounded-full pointer-events-none"
           style={{
-            width: p.size,
-            height: p.size,
-            left: `${p.x}%`,
-            bottom: '20%',
-            background: p.id % 2 === 0 ? '#8B7AFF' : '#C4B5FD',
-            '--p-opacity': p.opacity,
-            animation: `feat-particleUp ${p.duration}s ease-in-out ${p.delay}s infinite`,
-            filter: 'blur(0.5px)',
+            width: p.size, height: p.size, left: `${p.x}%`, bottom: '10%',
+            background: p.hue ? '#8B7AFF' : '#C4B5FD',
+            '--po': 0.25,
+            animation: `feat-particleDrift ${p.dur}s ease-in-out ${p.del}s infinite`,
+            filter: 'blur(0.3px)',
           } as React.CSSProperties}
         />
       ))}
 
-      {/* ── Top/bottom fade transitions ── */}
-      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-white to-transparent pointer-events-none z-10" />
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none z-10" />
+      {/* Scanline */}
+      <div
+        className="absolute left-0 right-0 h-[1px] pointer-events-none z-30"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(139,122,255,0.12) 20%, rgba(139,122,255,0.12) 80%, transparent)',
+          animation: 'feat-scanline 6s linear infinite',
+        }}
+      />
+
+      {/* Vignette */}
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 120px rgba(26,26,46,0.06)' }} />
+
+      {/* Section transitions */}
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent pointer-events-none z-10" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent pointer-events-none z-10" />
 
       <div className="relative z-20 max-w-7xl mx-auto px-6 lg:px-8">
 
-        {/* ── Section header ── */}
-        <div ref={header.ref} className="text-center mb-16" style={{ perspective: '600px' }}>
+        {/* ══ HEADER ══ */}
+        <div ref={header.ref} className="text-center mb-20" style={{ perspective: '800px' }}>
           <span
-            className="inline-block text-[10px] font-bold tracking-[0.25em] uppercase text-[#5B3AE8] mb-4"
+            className="inline-block text-[10px] font-bold tracking-[0.3em] uppercase text-[#5B3AE8] mb-5"
             style={{
               fontFamily: '"Orbitron", sans-serif',
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'feat-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
+              animation: header.visible ? 'feat-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
               animationFillMode: 'both',
             }}
           >
             Why GEMSUKE
           </span>
           <h2
-            className="text-2xl sm:text-3xl font-extrabold text-[#1A1A2E] tracking-wider mb-4"
+            className="text-[clamp(1.5rem,4vw,2.5rem)] font-extrabold text-[#1A1A2E] tracking-wider mb-5"
             style={{
               fontFamily: '"Orbitron", sans-serif',
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'feat-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.12s forwards' : 'none',
+              animation: header.visible ? 'feat-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.12s forwards' : 'none',
               animationFillMode: 'both',
             }}
           >
             なぜGEMSUKEが選ばれるのか
           </h2>
+          <div
+            className="mx-auto mb-5"
+            style={{
+              width: '48px', height: '2px',
+              background: 'linear-gradient(90deg, transparent, #5B3AE8, transparent)',
+              opacity: header.visible ? 1 : 0,
+              animation: header.visible ? 'feat-fadeUp 0.6s ease 0.3s forwards' : 'none',
+              animationFillMode: 'both',
+            }}
+          />
           <p
             className="text-[13px] text-[#7C6F99] max-w-md mx-auto leading-relaxed font-medium"
             style={{
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'feat-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s forwards' : 'none',
+              animation: header.visible ? 'feat-fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s forwards' : 'none',
               animationFillMode: 'both',
             }}
           >
@@ -302,183 +394,246 @@ export default function Features() {
           </p>
         </div>
 
-        {/* ── Primary feature cards ── */}
-        <div ref={primaryGrid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-          {primary.map((f, i) => {
-            const tilt = tilts[i];
+        {/* ══ LOOT CARDS ══ */}
+        <div ref={grid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          {cards.map((c, i) => {
+            const t = tilts[i];
             return (
               <div
                 key={i}
-                ref={tilt.ref}
-                onMouseMove={tilt.handleMove}
-                onMouseLeave={tilt.handleLeave}
-                className="feat-card group relative rounded-2xl p-8 overflow-hidden cursor-default"
+                ref={t.ref}
+                onMouseMove={t.handleMove}
+                onMouseLeave={t.handleLeave}
+                className="feat-loot-card group relative rounded-2xl overflow-hidden cursor-default"
                 style={{
-                  background: 'linear-gradient(150deg, #1A1A2E 0%, #0F0720 40%, #160B35 100%)',
-                  opacity: primaryGrid.visible ? 1 : 0,
-                  animation: primaryGrid.visible
-                    ? `feat-cardReveal 0.7s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.15}s forwards`
+                  opacity: grid.visible ? 1 : 0,
+                  animation: grid.visible
+                    ? `feat-materialize 0.9s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.2}s forwards`
                     : 'none',
                   animationFillMode: 'both',
                 }}
               >
-                {/* Holographic border on hover */}
-                <div className="feat-holo-border" />
+                {/* Holo border */}
+                <div className="feat-holo" />
 
-                {/* Inner nebula */}
+                {/* Card surface */}
                 <div
-                  className="absolute inset-0 pointer-events-none"
+                  className="relative p-8 pb-7"
                   style={{
-                    background: `radial-gradient(ellipse 80% 70% at ${25 + i * 30}% 85%, rgba(91,58,232,0.12) 0%, transparent 65%)`,
+                    background: `
+                      radial-gradient(ellipse 120% 80% at ${20 + i * 30}% 110%, rgba(91,58,232,0.18) 0%, transparent 50%),
+                      radial-gradient(ellipse 80% 60% at ${70 - i * 20}% -10%, rgba(139,122,255,0.08) 0%, transparent 50%),
+                      linear-gradient(155deg, #151025 0%, #0C0618 35%, #110A28 65%, #0E071E 100%)
+                    `,
+                    backgroundSize: '100% 100%, 100% 100%, 100% 100%',
                   }}
-                />
-
-                {/* ── Unique per-card effect ── */}
-                {f.uniqueEffect === 'shield' && (
-                  <div
-                    className="absolute top-6 right-6 w-16 h-16 rounded-full pointer-events-none"
-                    style={{ animation: 'feat-shieldPulse 3s ease-in-out infinite' }}
-                  >
-                    <i className="ri-shield-check-fill text-[32px] text-[#5B3AE8]/20 absolute inset-0 flex items-center justify-center"></i>
-                  </div>
-                )}
-                {f.uniqueEffect === 'lock' && (
-                  <div className="absolute top-8 right-8 pointer-events-none">
-                    {[0, 1, 2].map((r) => (
-                      <div
-                        key={r}
-                        className="absolute rounded-full border border-[#8B7AFF]/10"
-                        style={{
-                          width: `${30 + r * 20}px`,
-                          height: `${30 + r * 20}px`,
-                          top: `${-(r * 10)}px`,
-                          left: `${-(r * 10)}px`,
-                          animation: `feat-ringExpand ${2 + r * 0.5}s ease-out ${r * 0.8}s infinite`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-                {f.uniqueEffect === 'stars' && (
-                  <div className="absolute top-4 right-4 pointer-events-none">
-                    {[0, 1, 2, 3].map((s) => (
-                      <div
-                        key={s}
-                        className="absolute w-1.5 h-1.5 rounded-full bg-[#C4B5FD]"
-                        style={{
-                          top: `${s * 12}px`,
-                          left: `${(s % 2) * 20 + 5}px`,
-                          animation: `feat-sparkle ${1.5 + s * 0.4}s ease-in-out ${s * 0.6}s infinite`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Shimmer sweep on hover */}
-                <div
-                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ overflow: 'hidden' }}
                 >
+                  {/* Animated mesh */}
                   <div
-                    className="absolute top-0 bottom-0 w-[60%]"
+                    className="absolute inset-0 pointer-events-none opacity-30"
                     style={{
-                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent)',
-                      animation: 'feat-shimmerSweep 1.5s ease-in-out infinite',
+                      background: `
+                        radial-gradient(circle at ${30 + i * 20}% 80%, rgba(91,58,232,0.2) 0%, transparent 40%),
+                        radial-gradient(circle at ${70 - i * 15}% 20%, rgba(139,122,255,0.15) 0%, transparent 40%)
+                      `,
+                      backgroundSize: '200% 200%',
+                      animation: 'feat-meshMorph 12s ease infinite',
+                    }}
+                  />
+
+                  {/* Noise texture */}
+                  <div className="feat-noise" />
+
+                  {/* Mouse glow */}
+                  <div
+                    ref={t.glowRef}
+                    className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300 z-[5]"
+                    style={{ opacity: 0 }}
+                  />
+
+                  {/* Hover shimmer */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-[6]">
+                    <div
+                      className="absolute top-0 bottom-0 w-[40%]"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+                        animation: 'feat-shimmerSweep 2s ease-in-out infinite',
+                      }}
+                    />
+                  </div>
+
+                  {/* Tier badge */}
+                  <div
+                    className="absolute top-4 right-4 z-20 px-2 py-0.5 rounded text-[8px] font-black tracking-widest"
+                    style={{
+                      fontFamily: '"Orbitron", sans-serif',
+                      color: TIER_COLORS[i],
+                      background: `${TIER_COLORS[i]}12`,
+                      border: `1px solid ${TIER_COLORS[i]}30`,
+                      textShadow: `0 0 8px ${TIER_COLORS[i]}40`,
+                    }}
+                  >
+                    {TIERS[i]}
+                  </div>
+
+                  {/* ── Unique FX ── */}
+                  {c.fx === 'shield' && (
+                    <div className="absolute top-12 right-8 pointer-events-none z-[2]">
+                      <div className="relative w-14 h-14 flex items-center justify-center" style={{ animation: 'feat-shieldAura 3s ease-in-out infinite' }}>
+                        <i className="ri-shield-check-fill text-[28px] text-[#5B3AE8]/15"></i>
+                      </div>
+                    </div>
+                  )}
+                  {c.fx === 'rings' && (
+                    <div className="absolute top-14 right-10 pointer-events-none z-[2]">
+                      {[0,1,2,3].map(r => (
+                        <div
+                          key={r}
+                          className="absolute rounded-full border"
+                          style={{
+                            width: 24, height: 24, top: -12, left: -12,
+                            borderColor: `rgba(139,122,255,${0.2 - r * 0.04})`,
+                            animation: `feat-ringPulse ${1.8 + r * 0.4}s ease-out ${r * 0.5}s infinite`,
+                          }}
+                        />
+                      ))}
+                      <i className="ri-lock-2-fill text-[14px] text-[#8B7AFF]/20 relative z-10"></i>
+                    </div>
+                  )}
+                  {c.fx === 'stars' && (
+                    <div className="absolute top-10 right-6 pointer-events-none z-[2]">
+                      {[0,1,2,3,4].map(s => (
+                        <div
+                          key={s}
+                          className="absolute"
+                          style={{
+                            width: 3 + (s % 2) * 2, height: 3 + (s % 2) * 2,
+                            top: s * 10 - 5, left: (s % 3) * 14 - 8,
+                            borderRadius: '50%',
+                            background: s % 2 === 0 ? '#FFD700' : '#C4B5FD',
+                            animation: `feat-starBurst ${1.5 + s * 0.3}s ease-in-out ${s * 0.5}s infinite`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Flash overlay on reveal */}
+                  {grid.visible && (
+                    <div
+                      className="absolute inset-0 bg-white pointer-events-none rounded-2xl z-30"
+                      style={{
+                        animation: `feat-flash 0.5s ease ${0.15 + i * 0.2}s forwards`,
+                        animationFillMode: 'both', opacity: 0,
+                      }}
+                    />
+                  )}
+
+                  {/* ── Content ── */}
+                  <div className="relative z-10">
+                    {/* Ghost number (depth layer) */}
+                    <div className="absolute -top-4 -left-2 pointer-events-none select-none" aria-hidden="true">
+                      <span
+                        className="text-[100px] font-black leading-none text-white/[0.02]"
+                        style={{ fontFamily: '"Orbitron", sans-serif' }}
+                      >
+                        {c.highlight}
+                      </span>
+                    </div>
+
+                    {/* Big number */}
+                    <div className="flex items-baseline gap-1.5 mb-5">
+                      <p
+                        className="text-[52px] font-black leading-none"
+                        style={{
+                          fontFamily: '"Orbitron", sans-serif',
+                          background: 'linear-gradient(135deg, #fff 0%, #E0D4FF 30%, #8B7AFF 60%, #5B3AE8 100%)',
+                          backgroundSize: '300% 300%',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          animation: grid.visible
+                            ? `feat-numberIn 0.9s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.2}s forwards, feat-holoShift 8s linear ${1.5 + i * 0.5}s infinite`
+                            : 'none',
+                          animationFillMode: 'both',
+                          opacity: 0,
+                        }}
+                      >
+                        <GlitchNumber value={c.highlight} visible={grid.visible} delay={400 + i * 200} />
+                      </p>
+                      {c.suffix && (
+                        <span className="text-[22px] font-bold text-white/25" style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+                          {c.suffix}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3
+                      className="text-[16px] font-bold text-white mb-2.5 tracking-wide"
+                      style={{ fontFamily: '"Rajdhani", sans-serif' }}
+                    >
+                      {c.title}
+                    </h3>
+                    <p className="text-[12px] text-[#9890B8] leading-[1.7] font-medium">
+                      {c.desc}
+                    </p>
+                  </div>
+
+                  {/* Bottom accent bar */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-[2px]"
+                    style={{
+                      background: `linear-gradient(90deg, transparent 5%, ${TIER_COLORS[i]}40 30%, ${TIER_COLORS[i]}60 50%, ${TIER_COLORS[i]}40 70%, transparent 95%)`,
                     }}
                   />
                 </div>
-
-                <div className="relative z-10">
-                  {/* Big highlight */}
-                  <div className="flex items-baseline gap-1 mb-4">
-                    <p
-                      className="text-[44px] font-black leading-none"
-                      style={{
-                        fontFamily: '"Orbitron", sans-serif',
-                        background: 'linear-gradient(135deg, #fff 0%, #C4B5FD 40%, #8B7AFF 70%, #5B3AE8 100%)',
-                        backgroundSize: '200% 200%',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        animation: primaryGrid.visible
-                          ? `feat-numberReveal 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.2}s forwards, feat-holoShift 6s ease ${1.5 + i * 0.3}s infinite`
-                          : 'none',
-                        animationFillMode: 'both',
-                        opacity: 0,
-                      }}
-                    >
-                      <SlotNumber value={f.highlight} visible={primaryGrid.visible} delay={400 + i * 200} />
-                    </p>
-                    {f.highlightSuffix && (
-                      <span
-                        className="text-[20px] font-bold text-white/30"
-                        style={{ fontFamily: '"Rajdhani", sans-serif' }}
-                      >
-                        {f.highlightSuffix}
-                      </span>
-                    )}
-                  </div>
-
-                  <h3
-                    className="text-[15px] font-bold text-white mb-2 tracking-wide"
-                    style={{ fontFamily: '"Rajdhani", sans-serif' }}
-                  >
-                    {f.title}
-                  </h3>
-                  <p className="text-[12px] text-[#9890B8] leading-relaxed font-medium">
-                    {f.desc}
-                  </p>
-                </div>
-
-                {/* Bottom accent */}
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-[1px] opacity-40"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent 10%, #5B3AE8, transparent 90%)',
-                  }}
-                />
               </div>
             );
           })}
         </div>
 
-        {/* ── Secondary features with connecting line ── */}
-        <div ref={secondaryGrid.ref} className="relative">
-          {/* Connecting line */}
-          <div
-            className="absolute top-[24px] left-[16.67%] right-[16.67%] h-[1px] hidden md:block"
-            style={{
-              background: 'linear-gradient(90deg, transparent, #D4D0E8 20%, #D4D0E8 80%, transparent)',
-              opacity: secondaryGrid.visible ? 1 : 0,
-              transition: 'opacity 0.6s ease 0.3s',
-            }}
-          />
+        {/* ══ SECONDARY — CIRCUIT HEXAGONS ══ */}
+        <div ref={sub.ref} className="relative">
+          {/* Energy line */}
+          <div className="absolute top-[28px] left-[16%] right-[16%] h-[2px] hidden md:block overflow-hidden" style={{ opacity: sub.visible ? 1 : 0, transition: 'opacity 0.6s ease 0.4s' }}>
+            <div style={{ background: 'linear-gradient(90deg, transparent, #D4D0E8 15%, #D4D0E8 85%, transparent)', height: '100%', width: '100%' }} />
+            {sub.visible && (
+              <div
+                className="absolute top-0 h-full w-[30px] rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, #5B3AE8, #8B7AFF, transparent)',
+                  animation: 'feat-energyPulse 3s ease-in-out 0.8s infinite',
+                  boxShadow: '0 0 8px #5B3AE8',
+                }}
+              />
+            )}
+          </div>
 
           <div className="grid grid-cols-3 gap-6">
-            {secondary.map((f, i) => (
+            {secondary.map((s, i) => (
               <div
                 key={i}
-                className="flex flex-col items-center py-6"
+                className="flex flex-col items-center py-5"
                 style={{
-                  opacity: secondaryGrid.visible ? 1 : 0,
-                  animation: secondaryGrid.visible
-                    ? `feat-iconBounce 0.7s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.12}s forwards`
+                  opacity: sub.visible ? 1 : 0,
+                  animation: sub.visible
+                    ? `feat-hexReveal 0.7s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.15}s forwards`
                     : 'none',
                   animationFillMode: 'both',
                 }}
               >
-                <div className="w-12 h-12 rounded-full bg-[#F3F0FF] flex items-center justify-center mb-3 relative z-10">
-                  <i className={`${f.icon} text-[22px] text-[#5B3AE8]`}></i>
+                <div
+                  className="feat-hex w-14 h-14 flex items-center justify-center mb-3.5 relative z-10"
+                  style={{ background: 'linear-gradient(135deg, #EDE9FE, #F3F0FF)' }}
+                >
+                  <i className={`${s.icon} text-[20px] text-[#5B3AE8]`}></i>
                 </div>
                 <span
                   className="text-[13px] font-bold text-[#1A1A2E] tracking-wide mb-1"
                   style={{ fontFamily: '"Rajdhani", sans-serif' }}
                 >
-                  {f.title}
+                  {s.title}
                 </span>
-                <span className="text-[10px] text-[#8A7DA8] font-medium">
-                  {f.desc}
-                </span>
+                <span className="text-[10px] text-[#8A7DA8] font-medium">{s.desc}</span>
               </div>
             ))}
           </div>
