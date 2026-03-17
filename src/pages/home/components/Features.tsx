@@ -372,16 +372,6 @@ export default function Features() {
           >
             なぜGEMSUKEが選ばれるのか
           </h2>
-          <div
-            className="mx-auto mb-5"
-            style={{
-              width: '48px', height: '2px',
-              background: 'linear-gradient(90deg, transparent, #5B3AE8, transparent)',
-              opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'feat-fadeUp 0.6s ease 0.3s forwards' : 'none',
-              animationFillMode: 'both',
-            }}
-          />
           <p
             className="text-[13px] text-[#7C6F99] max-w-md mx-auto leading-relaxed font-medium"
             style={{
@@ -462,19 +452,6 @@ export default function Features() {
                     />
                   </div>
 
-                  {/* Tier badge */}
-                  <div
-                    className="absolute top-4 right-4 z-20 px-2 py-0.5 rounded text-[8px] font-black tracking-widest"
-                    style={{
-                      fontFamily: '"Orbitron", sans-serif',
-                      color: TIER_COLORS[i],
-                      background: `${TIER_COLORS[i]}12`,
-                      border: `1px solid ${TIER_COLORS[i]}30`,
-                      textShadow: `0 0 8px ${TIER_COLORS[i]}40`,
-                    }}
-                  >
-                    {TIERS[i]}
-                  </div>
 
                   {/* ── Unique FX ── */}
                   {c.fx === 'shield' && (
@@ -578,13 +555,6 @@ export default function Features() {
                     </p>
                   </div>
 
-                  {/* Bottom accent bar */}
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-[2px]"
-                    style={{
-                      background: `linear-gradient(90deg, transparent 5%, ${TIER_COLORS[i]}40 30%, ${TIER_COLORS[i]}60 50%, ${TIER_COLORS[i]}40 70%, transparent 95%)`,
-                    }}
-                  />
                 </div>
               </div>
             );
