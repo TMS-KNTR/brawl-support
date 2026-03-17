@@ -386,7 +386,7 @@ export default function Features() {
                 ref={t.ref}
                 onMouseMove={t.handleMove}
                 onMouseLeave={t.handleLeave}
-                className="feat-loot-card group relative rounded-2xl overflow-hidden cursor-default"
+                className="feat-loot-card group relative rounded-2xl cursor-default"
                 style={{
                   opacity: grid.visible ? 1 : 0,
                   animation: grid.visible
@@ -400,7 +400,7 @@ export default function Features() {
 
                 {/* Card surface */}
                 <div
-                  className="relative p-8"
+                  className="relative p-8 rounded-2xl overflow-hidden"
                   style={{
                     background: `
                       radial-gradient(ellipse 120% 80% at ${20 + i * 30}% 110%, rgba(91,58,232,0.18) 0%, transparent 50%),
