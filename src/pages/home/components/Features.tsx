@@ -400,7 +400,7 @@ export default function Features() {
 
                 {/* Card surface */}
                 <div
-                  className="relative p-8 rounded-2xl overflow-hidden"
+                  className="relative p-8 rounded-2xl overflow-hidden h-full"
                   style={{
                     background: `
                       radial-gradient(ellipse 120% 80% at ${20 + i * 30}% 110%, rgba(91,58,232,0.18) 0%, transparent 50%),
