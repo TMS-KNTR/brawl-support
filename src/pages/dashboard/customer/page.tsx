@@ -314,8 +314,8 @@ export default function CustomerDashboardPage() {
               <div className="flex gap-1 mt-5">
                 {([
                   { key: 'all' as const, label: 'すべて', count: orders.length },
-                  { key: 'active' as const, label: '進行中', count: orders.filter(o => activeStatuses.includes(o.status)).length },
-                  { key: 'done' as const, label: '完了済', count: orders.filter(o => doneStatuses.includes(o.status)).length },
+                  { key: 'active' as const, label: '進行中', count: orders.filter(o => activeStatuses.includes(normalizeStatus(o.status))).length },
+                  { key: 'done' as const, label: '完了済', count: orders.filter(o => doneStatuses.includes(normalizeStatus(o.status))).length },
                 ]).map((tab) => (
                   <button key={tab.key} onClick={() => setFilter(tab.key)}
                     className={`px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-colors cursor-pointer ${
@@ -582,11 +582,17 @@ export default function CustomerDashboardPage() {
         {/* ═══ Rating Modal ═══ */}
         {showRating && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowRating(false)} />
             <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl">
-              <div className="px-6 py-4 border-b border-[#F0F0F0]">
-                <h2 className="text-[15px] font-bold text-[#111]">評価を送信</h2>
-                <p className="text-[11px] text-[#999] mt-0.5">代行者への満足度を教えてください</p>
+              <div className="px-6 py-4 border-b border-[#F0F0F0] flex items-center justify-between">
+                <div>
+                  <h2 className="text-[15px] font-bold text-[#111]">評価を送信</h2>
+                  <p className="text-[11px] text-[#999] mt-0.5">代行者への満足度を教えてください</p>
+                </div>
+                <button onClick={() => setShowRating(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors cursor-pointer text-[#999]">
+                  <i className="ri-close-line text-[18px]"></i>
+                </button>
               </div>
               <div className="p-6">
                 <div className="mb-5">

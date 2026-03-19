@@ -33,39 +33,40 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Service */}
-          <div>
-            <h3
-              className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#666] mb-5"
-              style={{ fontFamily: '"Orbitron", sans-serif' }}
-            >
-              サービス
-            </h3>
-            <ul className="space-y-3">
-              <li><Link to="/games" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">対応ゲーム</Link></li>
-              <li><Link to="/order/new" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">依頼する</Link></li>
-              <li><Link to="/register" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">新規登録</Link></li>
-              <li>
-                <a href="mailto:gemusuke.official@gmail.com" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 cursor-pointer font-medium">
-                  お問い合わせ
-                </a>
-              </li>
-            </ul>
-          </div>
+          {/* Service & Legal — スマホでは横並び */}
+          <div className="grid grid-cols-2 md:contents gap-8">
+            <div>
+              <h3
+                className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#666] mb-5"
+                style={{ fontFamily: '"Orbitron", sans-serif' }}
+              >
+                サービス
+              </h3>
+              <ul className="space-y-3">
+                <li><Link to="/games" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">対応ゲーム</Link></li>
+                <li><Link to="/order/new" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">依頼する</Link></li>
+                <li><Link to="/register" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">新規登録</Link></li>
+                <li>
+                  <a href="mailto:gemusuke.official@gmail.com" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 cursor-pointer font-medium">
+                    お問い合わせ
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-          {/* Legal */}
-          <div>
-            <h3
-              className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#666] mb-5"
-              style={{ fontFamily: '"Orbitron", sans-serif' }}
-            >
-              法的情報
-            </h3>
-            <ul className="space-y-3">
-              <li><Link to="/legal/terms" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">利用規約</Link></li>
-              <li><Link to="/legal/privacy" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">プライバシーポリシー</Link></li>
-              <li><Link to="/legal/compliance" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">特定商取引法に基づく表記</Link></li>
-            </ul>
+            <div>
+              <h3
+                className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#666] mb-5"
+                style={{ fontFamily: '"Orbitron", sans-serif' }}
+              >
+                法的情報
+              </h3>
+              <ul className="space-y-3">
+                <li><Link to="/legal/terms" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">利用規約</Link></li>
+                <li><Link to="/legal/privacy" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">プライバシーポリシー</Link></li>
+                <li><Link to="/legal/compliance" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">特定商取引法に基づく表記</Link></li>
+              </ul>
+            </div>
           </div>
         </div>
 

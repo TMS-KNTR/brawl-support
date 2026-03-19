@@ -1,15 +1,12 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -40,6 +37,50 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
+    }
+
+    // 通知タイプのホワイトリスト
+    const ALLOWED_TYPES = [
+      "chat_message",
+      "ng_word_violation",
+    ];
+
+    // 管理者は制限なし。一般ユーザーは許可されたタイプのみ送信可能
+    const { data: senderProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const isAdmin = senderProfile?.role === "admin";
+
+    if (!isAdmin) {
+      // 許可されたタイプ以外は拒否
+      if (!ALLOWED_TYPES.includes(type)) {
+        return new Response(JSON.stringify({ success: false, error: "許可されていない通知タイプです" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403,
+        });
+      }
+
+      // チャット通知の場合: 送信者が対象注文の参加者であることを確認
+      if (type === "chat_message" && link_url) {
+        const threadIdMatch = link_url.match(/\/chat\/([^/]+)/);
+        if (threadIdMatch) {
+          const { data: thread } = await supabase
+            .from("chat_threads")
+            .select("order:orders(user_id, employee_id)")
+            .eq("id", threadIdMatch[1])
+            .single();
+          const order = (thread as any)?.order;
+          if (!order || (order.user_id !== user.id && order.employee_id !== user.id)) {
+            return new Response(JSON.stringify({ success: false, error: "このチャットへのアクセス権がありません" }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 403,
+            });
+          }
+        }
+      }
     }
 
     const { data: row, error } = await supabase

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -8,6 +8,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => { return () => { if (redirectTimer.current) clearTimeout(redirectTimer.current) } }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -39,7 +41,7 @@ export default function RegisterPage() {
       })
       if (signUpError) throw signUpError
       setSuccess(true)
-      setTimeout(() => navigate('/login'), 3000)
+      redirectTimer.current = setTimeout(() => navigate('/login'), 3000)
     } catch (err: any) {
       setError(err.message || '登録に失敗しました')
     } finally {

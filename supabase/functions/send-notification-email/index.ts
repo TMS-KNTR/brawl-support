@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const ALLOWED_EMAIL_TYPES = [
   "chat_message",
@@ -18,9 +14,10 @@ const ALLOWED_EMAIL_TYPES = [
 const RESEND_API = "https://api.resend.com/emails";
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(

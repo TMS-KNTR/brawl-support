@@ -1,11 +1,7 @@
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 /** Stripe API呼び出しをリトライ */
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
@@ -26,9 +22,10 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
@@ -40,14 +37,25 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // --- 認証: pg_cron (service_role) または管理者 ---
+    // --- 認証: service_role_key（pg_cron）/ 内部シークレット / 管理者JWT ---
     const authHeader = req.headers.get("Authorization");
-    if (authHeader) {
+    const internalSecret = req.headers.get("x-internal-secret");
+    const expectedSecret = Deno.env.get("INTERNAL_NOTIFICATION_SECRET");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (internalSecret && expectedSecret && internalSecret === expectedSecret) {
+      // 内部シークレット一致 — OK
+    } else if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
-      const {
-        data: { user },
-      } = await supabase.auth.getUser(token);
-      if (user) {
+      if (serviceRoleKey && token === serviceRoleKey) {
+        // pg_cron からの service_role_key — OK
+      } else {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser(token);
+        if (!user) {
+          throw new Error("認証が必要です");
+        }
         const { data: profile } = await supabase
           .from("profiles")
           .select("role")
@@ -57,6 +65,8 @@ Deno.serve(async (req: Request) => {
           throw new Error("管理者権限が必要です");
         }
       }
+    } else {
+      throw new Error("認証が必要です");
     }
 
     // --- 自動キャンセル時間を取得 (デフォルト48時間) ---
@@ -77,6 +87,7 @@ Deno.serve(async (req: Request) => {
       .from("orders")
       .select("*")
       .in("status", ["paid", "PAYMENT_PENDING"])
+      .is("employee_id", null)
       .eq("is_refunded", false)
       .lt("created_at", cutoff);
 

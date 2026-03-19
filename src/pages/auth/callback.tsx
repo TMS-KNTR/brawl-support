@@ -56,6 +56,14 @@ export default function AuthCallbackPage() {
       console.log('[auth/callback] onAuthStateChange', event);
       if (handled) return;
 
+      // パスワードリセットコールバック
+      if (event === 'PASSWORD_RECOVERY') {
+        if (session) {
+          done('/account');  // account ページでパスワード変更を促す
+        }
+        return;
+      }
+
       // メール変更完了 or サインイン
       if (event === 'USER_UPDATED' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session) {

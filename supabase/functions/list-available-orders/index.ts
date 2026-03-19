@@ -1,16 +1,13 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 // 従業員が「受注可能」一覧を取得する用。RLSで未割り当て注文が読めない場合にサービスロールで取得する
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -40,7 +37,7 @@ serve(async (req: Request) => {
 
     const { data: orders, error } = await supabase
       .from("orders")
-      .select("*")
+      .select("id, user_id, service_type, game_title, status, price, payout_amount, current_rank, target_rank, current_trophy, target_trophy, character_name, character_strength, notes, created_at")
       .in("status", ["paid", "pending", "open", "PAYMENT_PENDING"])
       .is("employee_id", null)
       .order("created_at", { ascending: false });

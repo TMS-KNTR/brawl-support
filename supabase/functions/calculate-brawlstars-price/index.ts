@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 // Brawl Starsランクマッピング
 const RANK_MAPPING = {
@@ -18,9 +14,10 @@ const RANK_MAPPING = {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -94,11 +91,11 @@ serve(async (req) => {
         status: 200,
       },
     )
-  } catch (error) {
+  } catch (error: any) {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: error?.message || String(error)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

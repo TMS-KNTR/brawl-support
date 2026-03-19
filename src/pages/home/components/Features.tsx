@@ -347,8 +347,7 @@ export default function Features() {
             style={{
               fontFamily: '"Orbitron", sans-serif',
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'feat-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
-              animationFillMode: 'both',
+              animation: header.visible ? 'feat-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) both' : 'none',
             }}
           >
             Why GEMSUKE
@@ -358,8 +357,7 @@ export default function Features() {
             style={{
               fontFamily: '"Orbitron", sans-serif',
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'feat-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.12s forwards' : 'none',
-              animationFillMode: 'both',
+              animation: header.visible ? 'feat-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.12s both' : 'none',
             }}
           >
             なぜGEMSUKEが選ばれるのか
@@ -368,8 +366,7 @@ export default function Features() {
             className="text-[13px] text-[#7C6F99] max-w-md mx-auto leading-relaxed font-medium"
             style={{
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'feat-fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s forwards' : 'none',
-              animationFillMode: 'both',
+              animation: header.visible ? 'feat-fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s both' : 'none',
             }}
           >
             安全性、スピード、品質。すべてにおいて妥協しない。
@@ -390,9 +387,8 @@ export default function Features() {
                 style={{
                   opacity: grid.visible ? 1 : 0,
                   animation: grid.visible
-                    ? `feat-materialize 0.9s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.2}s forwards`
+                    ? `feat-materialize 0.9s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.2}s both`
                     : 'none',
-                  animationFillMode: 'both',
                 }}
               >
                 {/* Holo border */}
@@ -493,8 +489,8 @@ export default function Features() {
                     <div
                       className="absolute inset-0 bg-white pointer-events-none rounded-2xl z-30"
                       style={{
-                        animation: `feat-flash 0.5s ease ${0.15 + i * 0.2}s forwards`,
-                        animationFillMode: 'both', opacity: 0,
+                        animation: `feat-flash 0.5s ease ${0.15 + i * 0.2}s both`,
+                        opacity: 0,
                       }}
                     />
                   )}
@@ -522,9 +518,8 @@ export default function Features() {
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           animation: grid.visible
-                            ? `feat-numberIn 0.9s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.2}s forwards`
+                            ? `feat-numberIn 0.9s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.2}s both`
                             : 'none',
-                          animationFillMode: 'both',
                           opacity: 0,
                         }}
                       >
@@ -565,9 +560,8 @@ export default function Features() {
                 style={{
                   opacity: sub.visible ? 1 : 0,
                   animation: sub.visible
-                    ? `feat-hexReveal 0.7s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.15}s forwards`
+                    ? `feat-hexReveal 0.7s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.15}s both`
                     : 'none',
-                  animationFillMode: 'both',
                 }}
               >
                 <div

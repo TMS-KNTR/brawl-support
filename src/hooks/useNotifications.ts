@@ -51,6 +51,9 @@ export function useNotifications(userId: string | undefined) {
 
   const markAsRead = useCallback(async (id: string) => {
     if (!userId) return;
+    // 既に既読の通知はスキップ
+    const target = list.find((n) => n.id === id);
+    if (target?.read_at) return;
     await supabase
       .from('notifications')
       .update({ read_at: new Date().toISOString() })
@@ -58,7 +61,7 @@ export function useNotifications(userId: string | undefined) {
       .eq('user_id', userId);
     setList((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)));
     setUnreadCount((c) => Math.max(0, c - 1));
-  }, [userId]);
+  }, [userId, list]);
 
   const markAllAsRead = useCallback(async () => {
     if (!userId) return;

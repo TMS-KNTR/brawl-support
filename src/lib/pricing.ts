@@ -62,7 +62,7 @@ export type SegmentBreakdown = {
  * @param currentPoints 現在のランクポイント
  * @param targetPoints  目標のランクポイント
  * @param power11Count  パワー11キャラ数（0〜100）
- * @param buffyCount    バフィー数（0〜36）
+ * @param buffyCount    バフィー数（0〜12）
  * @returns 合計料金（円）と内訳
  */
 export function calcRankedPrice(

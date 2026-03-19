@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { getCorsHeaders } from '../_shared/cors.ts'
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2023-10-16",
@@ -16,10 +17,7 @@ serve(async (req: Request) => {
   // CORSプリフライト
   if (req.method === "OPTIONS") {
     return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
-      },
+      headers: getCorsHeaders(req),
     });
   }
 
@@ -113,33 +111,38 @@ serve(async (req: Request) => {
 
       console.log("Order created:", order.id);
 
-      // チャットスレッドを作成
-      const { error: threadError } = await supabase
-        .from("chat_threads")
-        .insert({
-          order_id: order.id,
-          participants: [customerId],
-        });
+      // チャットスレッドを作成（失敗時はリトライ）
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { error: threadError } = await supabase
+          .from("chat_threads")
+          .insert({
+            order_id: order.id,
+            participants: [customerId],
+          });
 
-      if (threadError) {
-        console.error("Failed to create chat thread:", threadError);
-      } else {
-        console.log("Chat thread created for order:", order.id);
+        if (!threadError) {
+          console.log("Chat thread created for order:", order.id);
+          break;
+        }
+        console.error(`Failed to create chat thread (attempt ${attempt + 1}/3):`, threadError);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
       }
 
       // 監査ログ
-      await supabase.from("admin_logs").insert({
-        actor_user_id: customerId,
-        action: "ORDER_CREATED",
-        target_type: "order",
-        target_id: order.id,
-        meta_json: {
-          currentRank: meta.current_rank,
-          targetRank: meta.target_rank,
-          totalPrice,
-          sessionId: session.id,
-        },
-      }).catch(() => {});
+      try {
+        await supabase.from("admin_logs").insert({
+          actor_user_id: customerId,
+          action: "ORDER_CREATED",
+          target_type: "order",
+          target_id: order.id,
+          meta_json: {
+            currentRank: meta.current_rank,
+            targetRank: meta.target_rank,
+            totalPrice,
+            sessionId: session.id,
+          },
+        });
+      } catch { /* ログ失敗は無視 */ }
     }
 
     return new Response(JSON.stringify({ received: true }), {

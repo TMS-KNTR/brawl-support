@@ -1,15 +1,12 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -33,12 +30,52 @@ serve(async (req: Request) => {
       .eq("user_id", userId)
       .in("status", ["paid", "pending", "open", "assigned", "in_progress"]);
 
-    // 2. 受注中の案件から外す（従業員として）
+    // 2. 受注中の案件から外す（従業員として）+ 依頼者に通知
+    const { data: employeeOrders } = await supabase
+      .from("orders")
+      .select("id, user_id")
+      .eq("employee_id", userId)
+      .in("status", ["assigned", "in_progress"]);
+
     await supabase
       .from("orders")
       .update({ employee_id: null, status: "paid" })
       .eq("employee_id", userId)
       .in("status", ["assigned", "in_progress"]);
+
+    // 依頼者に通知（代行者が離脱したことを知らせる）
+    if (employeeOrders && employeeOrders.length > 0) {
+      for (const order of employeeOrders) {
+        if (order.user_id) {
+          try {
+            await supabase.from("notifications").insert({
+              user_id: order.user_id,
+              type: "order_reassigned",
+              title: "代行者が変更されました",
+              body: "代行者の都合により、注文が再度募集中になりました。新しい代行者が受注するまでお待ちください。",
+              link_url: "/dashboard/customer",
+            });
+          } catch { /* 通知失敗は無視 */ }
+        }
+      }
+    }
+
+    // 2.5. 保留中の出金申請をキャンセルし残高を戻す
+    const { data: pendingWithdrawals } = await supabase
+      .from("withdrawals")
+      .select("id, amount")
+      .eq("user_id", userId)
+      .eq("status", "pending");
+
+    if (pendingWithdrawals && pendingWithdrawals.length > 0) {
+      for (const w of pendingWithdrawals) {
+        // 残高を戻す（削除時は残高0にするので戻す必要はないが、ステータスは更新）
+        await supabase
+          .from("withdrawals")
+          .update({ status: "rejected", description: "アカウント削除によるキャンセル" })
+          .eq("id", w.id);
+      }
+    }
 
     // 3. プロフィールを論理削除 + データ匿名化
     await supabase

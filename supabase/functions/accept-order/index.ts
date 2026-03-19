@@ -1,16 +1,13 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 // 従業員が案件を受注する。サービスロールで orders を更新するため RLS の影響を受けない
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -26,9 +23,13 @@ serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_banned")
       .eq("id", user.id)
       .single();
+
+    if (profile?.is_banned) {
+      throw new Error("アカウントが停止されています");
+    }
 
     // メンテナンスモードチェック
     const { data: maintenanceSetting } = await supabase
@@ -65,7 +66,8 @@ serve(async (req: Request) => {
       .update({ employee_id: user.id, status: "assigned" })
       .eq("id", orderId)
       .is("employee_id", null)
-      .select("id");
+      .in("status", ["paid", "open", "pending"])
+      .select();
 
     if (updateError) {
       console.error("accept-order update error:", updateError);
@@ -76,10 +78,7 @@ serve(async (req: Request) => {
     }
 
     if (!updated || updated.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "すでに他の従業員が受注しているか、注文が見つかりません" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+      throw new Error("この注文は既に他の代行者が受注しました");
     }
 
     const { data: thread } = await supabase

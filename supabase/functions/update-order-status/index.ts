@@ -1,17 +1,14 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const ALLOWED_STATUSES = ["in_progress", "completed"];
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -27,9 +24,13 @@ serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_banned")
       .eq("id", user.id)
       .single();
+
+    if (profile?.is_banned) {
+      throw new Error("アカウントが停止されています");
+    }
 
     const role = (profile?.role ?? "").toString().toLowerCase();
     if (role !== "employee" && role !== "worker" && role !== "admin") {
@@ -55,12 +56,39 @@ serve(async (req: Request) => {
       );
     }
 
-    const { data: updated, error: updateError } = await supabase
+    // ステータス遷移バリデーション
+    const allowedTransitions: Record<string, string[]> = {
+      assigned: ["in_progress"],
+      in_progress: ["completed"],
+    };
+
+    const { data: currentOrder, error: fetchError } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("id", orderId)
+      .single();
+
+    if (fetchError || !currentOrder) {
+      throw new Error("注文が見つかりません");
+    }
+
+    const currentStatus = currentOrder.status;
+    const allowed = allowedTransitions[currentStatus];
+    if (!allowed || !allowed.includes(newStatus)) {
+      throw new Error(`このステータスには変更できません（現在: ${currentStatus}）`);
+    }
+
+    // 管理者は全注文を更新可能、従業員は自分の受注のみ
+    let query = supabase
       .from("orders")
       .update({ status: newStatus })
-      .eq("id", orderId)
-      .eq("employee_id", user.id)
-      .select("id");
+      .eq("id", orderId);
+
+    if (role !== "admin") {
+      query = query.eq("employee_id", user.id);
+    }
+
+    const { data: updated, error: updateError } = await query.select("id");
 
     if (updateError) {
       console.error("update-order-status error:", updateError);

@@ -56,13 +56,19 @@ export default function AdminInterventionChatPage() {
   async function send() {
     if (!text.trim()) return;
 
-    await supabase.from('dispute_messages').insert({
+    const { error } = await supabase.from('dispute_messages').insert({
       dispute_id: disputeId,
       sender_id: user?.id,
       content: text,
     });
 
+    if (error) {
+      alert('メッセージの送信に失敗しました');
+      return;
+    }
+
     setText('');
+    fetchMessages();
   }
 
   return (

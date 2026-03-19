@@ -1,16 +1,13 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 // 依頼者が完了確認 → ステータス更新 + 従業員の残高に報酬を加算
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -50,21 +47,31 @@ serve(async (req: Request) => {
     const employeeId = order.employee_id;
     if (!employeeId) throw new Error("従業員が割り当てられていません");
 
-    // system_settings から手数料率を取得
-    const { data: feeRateSetting } = await supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", "platform_fee_rate")
+    // 注文作成時に保存された報酬額を使用（手数料率変更の影響を受けない）
+    const payoutAmount = order.payout_amount;
+
+    if (!payoutAmount || payoutAmount <= 0) {
+      throw new Error("報酬金額が0以下です");
+    }
+
+    // --- 先に注文ステータスを confirmed に更新（楽観的ロックで二重実行を防止） ---
+    const { data: orderUpdated, error: orderUpdateError } = await supabase
+      .from("orders")
+      .update({
+        status: "confirmed",
+        is_paid_out: true,
+      })
+      .eq("id", order_id)
+      .eq("is_paid_out", false)  // 楽観的ロック: まだ未払いの場合のみ
+      .eq("status", "completed") // ステータスが変わっていないことを確認
+      .select("id")
       .single();
-    const feeRate = Number(feeRateSetting?.value) || 0.20;
 
-    const totalPrice = order.price || order.total_price || 0;
-    const platformFee = Math.round(totalPrice * feeRate);
-    const payoutAmount = totalPrice - platformFee;
+    if (orderUpdateError || !orderUpdated) {
+      throw new Error("既に処理済みか、注文の状態が変更されました。");
+    }
 
-    if (payoutAmount <= 0) throw new Error("報酬金額が0以下です");
-
-    // 従業員の残高を加算
+    // --- 従業員の残高を加算 ---
     const { data: empProfile } = await supabase
       .from("profiles")
       .select("balance")
@@ -82,19 +89,13 @@ serve(async (req: Request) => {
       .select("balance")
       .single();
 
-    if (balanceError || !balanceUpdated) throw new Error("残高が変更されました。再度お試しください。");
-
-    // 注文ステータスを confirmed + 支払い済みに更新
-    const { error: orderUpdateError } = await supabase
-      .from("orders")
-      .update({
-        status: "confirmed",
-        is_paid_out: true,
-      })
-      .eq("id", order_id);
-
-    if (orderUpdateError) {
-      throw new Error("注文更新に失敗: " + orderUpdateError.message);
+    if (balanceError || !balanceUpdated) {
+      // 残高更新失敗 → 注文ステータスを戻す
+      await supabase
+        .from("orders")
+        .update({ status: "completed", is_paid_out: false })
+        .eq("id", order_id);
+      throw new Error("残高が変更されました。再度お試しください。");
     }
 
     // 出金履歴に記録

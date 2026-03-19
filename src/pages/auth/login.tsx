@@ -87,6 +87,7 @@ export default function LoginPage() {
       }
     } catch (e: any) {
       setErrorMsg(e?.message ?? 'ログインに失敗しました')
+    } finally {
       setSubmitting(false)
     }
   }

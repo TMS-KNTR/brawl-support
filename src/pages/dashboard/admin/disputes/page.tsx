@@ -126,14 +126,16 @@ export default function AdminDisputesPage() {
           body: { order_id: orderId },
         });
         if (res.error) throw new Error(res.error.message || '返金に失敗しました');
-        const result = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        let result = res.data;
+        try { if (typeof result === 'string') result = JSON.parse(result); } catch { /* parse失敗はそのまま */ }
         if (!result?.success) throw new Error(result?.error || '返金に失敗しました');
       } else if (resolveAction === 'payout') {
         const res = await supabase.functions.invoke('payout-employee', {
           body: { order_id: orderId },
         });
         if (res.error) throw new Error(res.error.message || '支払いに失敗しました');
-        const result = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        let result = res.data;
+        try { if (typeof result === 'string') result = JSON.parse(result); } catch { /* parse失敗はそのまま */ }
         if (!result?.success) throw new Error(result?.error || '支払いに失敗しました');
       }
 

@@ -20,44 +20,49 @@ export default function PaymentSuccessPage() {
 
     // DBで注文の支払いステータスを確認（Webhookで更新されるまでリトライ）
     let attempts = 0
-    const maxAttempts = 10
+    const maxAttempts = 15
     const checkPayment = async () => {
-      const { data } = await supabase
-        .from('orders')
-        .select('id, status')
-        .eq('user_id', user.id)
-        .in('status', ['paid', 'assigned', 'in_progress', 'completed', 'confirmed'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      try {
+        // session_id で直接検索（より正確）
+        const { data } = await supabase
+          .from('orders')
+          .select('id, status')
+          .eq('stripe_checkout_session_id', sessionId)
+          .maybeSingle()
 
-      if (data) {
-        setStatus('success')
-        return
-      }
+        if (data) {
+          setStatus('success')
+          return
+        }
 
-      attempts++
-      if (attempts < maxAttempts) {
-        setTimeout(checkPayment, 2000)
-      } else {
-        // Webhookが遅延しても一応成功表示（session_idがあるため）
-        setStatus('success')
+        attempts++
+        if (attempts < maxAttempts) {
+          setTimeout(checkPayment, 2000)
+        } else {
+          // Webhookが遅延しても一応成功表示（session_idがあるため）
+          setStatus('success')
+        }
+      } catch {
+        attempts++
+        if (attempts < maxAttempts) {
+          setTimeout(checkPayment, 2000)
+        } else {
+          setStatus('success')
+        }
       }
     }
     checkPayment()
   }, [sessionId, user])
 
-  // ユーザーの最新注文からchat_thread_idを取得
+  // session_id に対応する注文の chat_thread_id を取得
   useEffect(() => {
-    if (!user || status !== 'success') return
+    if (!user || status !== 'success' || !sessionId) return
     const fetchChatThread = async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('id, chat_threads:chat_threads(id)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
+        .eq('stripe_checkout_session_id', sessionId)
+        .maybeSingle()
       if (!error && data) {
         const thread = Array.isArray(data.chat_threads) ? data.chat_threads[0] : data.chat_threads
         if (thread?.id) setChatThreadId(thread.id)

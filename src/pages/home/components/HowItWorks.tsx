@@ -57,7 +57,7 @@ export default function HowItWorks() {
     {
       num: '02',
       title: '決済',
-      desc: 'クレジットカードまたはPayPayで安全にお支払い。完了まで代金はエスクローで保全されます。',
+      desc: 'Stripeによる安全な決済でクレジットカードまたはPayPayでお支払い。完了まで代金はエスクローで保全されます。',
       icon: 'ri-secure-payment-line',
     },
     {

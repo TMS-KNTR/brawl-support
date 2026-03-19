@@ -4,3 +4,8 @@ dist/
 reference.png/
 supabase/.temp/
 *.log
+
+# 環境変数（秘密情報を含む）
+.env
+.env.local
+.env.*.local

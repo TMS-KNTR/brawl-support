@@ -21,6 +21,8 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const CHAT_BUCKET = 'chat-attachments';
+  const SIGNED_URL_TTL = 3600; // 1時間
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [ngWords, setNgWords] = useState<string[]>([]);
 
   useEffect(() => { if (user && threadId) checkAccess(); }, [user, threadId]);
@@ -78,7 +80,22 @@ export default function ChatPage() {
       const senderIds = [...new Set(msgs?.map(m => m.sender_id) || [])];
       const { data: profiles } = await supabase.from('profiles').select('id, username, full_name, role').in('id', senderIds);
       const pMap = new Map(profiles?.map(p => [p.id, p]) || []);
-      setMessages(msgs?.map(m => ({ ...m, sender: pMap.get(m.sender_id) || null })) || []);
+      const enriched = msgs?.map(m => ({ ...m, sender: pMap.get(m.sender_id) || null })) || [];
+      setMessages(enriched);
+
+      // Private バケットの添付画像用に署名付きURLを一括生成
+      const pathsToSign = enriched
+        .filter(m => m.attachment_url && !m.attachment_url.startsWith('http'))
+        .map(m => m.attachment_url as string);
+      if (pathsToSign.length > 0) {
+        const { data: signed } = await supabase.storage.from(CHAT_BUCKET).createSignedUrls(pathsToSign, SIGNED_URL_TTL);
+        if (signed) {
+          const urlMap: Record<string, string> = {};
+          signed.forEach((s) => { if (s.signedUrl && s.path) urlMap[s.path] = s.signedUrl; });
+          setSignedUrls(prev => ({ ...prev, ...urlMap }));
+        }
+      }
+
       if (user) {
         await supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('order_id', orderId).eq('receiver_id', user.id).is('read_at', null);
       }
@@ -123,7 +140,8 @@ export default function ChatPage() {
         const path = `${orderId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
         const { error: upErr } = await supabase.storage.from(CHAT_BUCKET).upload(path, attachmentFile, { contentType: attachmentFile.type, upsert: false });
         if (upErr) throw upErr;
-        attachmentUrl = supabase.storage.from(CHAT_BUCKET).getPublicUrl(path).data?.publicUrl || null;
+        // Private バケット: パスを保存し、表示時に署名付きURLを生成
+        attachmentUrl = path;
       }
       const { error } = await supabase.from('messages').insert({ sender_id: user.id, receiver_id: receiverId ?? null, order_id: orderId, content: newMessage.trim() || '', ...(attachmentUrl && { attachment_url: attachmentUrl }) });
       if (error) throw error;
@@ -295,21 +313,27 @@ export default function ChatPage() {
                             ? isLastInGroup ? 'rounded-[20px] rounded-br-[4px]' : 'rounded-[20px]'
                             : isLastInGroup ? 'rounded-[20px] rounded-bl-[4px]' : 'rounded-[20px]'
                         } px-3 py-2`}>
-                          {message.attachment_url && (
+                          {message.attachment_url && (() => {
+                            // 既存の公開URL（http）はそのまま、パスは署名付きURLに変換
+                            const imgUrl = message.attachment_url.startsWith('http')
+                              ? message.attachment_url
+                              : signedUrls[message.attachment_url] || '';
+                            if (!imgUrl) return null;
+                            return (
                             <div className="relative group mb-1.5 rounded-xl overflow-hidden -mx-1 -mt-0.5">
-                              <a href={message.attachment_url} target="_blank" rel="noopener noreferrer">
-                                <img src={message.attachment_url} alt="添付画像"
+                              <a href={imgUrl} target="_blank" rel="noopener noreferrer">
+                                <img src={imgUrl} alt="添付画像"
                                   className="max-w-full max-h-[280px] object-contain" />
                               </a>
                               <button type="button" onClick={async (e) => {
                                   e.stopPropagation();
                                   try {
-                                    const res = await fetch(message.attachment_url);
+                                    const res = await fetch(imgUrl);
                                     const blob = await res.blob();
                                     const url = URL.createObjectURL(blob);
                                     const a = document.createElement('a');
                                     a.href = url;
-                                    a.download = message.attachment_url.split('/').pop() || 'image.jpg';
+                                    a.download = (message.attachment_url as string).split('/').pop() || 'image.jpg';
                                     document.body.appendChild(a);
                                     a.click();
                                     document.body.removeChild(a);
@@ -320,7 +344,8 @@ export default function ChatPage() {
                                 <i className="ri-download-line text-[14px]"></i>
                               </button>
                             </div>
-                          )}
+                            );
+                          })()}
                           {message.content && (
                             <p className="text-[15px] leading-[20px] whitespace-pre-wrap break-words">{message.content}</p>
                           )}

@@ -55,8 +55,13 @@ export default function AccountPage() {
   const handleSignOut = async () => {
     if (!window.confirm('ログアウトしますか？')) return;
     setIsSigningOut(true);
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+      navigate('/');
+    } catch {
+      setIsSigningOut(false);
+      showToast('ログアウトに失敗しました。再度お試しください。');
+    }
   };
 
   // ── Password change ──

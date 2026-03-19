@@ -367,6 +367,10 @@ export default function OrderPage() {
           ? `ガチバトル上げ: ハイチャ解放×${power11Count}体, バフィー3つ解放×${buffyCount}体`
           : `トロフィー上げ: キャラ: ${selectedBrawler?.name ?? '未選択'}（${selectedBrawler ? STRENGTH_LABELS[selectedBrawler.strength] : ''}）`,
         totalPrice,
+        // サーバー側料金検証用パラメータ
+        power11Count: mode === 'rank' ? power11Count : undefined,
+        buffyCount: mode === 'rank' ? buffyCount : undefined,
+        brawlerStrength: mode === 'trophy' ? selectedBrawler?.strength : undefined,
       })
 
       if (result.success && result.data?.checkoutUrl) {

@@ -92,9 +92,9 @@ function EmployeeDashboardContent() {
   useEffect(() => {
     if (userProfile?.stripe_account_id) {
       setStripeAccountId(userProfile.stripe_account_id);
-      // Stripeに実際の状態を問い合わせ
-      checkStripeStatus();
     }
+    // Stripeオンボーディングから戻ってきた場合もあるので常にチェック
+    checkStripeStatus();
   }, [userProfile]);
 
   /** Stripe口座の実際の状態を確認 */
@@ -125,6 +125,8 @@ function EmployeeDashboardContent() {
       if (res.error) throw new Error(res.error.message);
       const result = res.data;
       if (result?.success && result?.url) {
+        // 戻ってきた時に最新のprofileを取得するためキャッシュをクリア
+        try { localStorage.removeItem('brawl_support_profile'); } catch {}
         window.location.href = result.url; // Stripeの登録画面に移動
       } else {
         throw new Error(result?.error || '口座登録に失敗しました');
@@ -961,7 +963,7 @@ function EmployeeDashboardContent() {
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-[#E5E5E5]">
                     <span className="text-[11px] text-[#888]">報酬額</span>
-                    <span className="text-[15px] font-bold text-[#059669]">¥{Math.floor((confirmAcceptOrder.price || 0) * 0.8).toLocaleString()}</span>
+                    <span className="text-[15px] font-bold text-[#059669]">¥{Math.floor((confirmAcceptOrder.price || 0) * EMPLOYEE_RATE).toLocaleString()}</span>
                   </div>
                 </div>
 

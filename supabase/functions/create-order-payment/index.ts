@@ -1,16 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
+import { calcRankedPrice, calcTrophyPrice } from '../_shared/pricing.ts'
+import type { BrawlerStrength } from '../_shared/pricing.ts'
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const cors = handleCors(req)
+  if (cors) return cors
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const supabase = createClient(
@@ -23,7 +22,8 @@ serve(async (req) => {
     })
 
     // JWTトークンから認証情報を取得
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) throw new Error('認証が必要です')
     const token = authHeader.replace('Bearer ', '')
     const { data: { user } } = await supabase.auth.getUser(token)
 
@@ -57,11 +57,50 @@ serve(async (req) => {
       notes,
       credentials,
       totalPrice,
+      // 料金検証に必要な追加パラメータ
+      power11Count,
+      buffyCount,
+      brawlerStrength,
     } = await req.json()
 
-    // サーバー側で手数料を再計算（クライアント値を信用しない）
-    const serverPlatformFee = Math.round(totalPrice * feeRate)
-    const serverSubtotal = totalPrice - serverPlatformFee
+    // --- サーバー側で料金を再計算して検証 ---
+    const currentVal = Number(currentRank) || 0
+    const targetVal = Number(targetRank) || 0
+
+    let serverPrice: number
+    if (serviceType === 'rank') {
+      serverPrice = calcRankedPrice(
+        currentVal,
+        targetVal,
+        Number(power11Count) || 0,
+        Number(buffyCount) || 0,
+      )
+    } else {
+      const strength: BrawlerStrength =
+        ['strong', 'normal', 'weak'].includes(brawlerStrength)
+          ? brawlerStrength
+          : 'normal'
+      serverPrice = calcTrophyPrice(currentVal, targetVal, strength)
+    }
+
+    // クライアント送信額がサーバー計算額と一致するか検証
+    if (serverPrice <= 0) {
+      throw new Error('目標値は現在値より大きく設定してください')
+    }
+    // 上限チェック（異常な金額を弾く）
+    const MAX_PRICE = 500_000  // ¥500,000
+    if (serverPrice > MAX_PRICE) {
+      throw new Error('料金が上限を超えています。内容をご確認ください。')
+    }
+    if (Number(totalPrice) !== serverPrice) {
+      console.error(`Price mismatch: client=${totalPrice}, server=${serverPrice}`)
+      throw new Error('料金が正しくありません。ページを再読み込みしてお試しください。')
+    }
+
+    const serverPlatformFee = Math.round(serverPrice * feeRate)
+    const serverSubtotal = serverPrice - serverPlatformFee
+
+    const siteUrl = Deno.env.get('SITE_URL') || ''
 
     // Stripe Checkoutセッションを作成（注文はWebhookで決済完了後に作成）
     const session = await stripe.checkout.sessions.create({
@@ -74,26 +113,27 @@ serve(async (req) => {
               name: `Brawl Stars代行 ${currentRank} → ${targetRank}`,
               description: `${serviceType === 'rank' ? 'ガチバトル上げ' : 'トロフィー上げ'}`,
             },
-            unit_amount: totalPrice,
+            unit_amount: serverPrice,
           },
           quantity: 1,
         },
       ],
       mode: 'payment',
-      success_url: `${req.headers.get('origin') || Deno.env.get('SITE_URL')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin') || Deno.env.get('SITE_URL')}/dashboard/customer`,
+      success_url: `${siteUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/dashboard/customer`,
       metadata: {
         customer_id: user.id,
         current_rank: currentRank,
         target_rank: targetRank,
         service_type: serviceType || 'trophy',
         notes: notes || '',
-        total_price: String(totalPrice),
+        total_price: String(serverPrice),
         payout_amount: String(serverSubtotal),
         platform_fee: String(serverPlatformFee),
       },
     }, {
-      idempotencyKey: `checkout-${user.id}-${Date.now()}`,
+      // 冪等性キー（同一秒内の重複送信を防止しつつ、再注文は許可）
+      idempotencyKey: `checkout-${user.id}-${serviceType}-${currentRank}-${targetRank}-${serverPrice}-${Math.floor(Date.now() / 10000)}`,
     })
 
     return new Response(
@@ -108,11 +148,11 @@ serve(async (req) => {
         status: 200,
       },
     )
-  } catch (error) {
+  } catch (error: any) {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: error?.message || String(error)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
