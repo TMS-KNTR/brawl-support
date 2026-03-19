@@ -102,6 +102,7 @@ function EmployeeDashboardContent() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('check-stripe-status', {
+        body: {},
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (res.data?.success) {
@@ -149,6 +150,7 @@ function EmployeeDashboardContent() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('list-available-orders', {
+        body: {},
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (res.data?.success && Array.isArray(res.data.data)) {

@@ -193,6 +193,7 @@ export default function AccountPage() {
       // Edge Functionで注文キャンセル・データ匿名化・auth user削除を実行
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('delete-account', {
+        body: {},
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (res.error && !res.data) throw new Error(res.error.message);
