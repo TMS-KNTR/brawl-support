@@ -16,8 +16,7 @@ const RANK_TIERS = [
   { name: 'ダイヤモンド', from: 3000,  to: 4500,  color: '#60A5FA' },
   { name: 'エリート',    from: 4500,  to: 6000,  color: '#A855F7' },
   { name: 'レジェンド',   from: 6000,  to: 8250,  color: '#EF4444' },
-  { name: 'マスター',    from: 8250,  to: 10250, color: '#FBBF24' },
-  { name: 'プロ',       from: 10250, to: 99999, color: '#10B981' },
+  { name: 'マスター',    from: 8250,  to: 99999, color: '#FBBF24' },
 ]
 
 function getTierName(pt: number) {
