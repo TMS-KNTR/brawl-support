@@ -13,7 +13,7 @@ function resolveShowDevQuickLogin(): boolean {
     const devParam = params.get('dev')
     if (devParam === '1') localStorage.setItem(DEV_TOGGLE_KEY, '1')
     if (devParam === '0') localStorage.removeItem(DEV_TOGGLE_KEY)
-    return Boolean(import.meta.env.DEV) || localStorage.getItem(DEV_TOGGLE_KEY) === '1'
+    return Boolean(import.meta.env.DEV) && localStorage.getItem(DEV_TOGGLE_KEY) === '1'
   } catch {
     return false
   }

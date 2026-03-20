@@ -39,7 +39,13 @@ serve(async (req: Request) => {
       throw new Error("従業員権限が必要です");
     }
 
-    const { return_url } = await req.json();
+    let { return_url } = await req.json();
+
+    // return_url のオープンリダイレクト防止
+    const siteUrl = Deno.env.get("SITE_URL") || "https://gemsuke.com";
+    if (return_url && !return_url.startsWith(siteUrl)) {
+      return_url = null;
+    }
 
     let accountId = profile?.stripe_account_id;
 
@@ -65,7 +71,6 @@ serve(async (req: Request) => {
     }
 
     // オンボーディングリンクを生成
-    const siteUrl = Deno.env.get("SITE_URL") || "https://gemsuke.com";
     const fallbackUrl = `${siteUrl}/dashboard/employee`;
     const accountLink = await stripe.accountLinks.create({
       account: accountId,

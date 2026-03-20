@@ -14,7 +14,7 @@ export default function BrawlStarsOrderForm() {
     currentTrophies: '',
     targetTrophies: '',
     gameAccount: '',
-    gamePassword: '',
+    gamePassword: '', // collected for payment path only; never stored in DB
     deviceType: 'android',
     additionalInfo: '',
     preferredTime: '',
@@ -187,18 +187,10 @@ export default function BrawlStarsOrderForm() {
           if (chatError) console.error('チャットスレッド作成エラー:', chatError)
         }
 
-        if (formData.gameAccount && formData.gamePassword && orderData) {
-          await supabase.from('credential_vaults').insert([
-            {
-              order_id: orderData.id,
-              username: formData.gameAccount,
-              password_encrypted: btoa(formData.gamePassword),
-              notes: `デバイス: ${formData.deviceType}\n${brawlerNote}\n追加情報: ${formData.additionalInfo}`,
-              masked_preview: `${formData.gameAccount.substring(0, 2)}***`,
-              visible_to: JSON.stringify([]),
-            },
-          ])
-        }
+        // NOTE: Game credentials are NOT stored in the database.
+        // The customer should share account credentials via the in-app chat
+        // after an employee is assigned, so they are protected by RLS
+        // and not persisted in a reversible format.
 
         setShowSuccess(true)
         setTimeout(() => navigate('/dashboard/customer'), 2000)
@@ -622,7 +614,7 @@ export default function BrawlStarsOrderForm() {
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">ご注意事項</p>
               <ul className="list-disc list-inside space-y-1 text-blue-700">
-                <li>アカウント情報は暗号化して安全に保管されます</li>
+                <li>アカウント情報は注文受付後、チャットで安全にやり取りしてください</li>
                 <li>作業中はアカウントにログインしないでください</li>
                 <li>作業完了後、パスワード変更を推奨します</li>
                 <li>見積もり依頼は無料です（24時間以内に回答）</li>

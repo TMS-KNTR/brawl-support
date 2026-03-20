@@ -39,6 +39,17 @@ serve(async (req: Request) => {
       throw new Error("従業員権限が必要です");
     }
 
+    // 未処理の出金申請数をチェック（レートリミット）
+    const { count: pendingCount } = await supabase
+      .from("withdrawals")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("status", "pending");
+
+    if ((pendingCount ?? 0) >= 3) {
+      throw new Error("未処理の出金申請が多すぎます。承認後に再度お試しください。");
+    }
+
     const MIN_WITHDRAW = 300;
     const { amount: rawAmount } = await req.json();
     const amount = Math.floor(Number(rawAmount));

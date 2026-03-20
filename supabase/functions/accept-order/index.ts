@@ -52,6 +52,20 @@ serve(async (req: Request) => {
       );
     }
 
+    // 同時受注数のレートリミット
+    const { count: activeCount } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("employee_id", user.id)
+      .in("status", ["assigned", "in_progress"]);
+
+    if ((activeCount ?? 0) >= 5) {
+      return new Response(
+        JSON.stringify({ success: false, error: "同時に受注できる注文数の上限に達しています" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const orderId = body?.order_id ?? body?.orderId;
     if (!orderId || typeof orderId !== "string") {
