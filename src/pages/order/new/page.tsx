@@ -16,8 +16,8 @@ const RANK_TIERS = [
   { name: 'ダイヤモンド', from: 3000,  to: 4500,  color: '#60A5FA' },
   { name: 'エリート',    from: 4500,  to: 6000,  color: '#A855F7' },
   { name: 'レジェンド',   from: 6000,  to: 8250,  color: '#EF4444' },
-  { name: 'マスター',    from: 8250,  to: 11250, color: '#FBBF24' },
-  { name: 'プロ',       from: 11250, to: 99999, color: '#10B981' },
+  { name: 'マスター',    from: 8250,  to: 10250, color: '#FBBF24' },
+  { name: 'プロ',       from: 10250, to: 99999, color: '#10B981' },
 ]
 
 function getTierName(pt: number) {
@@ -89,7 +89,7 @@ function RankTierSlider({
   current: number; target: number;
   onChange: (current: number, target: number) => void;
 }) {
-  const MAX = 11250
+  const MAX = 10250
   const STEP = 1
   const barRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<'current' | 'target' | null>(null)
@@ -172,7 +172,7 @@ function RankTierSlider({
 
       {/* 目盛り */}
       <div className="relative mt-1.5 h-4">
-        {[0, 3000, 4500, 6000, 8250, 11250].map((v) => (
+        {[0, 3000, 4500, 6000, 8250, 10250].map((v) => (
           <span
             key={v}
             className="absolute text-[9px] text-[#9890B8] font-medium select-none"
@@ -608,7 +608,7 @@ export default function OrderPage() {
                     <span className="text-[10px] font-bold text-[#7C6F99] tracking-wide block mb-1">現在</span>
                     <div className="flex items-center gap-2">
                       <EditableValue
-                        value={current} min={0} max={11250} step={1} color="#5B3AE8"
+                        value={current} min={0} max={10250} step={1} color="#5B3AE8"
                         onChange={(v) => { const c = Math.min(v, target); setCurrent(c) }}
                       />
                       <span
@@ -630,7 +630,7 @@ export default function OrderPage() {
                         {getTierName(target)}
                       </span>
                       <EditableValue
-                        value={target} min={0} max={11250} step={1} color="#10B981"
+                        value={target} min={0} max={10250} step={1} color="#10B981"
                         onChange={(v) => { const t = Math.max(v, current); setTarget(t) }}
                       />
                     </div>

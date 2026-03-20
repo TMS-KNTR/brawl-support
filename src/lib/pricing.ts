@@ -27,7 +27,6 @@ const RANKED_SEGMENTS: PricingSegment[] = [
   { type: 'range', from: 7500,  to: 8250,  minPrice: 2600,  maxPrice: 3000 },
   { type: 'range', from: 8250,  to: 9250,  minPrice: 9000,  maxPrice: 11000 },
   { type: 'range', from: 9250,  to: 10250, minPrice: 21000, maxPrice: 27000 },
-  { type: 'range', from: 10250, to: 11250, minPrice: 35000, maxPrice: 47000 },
 ]
 
 /**
