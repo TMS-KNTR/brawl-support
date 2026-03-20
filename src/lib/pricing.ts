@@ -144,6 +144,11 @@ const TROPHY_SEGMENTS: TrophySegment[] = [
     to: 2000,
     prices: { strong: 4500, normal: 5000, weak: 5500 },
   },
+  {
+    from: 2000,
+    to: 3000,
+    prices: { strong: 25000, normal: 30000, weak: 35000 },
+  },
 ]
 
 export type TrophyBreakdown = {

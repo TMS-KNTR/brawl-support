@@ -802,7 +802,7 @@ export default function OrderPage() {
                   <div>
                     <span className="text-[10px] font-bold text-[#7C6F99] tracking-wide block mb-1">現在</span>
                     <EditableValue
-                      value={currentTrophy} min={0} max={2000} step={1} color="#5B3AE8"
+                      value={currentTrophy} min={0} max={3000} step={1} color="#5B3AE8"
                       onChange={(v) => { const c = Math.min(v, targetTrophy); setCurrentTrophy(c) }}
                     />
                   </div>
@@ -810,7 +810,7 @@ export default function OrderPage() {
                   <div className="text-right">
                     <span className="text-[10px] font-bold text-[#7C6F99] tracking-wide block mb-1">目標</span>
                     <EditableValue
-                      value={targetTrophy} min={0} max={2000} step={1} color="#10B981"
+                      value={targetTrophy} min={0} max={3000} step={1} color="#10B981"
                       onChange={(v) => { const t = Math.max(v, currentTrophy); setTargetTrophy(t) }}
                     />
                   </div>
@@ -819,9 +819,9 @@ export default function OrderPage() {
                 <DualSlider
                   current={currentTrophy}
                   target={targetTrophy}
-                  max={2000}
+                  max={3000}
                   onChange={(c, t) => { setCurrentTrophy(c); setTargetTrophy(t) }}
-                  ticks={[0, 500, 1000, 1500, 2000]}
+                  ticks={[0, 500, 1000, 1500, 2000, 2500, 3000]}
                 />
               </div>
 

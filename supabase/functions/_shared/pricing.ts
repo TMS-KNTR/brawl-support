@@ -73,6 +73,7 @@ type TrophySegment = {
 const TROPHY_SEGMENTS: TrophySegment[] = [
   { from: 0,    to: 1000, prices: { strong: 3000, normal: 3000, weak: 3000 } },
   { from: 1000, to: 2000, prices: { strong: 4500, normal: 5000, weak: 5500 } },
+  { from: 2000, to: 3000, prices: { strong: 25000, normal: 30000, weak: 35000 } },
 ]
 
 export function calcTrophyPrice(
