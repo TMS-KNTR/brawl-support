@@ -20,11 +20,11 @@ const RANK_TIERS = [
 ]
 
 function getTierName(pt: number) {
-  return RANK_TIERS.find(t => pt >= t.from && pt < t.to)?.name ?? 'プロ'
+  return RANK_TIERS.find(t => pt >= t.from && pt < t.to)?.name ?? 'マスター'
 }
 
 function getTierColor(pt: number) {
-  return RANK_TIERS.find(t => pt >= t.from && pt < t.to)?.color ?? '#10B981'
+  return RANK_TIERS.find(t => pt >= t.from && pt < t.to)?.color ?? '#FBBF24'
 }
 
 /* ── クリックで編集できる数値表示 ── */

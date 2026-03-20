@@ -125,6 +125,7 @@ import type { BrawlerStrength } from '../data/brawlers'
  *
  *   0〜1000:    一律 ¥3,000（強弱による変動なし）
  *   1000〜2000: 弱い ¥5,500 / 普通 ¥5,000 / 強い ¥4,500
+ *   2000〜3000: 弱い ¥35,000 / 普通 ¥30,000 / 強い ¥25,000
  */
 
 type TrophySegment = {
@@ -161,8 +162,8 @@ export type TrophyBreakdown = {
 /**
  * トロフィー上げの料金を計算
  *
- * @param currentTrophies 現在のトロフィー数（0〜2000）
- * @param targetTrophies  目標のトロフィー数（0〜2000）
+ * @param currentTrophies 現在のトロフィー数（0〜3000）
+ * @param targetTrophies  目標のトロフィー数（0〜3000）
  * @param strength        キャラの強弱
  * @returns 合計料金（円）と内訳
  */
