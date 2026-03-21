@@ -1,0 +1,698 @@
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
+
+// ============================================================
+// Handler functions
+// ============================================================
+
+async function handleDashboardKpi(sb: SupabaseClient) {
+  const activeStatuses = ["paid", "pending", "open", "assigned", "in_progress"];
+
+  const [ordersRes, disputesRes, withdrawalsRes, bannedRes, todayOrdersRes] =
+    await Promise.all([
+      sb
+        .from("orders")
+        .select("id,status,price")
+        .in("status", activeStatuses),
+      sb
+        .from("disputes")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "open"),
+      sb
+        .from("withdrawals")
+        .select("id,amount")
+        .eq("type", "withdrawal")
+        .eq("status", "pending"),
+      sb
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("is_banned", true),
+      sb
+        .from("orders")
+        .select("id,price,status")
+        .gte("created_at", new Date().toISOString().slice(0, 10)),
+    ]);
+
+  return {
+    active_orders: ordersRes.data ?? [],
+    open_disputes_count: disputesRes.count ?? 0,
+    pending_withdrawals: withdrawalsRes.data ?? [],
+    banned_users_count: bannedRes.count ?? 0,
+    today_orders: todayOrdersRes.data ?? [],
+  };
+}
+
+async function handleListUsers(sb: SupabaseClient) {
+  const { data, error } = await sb
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleListOrders(sb: SupabaseClient) {
+  const { data, error } = await sb
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleListWithdrawals(sb: SupabaseClient) {
+  const [withdrawalsRes, employeesRes] = await Promise.all([
+    sb
+      .from("withdrawals")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500),
+    sb
+      .from("profiles")
+      .select("id,username,full_name,balance,stripe_account_id,role")
+      .in("role", ["employee", "worker", "admin"]),
+  ]);
+  if (withdrawalsRes.error) throw new Error(withdrawalsRes.error.message);
+  if (employeesRes.error) throw new Error(employeesRes.error.message);
+  return {
+    withdrawals: withdrawalsRes.data,
+    employees: employeesRes.data,
+  };
+}
+
+async function handleListSecurity(sb: SupabaseClient) {
+  const [bannedRes, warnedRes] = await Promise.all([
+    sb.from("profiles").select("*").eq("is_banned", true),
+    sb.from("profiles").select("*").gt("warning_count", 0).eq("is_banned", false),
+  ]);
+  if (bannedRes.error) throw new Error(bannedRes.error.message);
+  if (warnedRes.error) throw new Error(warnedRes.error.message);
+  return {
+    banned: bannedRes.data,
+    warned: warnedRes.data,
+  };
+}
+
+async function handleGetMetrics(sb: SupabaseClient) {
+  const [ordersRes, profilesRes, disputesRes] = await Promise.all([
+    sb.from("orders").select("id,status,price,created_at"),
+    sb.from("profiles").select("id,role,is_banned"),
+    sb.from("disputes").select("id,status"),
+  ]);
+  if (ordersRes.error) throw new Error(ordersRes.error.message);
+  if (profilesRes.error) throw new Error(profilesRes.error.message);
+  if (disputesRes.error) throw new Error(disputesRes.error.message);
+  return {
+    orders: ordersRes.data,
+    profiles: profilesRes.data,
+    disputes: disputesRes.data,
+  };
+}
+
+async function handleListNotifications(
+  sb: SupabaseClient,
+  params: { limit?: number; userIds?: string[] }
+) {
+  const limit = params.limit ?? 500;
+
+  const { data: notifications, error } = await sb
+    .from("notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+
+  let profiles = null;
+  if (params.userIds && params.userIds.length > 0) {
+    const { data, error: pErr } = await sb
+      .from("profiles")
+      .select("id,username,full_name,role")
+      .in("id", params.userIds);
+    if (pErr) throw new Error(pErr.message);
+    profiles = data;
+  }
+
+  return { notifications, profiles };
+}
+
+async function handleListChatThreads(sb: SupabaseClient) {
+  const { data, error } = await sb
+    .from("chat_threads")
+    .select("*, order:orders(id,current_rank,target_rank,game_title,status)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleListViolations(
+  sb: SupabaseClient,
+  params: { userIds?: string[] }
+) {
+  const { data: violations, error } = await sb
+    .from("chat_violations")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+
+  let profiles = null;
+  if (params.userIds && params.userIds.length > 0) {
+    const { data, error: pErr } = await sb
+      .from("profiles")
+      .select("id,username,full_name")
+      .in("id", params.userIds);
+    if (pErr) throw new Error(pErr.message);
+    profiles = data;
+  }
+
+  return { violations, profiles };
+}
+
+async function handleListDisputes(sb: SupabaseClient) {
+  const { data, error } = await sb
+    .from("disputes")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleGetDisputeDetail(
+  sb: SupabaseClient,
+  params: { order_id: string }
+) {
+  if (!params.order_id) throw new Error("order_id が必要です");
+
+  const [orderRes, threadRes] = await Promise.all([
+    sb
+      .from("orders")
+      .select(
+        "id,price,total_price,payment_intent_id,employee_id,user_id,is_refunded,is_paid_out"
+      )
+      .eq("id", params.order_id)
+      .single(),
+    sb
+      .from("chat_threads")
+      .select("id")
+      .eq("order_id", params.order_id)
+      .maybeSingle(),
+  ]);
+  if (orderRes.error) throw new Error(orderRes.error.message);
+  return {
+    order: orderRes.data,
+    chat_thread_id: threadRes.data?.id ?? null,
+  };
+}
+
+async function handleListDisputeMessages(
+  sb: SupabaseClient,
+  params: { dispute_id: string }
+) {
+  if (!params.dispute_id) throw new Error("dispute_id が必要です");
+
+  const { data, error } = await sb
+    .from("dispute_messages")
+    .select("*")
+    .eq("dispute_id", params.dispute_id)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleListLogs(sb: SupabaseClient) {
+  const { data, error } = await sb
+    .from("admin_logs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleListRatings(sb: SupabaseClient) {
+  const { data, error } = await sb
+    .from("ratings")
+    .select("employee_id, score, employee:profiles(id,username,full_name)");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleGetRatingDetail(
+  sb: SupabaseClient,
+  params: { employee_id: string }
+) {
+  if (!params.employee_id) throw new Error("employee_id が必要です");
+
+  const { data, error } = await sb
+    .from("ratings")
+    .select("id,score,comment,created_at,user_id")
+    .eq("employee_id", params.employee_id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleGetReports(
+  sb: SupabaseClient,
+  params: { from_date: string; to_date: string }
+) {
+  if (!params.from_date || !params.to_date)
+    throw new Error("from_date と to_date が必要です");
+
+  const [ordersRes, withdrawalsRes, feeRateRes] = await Promise.all([
+    sb
+      .from("orders")
+      .select("*")
+      .gte("created_at", params.from_date)
+      .lte("created_at", params.to_date),
+    sb
+      .from("withdrawals")
+      .select("id,user_id,amount,type,status,created_at,description")
+      .gte("created_at", params.from_date)
+      .lte("created_at", params.to_date),
+    sb
+      .from("system_settings")
+      .select("value")
+      .eq("key", "platform_fee_rate")
+      .single(),
+  ]);
+  if (ordersRes.error) throw new Error(ordersRes.error.message);
+  if (withdrawalsRes.error) throw new Error(withdrawalsRes.error.message);
+
+  return {
+    orders: ordersRes.data,
+    withdrawals: withdrawalsRes.data,
+    platform_fee_rate: feeRateRes.data?.value ?? null,
+  };
+}
+
+async function handleGetBroadcastTargets(
+  sb: SupabaseClient,
+  params: { role?: string }
+) {
+  let query = sb
+    .from("profiles")
+    .select("id")
+    .eq("is_banned", false);
+
+  if (params.role) {
+    query = query.eq("role", params.role);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleGetBroadcastNotifications(
+  sb: SupabaseClient,
+  params: { title: string; limit?: number }
+) {
+  if (!params.title) throw new Error("title が必要です");
+  const limit = params.limit ?? 500;
+
+  const { data, error } = await sb
+    .from("notifications")
+    .select("*")
+    .eq("type", "admin_broadcast")
+    .eq("title", params.title)
+    .is("email_sent_at", null)
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleGetProfilesByIds(
+  sb: SupabaseClient,
+  params: { ids: string[] }
+) {
+  if (!params.ids || params.ids.length === 0)
+    throw new Error("ids が必要です");
+
+  const { data, error } = await sb
+    .from("profiles")
+    .select("id,username,full_name,role")
+    .in("id", params.ids);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ============================================================
+// WRITE actions
+// ============================================================
+
+async function handleWarnUser(
+  sb: SupabaseClient,
+  params: { user_id: string; reason: string }
+) {
+  if (!params.user_id) throw new Error("user_id が必要です");
+
+  // Get current warning_count
+  const { data: profile, error: fetchErr } = await sb
+    .from("profiles")
+    .select("warning_count")
+    .eq("id", params.user_id)
+    .single();
+  if (fetchErr) throw new Error(fetchErr.message);
+
+  const newCount = (profile?.warning_count ?? 0) + 1;
+
+  // If warning_count reaches 2, auto-ban
+  const updatePayload: Record<string, unknown> = {
+    warning_count: newCount,
+  };
+  if (newCount >= 2) {
+    updatePayload.is_banned = true;
+    updatePayload.ban_reason = params.reason || "警告回数超過による自動BAN";
+    updatePayload.banned_at = new Date().toISOString();
+  }
+
+  const { data, error } = await sb
+    .from("profiles")
+    .update(updatePayload)
+    .eq("id", params.user_id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleBanUser(
+  sb: SupabaseClient,
+  params: { user_id: string; ban_reason: string }
+) {
+  if (!params.user_id) throw new Error("user_id が必要です");
+
+  const { data, error } = await sb
+    .from("profiles")
+    .update({
+      is_banned: true,
+      ban_reason: params.ban_reason || null,
+      banned_at: new Date().toISOString(),
+    })
+    .eq("id", params.user_id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleUnbanUser(
+  sb: SupabaseClient,
+  params: { user_id: string }
+) {
+  if (!params.user_id) throw new Error("user_id が必要です");
+
+  const { data, error } = await sb
+    .from("profiles")
+    .update({
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+    })
+    .eq("id", params.user_id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleResetWarnings(
+  sb: SupabaseClient,
+  params: { user_id: string }
+) {
+  if (!params.user_id) throw new Error("user_id が必要です");
+
+  const { data, error } = await sb
+    .from("profiles")
+    .update({ warning_count: 0 })
+    .eq("id", params.user_id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleChangeRole(
+  sb: SupabaseClient,
+  params: { user_id: string; new_role: string }
+) {
+  if (!params.user_id || !params.new_role)
+    throw new Error("user_id と new_role が必要です");
+
+  const { data, error } = await sb
+    .from("profiles")
+    .update({ role: params.new_role })
+    .eq("id", params.user_id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleAdjustBalance(
+  sb: SupabaseClient,
+  params: {
+    user_id: string;
+    new_balance: number;
+    description: string;
+    amount: number;
+    type: string;
+  }
+) {
+  if (!params.user_id) throw new Error("user_id が必要です");
+  if (params.new_balance == null) throw new Error("new_balance が必要です");
+
+  const { data: profile, error: updateErr } = await sb
+    .from("profiles")
+    .update({ balance: params.new_balance })
+    .eq("id", params.user_id)
+    .select()
+    .single();
+  if (updateErr) throw new Error(updateErr.message);
+
+  const { error: insertErr } = await sb.from("withdrawals").insert({
+    user_id: params.user_id,
+    amount: params.amount,
+    type: params.type || "withdrawal",
+    status: "completed",
+    description: params.description || "管理者による残高調整",
+  });
+  if (insertErr) throw new Error(insertErr.message);
+
+  return profile;
+}
+
+async function handleChangeOrderStatus(
+  sb: SupabaseClient,
+  params: { order_id: string; new_status: string }
+) {
+  if (!params.order_id || !params.new_status)
+    throw new Error("order_id と new_status が必要です");
+
+  const { data, error } = await sb
+    .from("orders")
+    .update({ status: params.new_status })
+    .eq("id", params.order_id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleForceCompleteOrder(
+  sb: SupabaseClient,
+  params: { order_id: string }
+) {
+  if (!params.order_id) throw new Error("order_id が必要です");
+
+  const { data, error } = await sb
+    .from("orders")
+    .update({
+      status: "confirmed",
+      is_paid_out: true,
+      paid_out_at: new Date().toISOString(),
+    })
+    .eq("id", params.order_id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleUpdateSystemSetting(
+  sb: SupabaseClient,
+  params: { key: string; value: string },
+  adminUserId: string
+) {
+  if (!params.key) throw new Error("key が必要です");
+
+  const { data, error } = await sb
+    .from("system_settings")
+    .upsert(
+      {
+        key: params.key,
+        value: params.value,
+        updated_at: new Date().toISOString(),
+        updated_by: adminUserId,
+      },
+      { onConflict: "key" }
+    )
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ============================================================
+// Main server
+// ============================================================
+
+serve(async (req: Request) => {
+  const cors = handleCors(req);
+  if (cors) return cors;
+  const corsHeaders = getCorsHeaders(req);
+
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // ---- Auth check ----
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("認証が必要です");
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser(token);
+    if (!user) throw new Error("認証が必要です");
+
+    const { data: adminProfile } = await supabase
+      .from("profiles")
+      .select("role, is_banned")
+      .eq("id", user.id)
+      .single();
+    if (adminProfile?.is_banned) throw new Error("アカウントが停止されています");
+    if (adminProfile?.role !== "admin") throw new Error("管理者権限が必要です");
+
+    // ---- Parse body & route ----
+    const body = await req.json();
+    const { action, ...params } = body;
+
+    let result: unknown;
+
+    switch (action) {
+      // READ
+      case "dashboard-kpi":
+        result = await handleDashboardKpi(supabase);
+        break;
+      case "list-users":
+        result = await handleListUsers(supabase);
+        break;
+      case "list-orders":
+        result = await handleListOrders(supabase);
+        break;
+      case "list-withdrawals":
+        result = await handleListWithdrawals(supabase);
+        break;
+      case "list-security":
+        result = await handleListSecurity(supabase);
+        break;
+      case "get-metrics":
+        result = await handleGetMetrics(supabase);
+        break;
+      case "list-notifications":
+        result = await handleListNotifications(supabase, params);
+        break;
+      case "list-chat-threads":
+        result = await handleListChatThreads(supabase);
+        break;
+      case "list-violations":
+        result = await handleListViolations(supabase, params);
+        break;
+      case "list-disputes":
+        result = await handleListDisputes(supabase);
+        break;
+      case "get-dispute-detail":
+        result = await handleGetDisputeDetail(supabase, params);
+        break;
+      case "list-dispute-messages":
+        result = await handleListDisputeMessages(supabase, params);
+        break;
+      case "list-logs":
+        result = await handleListLogs(supabase);
+        break;
+      case "list-ratings":
+        result = await handleListRatings(supabase);
+        break;
+      case "get-rating-detail":
+        result = await handleGetRatingDetail(supabase, params);
+        break;
+      case "get-reports":
+        result = await handleGetReports(supabase, params);
+        break;
+      case "get-broadcast-targets":
+        result = await handleGetBroadcastTargets(supabase, params);
+        break;
+      case "get-broadcast-notifications":
+        result = await handleGetBroadcastNotifications(supabase, params);
+        break;
+      case "get-profiles-by-ids":
+        result = await handleGetProfilesByIds(supabase, params);
+        break;
+
+      // WRITE
+      case "warn-user":
+        result = await handleWarnUser(supabase, params);
+        break;
+      case "ban-user":
+        result = await handleBanUser(supabase, params);
+        break;
+      case "unban-user":
+        result = await handleUnbanUser(supabase, params);
+        break;
+      case "reset-warnings":
+        result = await handleResetWarnings(supabase, params);
+        break;
+      case "change-role":
+        result = await handleChangeRole(supabase, params);
+        break;
+      case "adjust-balance":
+        result = await handleAdjustBalance(supabase, params);
+        break;
+      case "change-order-status":
+        result = await handleChangeOrderStatus(supabase, params);
+        break;
+      case "force-complete-order":
+        result = await handleForceCompleteOrder(supabase, params);
+        break;
+      case "update-system-setting":
+        result = await handleUpdateSystemSetting(supabase, params, user.id);
+        break;
+
+      default:
+        throw new Error(`不明なアクション: ${action}`);
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, data: result }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "不明なエラー";
+    console.error("admin-api error:", message);
+    return new Response(
+      JSON.stringify({ success: false, error: message }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      }
+    );
+  }
+});

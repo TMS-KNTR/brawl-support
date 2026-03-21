@@ -41,9 +41,19 @@ serve(async (req: Request) => {
 
     let { return_url } = await req.json();
 
-    // return_url のオープンリダイレクト防止
-    const siteUrl = Deno.env.get("SITE_URL") || "https://gemsuke.com";
-    if (return_url && !return_url.startsWith(siteUrl)) {
+    // return_url のオープンリダイレクト防止（origin比較で安全に検証）
+    const siteUrl = Deno.env.get("SITE_URL") || "";
+    if (return_url && siteUrl) {
+      try {
+        const returnOrigin = new URL(return_url).origin;
+        const allowedOrigin = new URL(siteUrl).origin;
+        if (returnOrigin !== allowedOrigin) {
+          return_url = null;
+        }
+      } catch {
+        return_url = null;
+      }
+    } else if (return_url) {
       return_url = null;
     }
 

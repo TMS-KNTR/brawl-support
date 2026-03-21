@@ -43,16 +43,17 @@ serve(async (req: Request) => {
 
     const { data: adminProfile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_banned")
       .eq("id", user.id)
       .single();
 
+    if (adminProfile?.is_banned) throw new Error("アカウントが停止されています");
     if (adminProfile?.role !== "admin") {
       throw new Error("管理者権限が必要です");
     }
 
     const { withdrawal_id, action } = await req.json();
-    if (!withdrawal_id) throw new Error("withdrawal_id が必要です");
+    if (!withdrawal_id || typeof withdrawal_id !== "string") throw new Error("withdrawal_id が必要です");
     if (!["approve", "reject"].includes(action)) throw new Error("action は approve または reject");
 
     // 出金申請を取得

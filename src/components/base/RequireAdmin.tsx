@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { normalizeRole } from '../../hooks/useAuth';
 
 export default function RequireAdmin({
   children,
@@ -13,7 +14,7 @@ export default function RequireAdmin({
     return <div className="p-6">認証確認中...</div>;
   }
 
-  if (String(userProfile.role) !== 'admin') {
+  if (normalizeRole(userProfile.role) !== 'admin') {
     return <Navigate to="/dashboard/customer" replace />;
   }
 

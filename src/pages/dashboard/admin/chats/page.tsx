@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -84,37 +84,38 @@ export default function AdminChatsPage() {
 
   async function loadThreads() {
     setLoading(true);
-    const { data } = await supabase
-      .from('chat_threads')
-      .select('id, order_id, created_at, orders(id, current_rank, target_rank, game_title, status)')
-      .order('created_at', { ascending: false });
-    setThreads((data as ChatThreadRow[]) || []);
+    try {
+      const result = await invokeEdgeFunction<{
+        success: boolean;
+        data: { threads: ChatThreadRow[] };
+        error?: string;
+      }>('admin-api', { action: 'list-chat-threads' });
+
+      if (result.success) {
+        setThreads(result.data.threads || []);
+      }
+    } catch (err) {
+      console.error('loadThreads error:', err);
+    }
     setLoading(false);
   }
 
   async function loadViolations() {
     setViolationsLoading(true);
-    const { data: rawViolations } = await supabase
-      .from('chat_violations')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200);
+    try {
+      const result = await invokeEdgeFunction<{
+        success: boolean;
+        data: { violations: ChatViolation[] };
+        error?: string;
+      }>('admin-api', { action: 'list-violations' });
 
-    if (rawViolations && rawViolations.length > 0) {
-      // ユーザー情報を別途取得
-      const userIds = [...new Set(rawViolations.map(v => v.user_id).filter(Boolean))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, full_name')
-        .in('id', userIds);
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-
-      const enriched = rawViolations.map(v => ({
-        ...v,
-        profiles: v.user_id ? profileMap.get(v.user_id) || null : null,
-      }));
-      setViolations(enriched as ChatViolation[]);
-    } else {
+      if (result.success) {
+        setViolations(result.data.violations || []);
+      } else {
+        setViolations([]);
+      }
+    } catch (err) {
+      console.error('loadViolations error:', err);
       setViolations([]);
     }
     setViolationsLoading(false);

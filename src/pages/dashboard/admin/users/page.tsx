@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase, logAdminAction } from '../../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -40,12 +40,11 @@ export default function AdminUsersPage() {
 
   async function loadUsers() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) console.error(error);
-    setUsers(data || []);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; data: any[]; error?: string }>('admin-api', { action: 'list-users' });
+      if (!result.success) { console.error(result.error); setUsers([]); }
+      else setUsers(result.data || []);
+    } catch (err) { console.error(err); setUsers([]); }
     setLoading(false);
   }
 
@@ -77,29 +76,18 @@ export default function AdminUsersPage() {
     if (newCount >= 2) {
       if (!window.confirm(`${name} に2回目の警告を与えます。\n\n⚠ 警告2回のため自動的にBANされます。\n\n理由: ${warnReason}\n\n続行しますか？`)) return;
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          warning_count: newCount,
-          is_banned: true,
-          ban_reason: `警告2回によるBAN（最終警告理由: ${warnReason}）`,
-          banned_at: new Date().toISOString(),
-        })
-        .eq('id', warnTarget.id);
-
-      if (error) { alert('エラー: ' + error.message); return; }
-      await logAdminAction({ action: 'user_warning_auto_ban', targetType: 'user', targetId: warnTarget.id, details: `${name} に警告を与え自動BAN`, meta: { reason: warnReason, warning_count: newCount } });
+      try {
+        const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'warn-user', user_id: warnTarget.id, reason: warnReason });
+        if (!result.success) { alert('エラー: ' + result.error); return; }
+      } catch (err: any) { alert('エラー: ' + err.message); return; }
       alert(`${name} に警告を与え、自動BANしました。`);
     } else {
       if (!window.confirm(`${name} に警告を与えますか？\n\n理由: ${warnReason}\n\n現在の警告回数: ${currentCount}回 → ${newCount}回\n（2回でBANになります）`)) return;
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ warning_count: newCount })
-        .eq('id', warnTarget.id);
-
-      if (error) { alert('エラー: ' + error.message); return; }
-      await logAdminAction({ action: 'user_warning', targetType: 'user', targetId: warnTarget.id, details: `${name} に警告 (${newCount}/2)`, meta: { reason: warnReason, warning_count: newCount } });
+      try {
+        const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'warn-user', user_id: warnTarget.id, reason: warnReason });
+        if (!result.success) { alert('エラー: ' + result.error); return; }
+      } catch (err: any) { alert('エラー: ' + err.message); return; }
       alert(`${name} に警告を与えました（${newCount}/2回）`);
     }
 
@@ -113,9 +101,10 @@ export default function AdminUsersPage() {
   async function resetWarnings(user: any) {
     const name = user.username || user.full_name || user.id;
     if (!window.confirm(`${name} の警告回数をリセット（0回に戻す）しますか？`)) return;
-    const { error } = await supabase.from('profiles').update({ warning_count: 0 }).eq('id', user.id);
-    if (error) { alert('エラー: ' + error.message); return; }
-    await logAdminAction({ action: 'user_warnings_reset', targetType: 'user', targetId: user.id, details: `${name} の警告回数をリセット`, meta: { previous_count: user.warning_count } });
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'reset-warnings', user_id: user.id });
+      if (!result.success) { alert('エラー: ' + result.error); return; }
+    } catch (err: any) { alert('エラー: ' + err.message); return; }
     loadUsers();
   }
 
@@ -126,26 +115,21 @@ export default function AdminUsersPage() {
     const msg = newBan ? `${name} をBANしますか？` : `${name} のBANを解除しますか？（警告回数もリセットされます）`;
     if (!window.confirm(msg)) return;
 
-    const updates: any = {
-      is_banned: newBan,
-      ban_reason: newBan ? '管理者による直接BAN' : null,
-      banned_at: newBan ? new Date().toISOString() : null,
-    };
-    // BAN解除時は警告もリセット
-    if (!newBan) updates.warning_count = 0;
-
-    const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
-    if (error) { alert('エラー: ' + error.message); return; }
-    await logAdminAction({ action: newBan ? 'user_ban' : 'user_unban', targetType: 'user', targetId: user.id, details: `${name} を${newBan ? 'BAN' : 'BAN解除'}`, meta: { is_banned: newBan, ban_reason: updates.ban_reason } });
+    try {
+      const action = newBan ? 'ban-user' : 'unban-user';
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action, user_id: user.id });
+      if (!result.success) { alert('エラー: ' + result.error); return; }
+    } catch (err: any) { alert('エラー: ' + err.message); return; }
     loadUsers();
   }
 
   async function changeRole(user: any, newRole: string) {
     const name = user.username || user.full_name || user.id;
     if (!window.confirm(`${name} のロールを「${roleLabel(newRole)}」に変更しますか？`)) return;
-    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', user.id);
-    if (error) { alert('エラー: ' + error.message); return; }
-    await logAdminAction({ action: 'user_role_changed', targetType: 'user', targetId: user.id, details: `${name} のロールを ${roleLabel(user.role)} → ${roleLabel(newRole)} に変更`, meta: { old_role: user.role, new_role: newRole } });
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'change-role', user_id: user.id, new_role: newRole });
+      if (!result.success) { alert('エラー: ' + result.error); return; }
+    } catch (err: any) { alert('エラー: ' + err.message); return; }
     loadUsers();
   }
 

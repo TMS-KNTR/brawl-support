@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, logAdminAction } from '../../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -15,17 +15,23 @@ export default function AdminSecurityPage() {
 
   async function loadData() {
     setLoading(true);
-    const { data: banned } = await supabase.from('profiles').select('*').eq('is_banned', true);
-    const { data: warned } = await supabase.from('profiles').select('*').gt('warning_count', 0).eq('is_banned', false);
-    setBannedUsers(banned || []);
-    setWarnedUsers(warned || []);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; data: { banned: any[]; warned: any[] }; error?: string }>('admin-api', { action: 'list-security' });
+      if (!result.success) { console.error(result.error); }
+      else {
+        setBannedUsers(result.data.banned || []);
+        setWarnedUsers(result.data.warned || []);
+      }
+    } catch (err) { console.error(err); }
     setLoading(false);
   }
 
   async function unban(userId: string) {
     if (!window.confirm('BANを解除しますか？')) return;
-    await supabase.from('profiles').update({ is_banned: false, ban_reason: null, banned_at: null }).eq('id', userId);
-    await logAdminAction({ action: 'user_unban', targetType: 'user', targetId: userId, details: 'セキュリティページからBAN解除', meta: {} });
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'unban-user', user_id: userId });
+      if (!result.success) { alert('エラー: ' + result.error); return; }
+    } catch (err: any) { alert('エラー: ' + err.message); return; }
     loadData();
   }
 

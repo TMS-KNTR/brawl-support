@@ -18,7 +18,14 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { price, userId, orderData } = await req.json();
+    // JWT認証
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("認証が必要です");
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) throw new Error("認証が必要です");
+
+    const { price, orderData } = await req.json();
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -36,7 +43,7 @@ Deno.serve(async (req) => {
       success_url: `${Deno.env.get("SITE_URL")}/order/success`,
       cancel_url: `${Deno.env.get("SITE_URL")}/order/new`,
       metadata: {
-        userId,
+        userId: user.id,
         orderData: JSON.stringify(orderData),
       },
     });

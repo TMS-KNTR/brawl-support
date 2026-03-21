@@ -130,11 +130,11 @@ export function useAuthImpl() {
       )
 
     try {
-      console.log('[fetchUserProfile] start', userId)
+      if (import.meta.env.DEV) console.log('[fetchUserProfile] start', userId)
       let queryResult = await doFetch()
 
       if (reqId !== activeProfileReqId.current) {
-        console.log('[fetchUserProfile] stale request, skipping')
+        if (import.meta.env.DEV) console.log('[fetchUserProfile] stale request, skipping')
         return null
       }
 
@@ -160,17 +160,17 @@ export function useAuthImpl() {
             setProfileStatus('ready')
             return fromCache2
           }
-          console.warn('[fetchUserProfile] TIMEOUT after retry - using fallback role')
-          const fallback: UserProfile = { id: userId, role: 'customer' }
-          setUserProfile(fallback)
-          setProfileStatus('ready')
-          return fallback
+          console.error('[fetchUserProfile] TIMEOUT after retry - no profile available')
+          setProfileError('プロフィールの取得がタイムアウトしました。再度お試しください。')
+          setProfileStatus('error')
+          setAuthLoading(false)
+          return null
         }
       }
 
       const { data, error } = queryResult as any
 
-      console.log('[fetchUserProfile] response:', { data, error })
+      if (import.meta.env.DEV) console.log('[fetchUserProfile] response:', { data, error })
 
       // エラーがある場合
       if (error) {
@@ -178,7 +178,7 @@ export function useAuthImpl() {
 
         // PGRST116 = プロフィールが存在しない → 自動作成
         if (error.code === 'PGRST116') {
-          console.log('[fetchUserProfile] no profile found, auto-creating')
+          if (import.meta.env.DEV) console.log('[fetchUserProfile] no profile found, auto-creating')
           return await autoCreateProfile(userId, reqId)
         }
 
@@ -193,16 +193,16 @@ export function useAuthImpl() {
           setProfileStatus('ready')
           return fromCache
         }
-        console.warn('[fetchUserProfile] using fallback due to error')
-        const fallback: UserProfile = { id: userId, role: 'customer' }
-        setUserProfile(fallback)
-        setProfileStatus('ready')
-        return fallback
+        console.error('[fetchUserProfile] profile fetch failed - no fallback')
+        setProfileError('プロフィールの取得に失敗しました。再度お試しください。')
+        setProfileStatus('error')
+        setAuthLoading(false)
+        return null
       }
 
       // データが無い場合
       if (!data) {
-        console.log('[fetchUserProfile] no data, auto-creating')
+        if (import.meta.env.DEV) console.log('[fetchUserProfile] no data, auto-creating')
         return await autoCreateProfile(userId, reqId)
       }
 
@@ -213,7 +213,7 @@ export function useAuthImpl() {
         role: normalizeRole(data?.role),
       }
 
-      console.log('[fetchUserProfile] SUCCESS, role=', normalized.role)
+      if (import.meta.env.DEV) console.log('[fetchUserProfile] SUCCESS, role=', normalized.role)
       lastKnownProfileRef.current = normalized
       setProfileCache(userId, normalized)
       setUserProfile(normalized)
@@ -234,17 +234,17 @@ export function useAuthImpl() {
         setProfileStatus('ready')
         return fromCache
       }
-      const fallback: UserProfile = { id: userId, role: 'customer' }
-      setUserProfile(fallback)
-      setProfileStatus('ready')
-      return fallback
+      setProfileError('プロフィールの取得に失敗しました。再度お試しください。')
+      setProfileStatus('error')
+      setAuthLoading(false)
+      return null
     }
   }, [])
 
   /** プロフィール自動作成 */
   const autoCreateProfile = useCallback(async (userId: string, reqId: number): Promise<UserProfile | null> => {
     try {
-      console.log('[autoCreateProfile] inserting...')
+      if (import.meta.env.DEV) console.log('[autoCreateProfile] inserting...')
 
       const insertResult = await withTimeout(
         supabase
@@ -263,6 +263,7 @@ export function useAuthImpl() {
         const fallback: UserProfile = { id: userId, role: 'customer' }
         setUserProfile(fallback)
         setProfileStatus('ready')
+        setAuthLoading(false)
         return fallback
       }
 
@@ -284,6 +285,7 @@ export function useAuthImpl() {
         const fallback: UserProfile = { id: userId, role: 'customer' }
         setUserProfile(fallback)
         setProfileStatus('ready')
+        setAuthLoading(false)
         return fallback
       }
 
@@ -294,6 +296,7 @@ export function useAuthImpl() {
         const fallback: UserProfile = { id: userId, role: 'customer' }
         setUserProfile(fallback)
         setProfileStatus('ready')
+        setAuthLoading(false)
         return fallback
       }
 
@@ -303,7 +306,7 @@ export function useAuthImpl() {
         role: normalizeRole(created?.role),
       }
 
-      console.log('[autoCreateProfile] success, role=', normalized.role)
+      if (import.meta.env.DEV) console.log('[autoCreateProfile] success, role=', normalized.role)
       lastKnownProfileRef.current = normalized
       setProfileCache(userId, normalized)
       setUserProfile(normalized)
@@ -315,6 +318,7 @@ export function useAuthImpl() {
       const fallback: UserProfile = { id: userId, role: 'customer' }
       setUserProfile(fallback)
       setProfileStatus('ready')
+      setAuthLoading(false)
       return fallback
     }
   }, [])
@@ -332,7 +336,7 @@ export function useAuthImpl() {
       if (!mounted) return
 
       const sessionUser = session?.user ?? null
-      console.log('[auth] onAuthStateChange', event, sessionUser?.id)
+      if (import.meta.env.DEV) console.log('[auth] onAuthStateChange', event, sessionUser?.id)
 
       setUser(sessionUser)
 
@@ -360,10 +364,10 @@ export function useAuthImpl() {
       // ログインボタンを押した時（initialSessionHandled=true）のみ取得。
       if (event === 'SIGNED_IN') {
         if (!initialSessionHandled) {
-          console.log('[auth] SIGNED_IN skipped (waiting for INITIAL_SESSION)')
+          if (import.meta.env.DEV) console.log('[auth] SIGNED_IN skipped (waiting for INITIAL_SESSION)')
           return
         }
-        console.log('[auth] SIGNED_IN processing profile fetch')
+        if (import.meta.env.DEV) console.log('[auth] SIGNED_IN processing profile fetch')
         setAuthLoading(true)
         await fetchUserProfile(sessionUser.id)
         if (mounted) setAuthLoading(false)

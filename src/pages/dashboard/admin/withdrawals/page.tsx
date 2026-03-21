@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, logAdminAction } from '../../../../lib/supabase';
+import { supabase, logAdminAction, invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -62,23 +62,21 @@ export default function AdminWithdrawalsPage() {
   async function loadData() {
     setLoading(true);
 
-    // 出金・報酬履歴
-    const { data: wData } = await supabase
-      .from('withdrawals')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    setWithdrawals((wData as Withdrawal[]) || []);
+    try {
+      const result = await invokeEdgeFunction<{
+        success: boolean;
+        data: { withdrawals: Withdrawal[]; employees: EmployeeProfile[] };
+        error?: string;
+      }>('admin-api', { action: 'list-withdrawals' });
 
-    // 従業員プロフィール
-    const { data: pData } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, balance, stripe_account_id, role')
-      .in('role', ['employee', 'worker', 'admin']);
-    if (pData) {
-      const map: Record<string, EmployeeProfile> = {};
-      for (const p of pData as EmployeeProfile[]) map[p.id] = p;
-      setEmployees(map);
+      if (result.success) {
+        setWithdrawals(result.data.withdrawals || []);
+        const map: Record<string, EmployeeProfile> = {};
+        for (const p of result.data.employees || []) map[p.id] = p;
+        setEmployees(map);
+      }
+    } catch (err) {
+      console.error('loadData error:', err);
     }
 
     setLoading(false);
@@ -200,27 +198,23 @@ export default function AdminWithdrawalsPage() {
     const newBalance = (adjustModal.balance || 0) + delta;
     if (newBalance < 0) { alert('残高がマイナスになります'); setAdjustSaving(false); return; }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ balance: newBalance })
-      .eq('id', adjustModal.id);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', {
+        action: 'adjust-balance',
+        user_id: adjustModal.id,
+        new_balance: newBalance,
+        description: `管理者調整 ${delta > 0 ? '+' : ''}¥${delta.toLocaleString()}: ${adjustReason}`,
+        amount: Math.abs(delta),
+        type: delta > 0 ? 'earning' : 'withdrawal',
+      });
 
-    if (error) {
-      alert(`更新に失敗しました: ${error.message}`);
-      setAdjustSaving(false);
-      return;
-    }
-
-    // 調整履歴を記録
-    const { error: insertErr } = await supabase.from('withdrawals').insert({
-      user_id: adjustModal.id,
-      amount: Math.abs(delta),
-      type: delta > 0 ? 'earning' : 'withdrawal',
-      status: 'completed',
-      description: `管理者調整 ${delta > 0 ? '+' : ''}¥${delta.toLocaleString()}: ${adjustReason}`,
-    });
-    if (insertErr) {
-      alert(`履歴の記録に失敗しました: ${insertErr.message}`);
+      if (!result.success) {
+        alert(`更新に失敗しました: ${result.error}`);
+        setAdjustSaving(false);
+        return;
+      }
+    } catch (err: any) {
+      alert(`更新に失敗しました: ${err.message}`);
       setAdjustSaving(false);
       return;
     }

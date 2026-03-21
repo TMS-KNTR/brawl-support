@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, invokeEdgeFunction } from '../../lib/supabase';
 
 export default function ChatPage() {
   const { threadId } = useParams();
@@ -78,8 +78,14 @@ export default function ChatPage() {
       const { data: msgs, error } = await supabase.from('messages').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
       if (error) throw error;
       const senderIds = [...new Set(msgs?.map(m => m.sender_id) || [])];
-      const { data: profiles } = await supabase.from('profiles').select('id, username, full_name, role').in('id', senderIds);
-      const pMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      let profiles: any[] = [];
+      if (senderIds.length > 0) {
+        try {
+          const result = await invokeEdgeFunction<{ success: boolean; data?: any[]; error?: string }>('chat-data', { action: 'get-sender-profiles', user_ids: senderIds, order_id: orderId });
+          if (result.success) profiles = result.data || [];
+        } catch (e) { console.error('プロフィール取得エラー:', e); }
+      }
+      const pMap = new Map(profiles.map((p: any) => [p.id, p]));
       const enriched = msgs?.map(m => ({ ...m, sender: pMap.get(m.sender_id) || null })) || [];
       setMessages(enriched);
 
@@ -109,8 +115,12 @@ export default function ChatPage() {
   const reportViolation = async (message: string, matchedWord: string) => {
     try {
       await supabase.from('chat_violations').insert({ user_id: user?.id, order_id: orderId, thread_id: threadId, message_content: message, matched_word: matchedWord });
-      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
-      if (admins?.length) {
+      let admins: any[] = [];
+      try {
+        const adminResult = await invokeEdgeFunction<{ success: boolean; data?: any[]; error?: string }>('chat-data', { action: 'get-admin-ids' });
+        if (adminResult.success) admins = adminResult.data || [];
+      } catch {}
+      if (admins.length) {
         const { data: { session } } = await supabase.auth.getSession();
         for (const a of admins) {
           try { await supabase.functions.invoke('create-notification', { body: { user_id: a.id, type: 'ng_word_violation', title: 'NGワード検知', body: `NGワード「${matchedWord}」を検知`, link_url: `/chat/${threadId}` }, headers: { Authorization: `Bearer ${session?.access_token}` } }); } catch {}

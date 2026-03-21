@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../../lib/supabase';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
@@ -114,33 +114,20 @@ export default function AdminReportsPage() {
       ? { from: customFrom, to: customTo }
       : getFiscalYearRange(selectedYear);
 
-    const [ordersRes, withdrawalsRes, settingsRes] = await Promise.all([
-      supabase
-        .from('orders')
-        .select('*')
-        .gte('created_at', `${range.from}T00:00:00`)
-        .lte('created_at', `${range.to}T23:59:59`)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('withdrawals')
-        .select('id, user_id, amount, type, status, created_at, description')
-        .gte('created_at', `${range.from}T00:00:00`)
-        .lte('created_at', `${range.to}T23:59:59`)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'platform_fee_rate')
-        .maybeSingle(),
-    ]);
-
-    setOrders(ordersRes.data ?? []);
-    setWithdrawals(withdrawalsRes.data ?? []);
-    if (settingsRes.data?.value != null) {
-      const v = typeof settingsRes.data.value === 'object'
-        ? (settingsRes.data.value as any).rate ?? 0.2
-        : Number(settingsRes.data.value) || 0.2;
-      setFeeRate(v);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; data?: { orders: Order[]; withdrawals: Withdrawal[]; fee_rate: number }; error?: string }>('admin-api', {
+        action: 'get-reports',
+        from_date: range.from,
+        to_date: range.to,
+      });
+      if (!result.success) throw new Error(result.error || 'レポートの取得に失敗しました');
+      setOrders(result.data?.orders ?? []);
+      setWithdrawals(result.data?.withdrawals ?? []);
+      if (result.data?.fee_rate != null) {
+        setFeeRate(result.data.fee_rate);
+      }
+    } catch (e: any) {
+      console.error('レポート取得エラー:', e);
     }
     setLoading(false);
   }

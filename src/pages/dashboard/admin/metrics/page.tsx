@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -14,29 +14,37 @@ export default function AdminMetricsPage() {
 
   async function loadMetrics() {
     setLoading(true);
-    const { data: orders } = await supabase.from('orders').select('id, status, price, created_at');
-    const { data: users } = await supabase.from('profiles').select('id, role, is_banned');
-    const { data: disputes } = await supabase.from('disputes').select('id, status');
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; data: any; error?: string }>('admin-api', { action: 'get-metrics' });
+      if (!result.success) {
+        console.error('メトリクス取得エラー:', result.error);
+        setLoading(false);
+        return;
+      }
+      const { orders, users, disputes } = result.data;
 
-    const totalOrders = orders?.length ?? 0;
-    const paidOrders = orders?.filter(o => o.status === 'paid').length ?? 0;
-    const assignedOrders = orders?.filter(o => o.status === 'assigned').length ?? 0;
-    const inProgressOrders = orders?.filter(o => o.status === 'in_progress').length ?? 0;
-    const completedOrders = orders?.filter(o => ['completed', 'confirmed'].includes(o.status)).length ?? 0;
-    const cancelledOrders = orders?.filter(o => o.status === 'cancelled').length ?? 0;
-    const totalRevenue = orders?.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (o.price || 0), 0) ?? 0;
+      const totalOrders = orders?.length ?? 0;
+      const paidOrders = orders?.filter((o: any) => o.status === 'paid').length ?? 0;
+      const assignedOrders = orders?.filter((o: any) => o.status === 'assigned').length ?? 0;
+      const inProgressOrders = orders?.filter((o: any) => o.status === 'in_progress').length ?? 0;
+      const completedOrders = orders?.filter((o: any) => ['completed', 'confirmed'].includes(o.status)).length ?? 0;
+      const cancelledOrders = orders?.filter((o: any) => o.status === 'cancelled').length ?? 0;
+      const totalRevenue = orders?.filter((o: any) => o.status !== 'cancelled').reduce((sum: number, o: any) => sum + (o.price || 0), 0) ?? 0;
 
-    const totalUsers = users?.length ?? 0;
-    const customers = users?.filter(u => u.role === 'customer' || u.role === 'client').length ?? 0;
-    const employees = users?.filter(u => u.role === 'worker' || u.role === 'employee').length ?? 0;
-    const bannedUsers = users?.filter(u => u.is_banned).length ?? 0;
+      const totalUsers = users?.length ?? 0;
+      const customers = users?.filter((u: any) => u.role === 'customer' || u.role === 'client').length ?? 0;
+      const employees = users?.filter((u: any) => u.role === 'worker' || u.role === 'employee').length ?? 0;
+      const bannedUsers = users?.filter((u: any) => u.is_banned).length ?? 0;
 
-    const openDisputes = disputes?.filter(d => d.status === 'open').length ?? 0;
+      const openDisputes = disputes?.filter((d: any) => d.status === 'open').length ?? 0;
 
-    setStats({
-      totalOrders, paidOrders, assignedOrders, inProgressOrders, completedOrders, cancelledOrders, totalRevenue,
-      totalUsers, customers, employees, bannedUsers, openDisputes,
-    });
+      setStats({
+        totalOrders, paidOrders, assignedOrders, inProgressOrders, completedOrders, cancelledOrders, totalRevenue,
+        totalUsers, customers, employees, bannedUsers, openDisputes,
+      });
+    } catch (err) {
+      console.error('メトリクス取得エラー:', err);
+    }
     setLoading(false);
   }
 

@@ -33,11 +33,13 @@ export default function LoginPage() {
   const showDevQuickLogin = resolveShowDevQuickLogin()
 
   const quickLogins: QuickLogin[] = useMemo(
-    () => [
-      { label: 'テスト従業員（aasu6409@gmail.com）', email: 'aasu6409@gmail.com' },
-      { label: 'テスト依頼者（m1k3y.bs@gmail.com）', email: 'm1k3y.bs@gmail.com' },
-      { label: '管理者（gemusuke.official@gmail.com）', email: 'gemusuke.official@gmail.com' },
-    ],
+    () => import.meta.env.DEV
+      ? [
+          { label: 'テスト従業員', email: 'aasu6409@gmail.com' },
+          { label: 'テスト依頼者', email: 'm1k3y.bs@gmail.com' },
+          { label: '管理者', email: 'gemusuke.official@gmail.com' },
+        ]
+      : [],
     []
   )
 

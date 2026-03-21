@@ -25,9 +25,10 @@ serve(async (req: Request) => {
 
     const { data: adminProfile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_banned")
       .eq("id", user.id)
       .single();
+    if (adminProfile?.is_banned) throw new Error("アカウントが停止されています");
     if (adminProfile?.role !== "admin") throw new Error("管理者権限が必要です");
 
     const { order_id } = await req.json();

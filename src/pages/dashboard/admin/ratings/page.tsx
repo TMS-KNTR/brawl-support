@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -33,13 +33,11 @@ export default function AdminRatingsPage() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error } = await supabase
-          .from('ratings')
-          .select('employee_id, score, employee:profiles!ratings_employee_id_fkey(id, username, full_name)');
-        if (error) throw error;
+        const result = await invokeEdgeFunction<{ success: boolean; data?: any[]; error?: string }>('admin-api', { action: 'list-ratings' });
+        if (!result.success) throw new Error(result.error || '評価の取得に失敗しました');
+        const data = result.data || [];
         const map = new Map<string, { name: string; sum: number; count: number }>();
-        (data || []).forEach((r: any) => {
-          const emp = r.employee || {};
+        data.forEach((r: any) => {
           const name = r.employee_id ? `${r.employee_id.slice(0, 8)}...` : '不明';
           const key = r.employee_id;
           const current = map.get(key) || { name, sum: 0, count: 0 };
@@ -74,14 +72,10 @@ export default function AdminRatingsPage() {
     setDetailsError(null);
     setDetailsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('ratings')
-        .select('id, score, comment, created_at, user_id')
-        .eq('employee_id', row.employee_id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      const list: RatingDetail[] = (data || []).map((r: any) => ({
+      const result = await invokeEdgeFunction<{ success: boolean; data?: any[]; error?: string }>('admin-api', { action: 'get-rating-detail', employee_id: row.employee_id });
+      if (!result.success) throw new Error(result.error || '評価の取得に失敗しました');
+      const data = result.data || [];
+      const list: RatingDetail[] = data.map((r: any) => ({
         id: r.id,
         score: r.score,
         comment: r.comment,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, logAdminAction } from '../../../../lib/supabase';
+import { supabase, logAdminAction, invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -70,32 +70,30 @@ export default function AdminNotificationsPage() {
 
   async function loadNotifications() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500);
+    try {
+      // First fetch notifications
+      const notifResult = await invokeEdgeFunction<{
+        success: boolean;
+        data: { notifications: Notification[]; profiles: Profile[] };
+        error?: string;
+      }>('admin-api', { action: 'list-notifications' });
 
-    if (error) {
-      setNotifications([]);
-      setLoading(false);
-      return;
-    }
-    const items = (data as Notification[]) || [];
-    setNotifications(items);
+      if (!notifResult.success) {
+        setNotifications([]);
+        setLoading(false);
+        return;
+      }
 
-    // ユーザー情報を取得
-    const userIds = [...new Set(items.map((n) => n.user_id))];
-    if (userIds.length > 0) {
-      const { data: pData } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, role')
-        .in('id', userIds);
-      if (pData) {
+      const items = notifResult.data.notifications || [];
+      setNotifications(items);
+
+      if (notifResult.data.profiles) {
         const map: Record<string, Profile> = {};
-        for (const p of pData as Profile[]) map[p.id] = p;
+        for (const p of notifResult.data.profiles) map[p.id] = p;
         setProfiles(map);
       }
+    } catch {
+      setNotifications([]);
     }
     setLoading(false);
   }
@@ -147,11 +145,21 @@ export default function AdminNotificationsPage() {
     setBcResult(null);
 
     // 対象ユーザーを取得
-    let query = supabase.from('profiles').select('id').eq('is_banned', false);
-    if (bcTarget !== 'all') query = query.eq('role', bcTarget);
-    const { data: targets, error: tErr } = await query;
+    let targets: { id: string }[] = [];
+    try {
+      const targetResult = await invokeEdgeFunction<{
+        success: boolean;
+        data: { targets: { id: string }[] };
+        error?: string;
+      }>('admin-api', { action: 'get-broadcast-targets', role: bcTarget });
 
-    if (tErr || !targets || targets.length === 0) {
+      if (!targetResult.success || !targetResult.data.targets || targetResult.data.targets.length === 0) {
+        setBcResult('対象ユーザーが見つかりませんでした。');
+        setBcSending(false);
+        return;
+      }
+      targets = targetResult.data.targets;
+    } catch {
       setBcResult('対象ユーザーが見つかりませんでした。');
       setBcSending(false);
       return;
@@ -180,14 +188,11 @@ export default function AdminNotificationsPage() {
     let emailCount = 0;
     if (bcSendEmail) {
       // 直前に挿入した通知を取得
-      const { data: created } = await supabase
-        .from('notifications')
-        .select('id, user_id')
-        .eq('type', 'admin_broadcast')
-        .eq('title', bcTitle.trim())
-        .is('email_sent_at', null)
-        .order('created_at', { ascending: false })
-        .limit(targets.length);
+      const bcNotifResult = await invokeEdgeFunction<{
+        success: boolean;
+        data: { notifications: { id: string; user_id: string }[] };
+      }>('admin-api', { action: 'get-broadcast-notifications', title: bcTitle.trim(), limit: targets.length });
+      const created = bcNotifResult.success ? bcNotifResult.data.notifications : [];
 
       for (const n of created || []) {
         try {

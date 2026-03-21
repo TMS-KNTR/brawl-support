@@ -68,28 +68,28 @@ export default function AdminSystemPage() {
 
   async function saveSetting(key: string, value: any, label: string) {
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
 
-    const { error } = await supabase
-      .from('system_settings')
-      .upsert({
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', {
+        action: 'update-system-setting',
         key,
         value,
-        updated_at: new Date().toISOString(),
-        updated_by: user?.id,
       });
 
-    if (error) {
-      alert('保存エラー: ' + error.message);
-    } else {
-      await logAdminAction({
-        action: 'system_setting_changed',
-        targetType: 'system',
-        targetId: key,
-        details: `${label}を変更: ${JSON.stringify(value)}`,
-        meta: { key, value },
-      });
-      alert(`${label}を保存しました`);
+      if (!result.success) {
+        alert('保存エラー: ' + (result.error || '不明なエラー'));
+      } else {
+        await logAdminAction({
+          action: 'system_setting_changed',
+          targetType: 'system',
+          targetId: key,
+          details: `${label}を変更: ${JSON.stringify(value)}`,
+          meta: { key, value },
+        });
+        alert(`${label}を保存しました`);
+      }
+    } catch (e: any) {
+      alert('保存エラー: ' + (e.message || '不明なエラー'));
     }
 
     setSaving(false);

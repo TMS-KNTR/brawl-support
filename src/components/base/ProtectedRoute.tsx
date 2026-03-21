@@ -9,7 +9,7 @@ type Props = {
 };
 
 export default function ProtectedRoute({ children, allowedRoles }: Props) {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, profileStatus } = useAuth();
 
   // 認証ロード中
   if (loading) {
@@ -23,6 +23,21 @@ export default function ProtectedRoute({ children, allowedRoles }: Props) {
   // 未ログイン
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // プロファイル取得エラー
+  if (profileStatus === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-gray-500 gap-3">
+        <p>プロファイルの取得に失敗しました</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+        >
+          再読み込み
+        </button>
+      </div>
+    );
   }
 
   // プロファイル未取得

@@ -50,15 +50,16 @@ serve(async (req: Request) => {
     // 管理者チェック
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_banned")
       .eq("id", user.id)
       .single();
 
+    if (profile?.is_banned) throw new Error("アカウントが停止されています");
     if (profile?.role !== "admin") throw new Error("管理者権限が必要です");
 
     // リクエストからorder_idを取得
     const { order_id } = await req.json();
-    if (!order_id) throw new Error("order_idが必要です");
+    if (!order_id || typeof order_id !== "string") throw new Error("order_idが必要です");
 
     // 注文情報を取得
     const { data: order, error: orderError } = await supabase

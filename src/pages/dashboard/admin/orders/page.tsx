@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase, logAdminAction } from '../../../../lib/supabase';
+import { supabase, logAdminAction, invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -33,11 +33,11 @@ export default function AdminOrdersPage() {
 
   async function loadOrders() {
     setLoading(true);
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setOrders(data || []);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; data: any[]; error?: string }>('admin-api', { action: 'list-orders' });
+      if (!result.success) { console.error(result.error); setOrders([]); }
+      else setOrders(result.data || []);
+    } catch (err) { console.error(err); setOrders([]); }
     setLoading(false);
   }
 
@@ -106,7 +106,7 @@ export default function AdminOrdersPage() {
       alert(`✅ 返金完了\n\n返金ID: ${result.refund_id || '-'}\n金額: ¥${(result.amount || 0).toLocaleString()}`);
     } catch (err: any) {
       alert(`❌ エラー: ${err.message}\n\nStripeダッシュボード(dashboard.stripe.com)から手動で返金してください。`);
-      await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id);
+      await invokeEdgeFunction('admin-api', { action: 'update-order-status', order_id: order.id, status: 'cancelled' }).catch(() => {});
       await logAdminAction({ action: 'order_force_cancelled_fallback', targetType: 'order', targetId: order.id, details: `返金エラー、ステータスのみキャンセルに変更`, meta: { error: err.message } });
     }
 
@@ -129,7 +129,7 @@ export default function AdminOrdersPage() {
 
     try {
       const result = await callEdgeFunction('payout-employee', { order_id: order.id });
-      await supabase.from('orders').update({ status: 'confirmed', is_paid_out: true, paid_out_at: new Date().toISOString() }).eq('id', order.id);
+      await invokeEdgeFunction('admin-api', { action: 'update-order-status', order_id: order.id, status: 'confirmed', is_paid_out: true });
       await logAdminAction({ action: 'order_force_completed', targetType: 'order', targetId: order.id, details: `注文を強制完了+従業員支払い ¥${payoutAmount.toLocaleString()}`, meta: { total_price: totalPrice, platform_fee: platformFee, payout_amount: payoutAmount } });
       // 依頼者に通知
       if (order.user_id) {
@@ -142,7 +142,7 @@ export default function AdminOrdersPage() {
       alert(`✅ 完了\n\n${result.message}`);
     } catch (err: any) {
       alert(`❌ エラー: ${err.message}`);
-      await supabase.from('orders').update({ status: 'completed' }).eq('id', order.id);
+      await invokeEdgeFunction('admin-api', { action: 'update-order-status', order_id: order.id, status: 'completed' }).catch(() => {});
       await logAdminAction({ action: 'order_force_completed_fallback', targetType: 'order', targetId: order.id, details: `支払いエラー、ステータスのみ完了に変更`, meta: { error: err.message } });
     }
 
@@ -153,8 +153,10 @@ export default function AdminOrdersPage() {
   /** ステータスだけ変更（返金・支払いなし） */
   async function changeStatusOnly(orderId: string, newStatus: string) {
     if (!window.confirm(`ステータスを「${statusLabel(newStatus)}」に変更しますか？\n\n※ お金の移動はありません`)) return;
-    const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
-    if (error) { alert('エラー: ' + error.message); return; }
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'update-order-status', order_id: orderId, status: newStatus });
+      if (!result.success) { alert('エラー: ' + result.error); return; }
+    } catch (err: any) { alert('エラー: ' + err.message); return; }
     await logAdminAction({ action: 'order_status_changed', targetType: 'order', targetId: orderId, details: `注文ステータスを ${statusLabel(newStatus)} に変更`, meta: { new_status: newStatus } });
     loadOrders();
   }

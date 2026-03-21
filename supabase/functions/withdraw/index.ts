@@ -53,7 +53,7 @@ serve(async (req: Request) => {
     const MIN_WITHDRAW = 300;
     const { amount: rawAmount } = await req.json();
     const amount = Math.floor(Number(rawAmount));
-    if (!amount || amount <= 0) throw new Error("出金額を指定してください");
+    if (isNaN(amount) || amount <= 0) throw new Error("出金額を指定してください");
     if (amount < MIN_WITHDRAW) throw new Error(`最低出金額は¥${MIN_WITHDRAW.toLocaleString()}です`);
 
     const currentBalance = profile?.balance || 0;

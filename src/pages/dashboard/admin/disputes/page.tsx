@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, logAdminAction } from '../../../../lib/supabase';
+import { supabase, logAdminAction, invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -34,42 +34,52 @@ export default function AdminDisputesPage() {
 
   async function loadDisputes() {
     setLoading(true);
-    // まず紛争だけ取得
-    const { data, error } = await supabase
-      .from('disputes')
-      .select('*')
-      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('disputes取得エラー:', error);
-      alert('紛争の取得に失敗: ' + error.message);
-      setLoading(false);
-      return;
-    }
+    try {
+      // First get the list of disputes
+      const listResult = await invokeEdgeFunction<{
+        success: boolean;
+        data: { disputes: any[] };
+        error?: string;
+      }>('admin-api', { action: 'list-disputes' });
 
-    // 各紛争に注文情報を個別に取得
-    const enriched = await Promise.all((data || []).map(async (d: any) => {
-      if (!d.order_id) return { ...d, order: null };
-      const { data: orderData } = await supabase
-        .from('orders')
-        .select('id, price, total_price, payment_intent_id, employee_id, user_id, is_refunded, is_paid_out')
-        .eq('id', d.order_id)
-        .single();
-
-      let chatThreadId = null;
-      if (orderData) {
-        const { data: threads } = await supabase
-          .from('chat_threads')
-          .select('id')
-          .eq('order_id', d.order_id)
-          .limit(1);
-        chatThreadId = threads?.[0]?.id || null;
+      if (!listResult.success) {
+        console.error('disputes取得エラー:', listResult.error);
+        alert('紛争の取得に失敗: ' + listResult.error);
+        setLoading(false);
+        return;
       }
 
-      return { ...d, order: orderData ? { ...orderData, chat_threads: chatThreadId ? [{ id: chatThreadId }] : [] } : null };
-    }));
+      const disputes = listResult.data.disputes || [];
 
-    setDisputes(enriched);
+      // Enrich each dispute with order detail
+      const enriched = await Promise.all(disputes.map(async (d: any) => {
+        if (!d.order_id) return { ...d, order: null };
+
+        try {
+          const detailResult = await invokeEdgeFunction<{
+            success: boolean;
+            data: { order: any; chat_thread_id: string | null };
+            error?: string;
+          }>('admin-api', { action: 'get-dispute-detail', order_id: d.order_id });
+
+          if (detailResult.success && detailResult.data.order) {
+            const orderData = detailResult.data.order;
+            const chatThreadId = detailResult.data.chat_thread_id;
+            return { ...d, order: { ...orderData, chat_threads: chatThreadId ? [{ id: chatThreadId }] : [] } };
+          }
+        } catch {
+          // fall through
+        }
+        return { ...d, order: null };
+      }));
+
+      setDisputes(enriched);
+    } catch (err: any) {
+      console.error('disputes取得エラー:', err);
+      alert('紛争の取得に失敗: ' + err.message);
+    }
+
     setLoading(false);
   }
 

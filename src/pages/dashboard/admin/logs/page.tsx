@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import ProtectedRoute from '../../../../components/base/ProtectedRoute';
@@ -87,20 +87,29 @@ export default function AdminLogsPage() {
   async function loadLogs() {
     setLoading(true);
     setError(null);
-    const { data, error: err } = await supabase
-      .from('admin_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500);
 
-    if (err) {
+    try {
+      const result = await invokeEdgeFunction<{
+        success: boolean;
+        data: { logs: AdminLogEntry[] };
+        error?: string;
+      }>('admin-api', { action: 'list-logs' });
+
+      if (result.success) {
+        setLogs(result.data.logs || []);
+      } else {
+        setError(
+          '監査ログテーブル（admin_logs）が見つかりません。Supabase の SQL エディタでテーブルを作成してください。'
+        );
+        setLogs([]);
+      }
+    } catch {
       setError(
         '監査ログテーブル（admin_logs）が見つかりません。Supabase の SQL エディタでテーブルを作成してください。'
       );
       setLogs([]);
-    } else {
-      setLogs((data as AdminLogEntry[]) || []);
     }
+
     setLoading(false);
   }
 

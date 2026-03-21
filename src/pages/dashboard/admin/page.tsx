@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabase';
+import { invokeEdgeFunction } from '../../../lib/supabase';
 import Header from '../../home/components/Header';
 import Footer from '../../home/components/Footer';
 import ProtectedRoute from '../../../components/base/ProtectedRoute';
@@ -25,32 +25,27 @@ export default function AdminDashboardPage() {
 
   async function loadKPI() {
     setLoading(true);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayISO = today.toISOString();
-
-    const [ordersRes, disputesRes, withdrawalsRes, bannedRes, todayOrdersRes] = await Promise.all([
-      supabase.from('orders').select('id, status, price').in('status', ['paid', 'pending', 'open', 'assigned', 'in_progress']),
-      supabase.from('disputes').select('id').eq('status', 'open'),
-      supabase.from('withdrawals').select('id, amount').eq('type', 'withdrawal').eq('status', 'pending'),
-      supabase.from('profiles').select('id').eq('is_banned', true),
-      supabase.from('orders').select('id, price, status').gte('created_at', todayISO),
-    ]);
-
-    const orders = ordersRes.data ?? [];
-    const todayOrders = todayOrdersRes.data ?? [];
-    const withdrawals = withdrawalsRes.data ?? [];
-
-    setKpi({
-      pendingOrders: orders.filter(o => ['paid', 'pending', 'open'].includes(o.status)).length,
-      inProgressOrders: orders.filter(o => o.status === 'in_progress' || o.status === 'assigned').length,
-      openDisputes: disputesRes.data?.length ?? 0,
-      pendingWithdrawals: withdrawals.length,
-      pendingWithdrawalAmount: withdrawals.reduce((sum, w) => sum + (w.amount || 0), 0),
-      todayOrders: todayOrders.length,
-      todayRevenue: todayOrders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (o.price || 0), 0),
-      bannedUsers: bannedRes.data?.length ?? 0,
-    });
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; data: any; error?: string }>('admin-api', { action: 'dashboard-kpi' });
+      if (!result.success) {
+        console.error('KPI取得エラー:', result.error);
+        setLoading(false);
+        return;
+      }
+      const d = result.data;
+      setKpi({
+        pendingOrders: d.active_orders?.filter((o: any) => ['paid', 'pending', 'open'].includes(o.status)).length ?? 0,
+        inProgressOrders: d.active_orders?.filter((o: any) => o.status === 'in_progress' || o.status === 'assigned').length ?? 0,
+        openDisputes: d.open_disputes_count ?? 0,
+        pendingWithdrawals: d.pending_withdrawals?.length ?? 0,
+        pendingWithdrawalAmount: d.pending_withdrawals?.reduce((sum: number, w: any) => sum + (w.amount || 0), 0) ?? 0,
+        todayOrders: d.today_orders?.length ?? 0,
+        todayRevenue: d.today_orders?.filter((o: any) => o.status !== 'cancelled').reduce((sum: number, o: any) => sum + (o.price || 0), 0) ?? 0,
+        bannedUsers: d.banned_users_count ?? 0,
+      });
+    } catch (err) {
+      console.error('KPI取得エラー:', err);
+    }
     setLoading(false);
   }
 

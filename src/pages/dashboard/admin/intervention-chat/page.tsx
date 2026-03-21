@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../../../../lib/supabase';
+import { supabase, invokeEdgeFunction } from '../../../../lib/supabase';
 import Header from '../../../home/components/Header';
 import Footer from '../../../home/components/Footer';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -41,13 +41,14 @@ export default function AdminInterventionChatPage() {
   }, [disputeId]);
 
   async function fetchMessages() {
-    const { data } = await supabase
-      .from('dispute_messages')
-      .select('*')
-      .eq('dispute_id', disputeId)
-      .order('created_at');
-
-    setMessages(data || []);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; data?: any[]; error?: string }>('admin-api', { action: 'list-dispute-messages', dispute_id: disputeId });
+      if (!result.success) throw new Error(result.error);
+      setMessages(result.data || []);
+    } catch (e) {
+      console.error('dispute_messages取得エラー:', e);
+      setMessages([]);
+    }
   }
 
   // ======================
