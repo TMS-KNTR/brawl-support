@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 serve(async (req) => {
@@ -8,24 +9,39 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { 
-      service_type, 
-      current_rank, 
-      target_rank, 
-      character_count, 
-      calculated_price, 
-      player_name, 
+    // ---- 認証チェック ----
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("認証が必要です");
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) throw new Error("認証が必要です");
+
+    const {
+      service_type,
+      current_rank,
+      target_rank,
+      character_count,
+      calculated_price,
+      player_name,
       email,
       brawler_name,
       completion_time,
-      special_requests 
+      special_requests
     } = await req.json()
 
     const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')
-    
+
     if (!STRIPE_SECRET_KEY) {
       throw new Error('Stripe secret key not found')
     }
+
+    // SITE_URLを使用（オープンリダイレクト防止）
+    const siteUrl = Deno.env.get('SITE_URL') || '';
+    if (!siteUrl) throw new Error('SITE_URL が設定されていません');
 
     // Stripe Checkout Session作成
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -42,8 +58,8 @@ serve(async (req) => {
         'line_items[0][price_data][unit_amount]': (calculated_price * 100).toString(),
         'line_items[0][quantity]': '1',
         'mode': 'payment',
-        'success_url': `${req.headers.get('origin')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        'cancel_url': `${req.headers.get('origin')}/games/brawl-stars`,
+        'success_url': `${siteUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        'cancel_url': `${siteUrl}/games/brawl-stars`,
         'customer_email': email,
         'metadata[service_type]': service_type,
         'metadata[current_rank]': current_rank || '',

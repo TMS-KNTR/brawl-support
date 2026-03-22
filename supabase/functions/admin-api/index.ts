@@ -436,12 +436,16 @@ async function handleResetWarnings(
   return data;
 }
 
+const ALLOWED_ROLES = ["customer", "employee", "worker", "admin"];
+
 async function handleChangeRole(
   sb: SupabaseClient,
   params: { user_id: string; new_role: string }
 ) {
   if (!params.user_id || !params.new_role)
     throw new Error("user_id と new_role が必要です");
+  if (!ALLOWED_ROLES.includes(params.new_role))
+    throw new Error(`無効なロールです: ${params.new_role}`);
 
   const { data, error } = await sb
     .from("profiles")
@@ -523,12 +527,20 @@ async function handleForceCompleteOrder(
   return data;
 }
 
+const ALLOWED_SETTING_KEYS = [
+  "platform_fee_rate",
+  "auto_cancel_hours",
+  "maintenance_mode",
+];
+
 async function handleUpdateSystemSetting(
   sb: SupabaseClient,
   params: { key: string; value: string },
   adminUserId: string
 ) {
   if (!params.key) throw new Error("key が必要です");
+  if (!ALLOWED_SETTING_KEYS.includes(params.key))
+    throw new Error(`変更できない設定キーです: ${params.key}`);
 
   const { data, error } = await sb
     .from("system_settings")
@@ -865,6 +877,24 @@ serve(async (req: Request) => {
 
       default:
         throw new Error(`不明なアクション: ${action}`);
+    }
+
+    // ---- Audit log for WRITE actions ----
+    const WRITE_ACTIONS = [
+      "warn-user", "ban-user", "unban-user", "reset-warnings",
+      "change-role", "adjust-balance", "change-order-status",
+      "force-complete-order", "update-system-setting",
+      "create-expense", "update-expense", "delete-expense",
+    ];
+    if (WRITE_ACTIONS.includes(action)) {
+      await supabase.from("admin_logs").insert({
+        actor_user_id: user.id,
+        action,
+        target_type: action,
+        meta_json: params,
+      }).then(({ error: logErr }) => {
+        if (logErr) console.error("Audit log failed:", logErr.message);
+      });
     }
 
     return new Response(

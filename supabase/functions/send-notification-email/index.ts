@@ -13,6 +13,15 @@ const ALLOWED_EMAIL_TYPES = [
 
 const RESEND_API = "https://api.resend.com/emails";
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 serve(async (req: Request) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -87,7 +96,7 @@ serve(async (req: Request) => {
       title = notif.title;
       bodyText = notif.body ?? null;
       link_url = notif.link_url ?? null;
-    } else if (body.user_id && body.type && body.title && expectedSecret && internalSecret === expectedSecret) {
+    } else if (body.user_id && body.type && body.title && expectedSecret && internalSecret && timingSafeEqual(internalSecret, expectedSecret)) {
       user_id = body.user_id;
       type = body.type;
       title = body.title;
@@ -128,9 +137,17 @@ serve(async (req: Request) => {
 
     const appUrl = Deno.env.get("APP_URL") || "https://your-app.com";
     const fullUrl = link_url ? (link_url.startsWith("http") ? link_url : `${appUrl}${link_url}`) : appUrl;
+
+    // HTMLエスケープ（XSS防止）
+    function escapeHtml(s: string): string {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    // link_urlのjavascript:プロトコル排除
+    const safeUrl = /^https?:\/\//.test(fullUrl) ? fullUrl : appUrl;
+
     const html = `
-      <p>${bodyText ? bodyText.replace(/\n/g, "<br>") : ""}</p>
-      ${link_url ? `<p><a href="${fullUrl}">アプリで確認する</a></p>` : ""}
+      <p>${bodyText ? escapeHtml(bodyText).replace(/\n/g, "<br>") : ""}</p>
+      ${link_url ? `<p><a href="${escapeHtml(safeUrl)}">アプリで確認する</a></p>` : ""}
       <p style="color:#888;font-size:12px;">このメールは Brawl Support からの自動通知です。</p>
     `;
 
