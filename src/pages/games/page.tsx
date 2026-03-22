@@ -60,8 +60,8 @@ export default function GamesPage() {
           100% { background-position: 200% center; }
         }
         @keyframes games-glow {
-          0%, 100% { opacity: 0.4; }
-          50%      { opacity: 0.7; }
+          0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+          50%      { opacity: 0.7; transform: translate(-50%, -50%) scale(1.15); }
         }
         .games-card {
           transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), box-shadow 0.5s ease;
@@ -117,20 +117,43 @@ export default function GamesPage() {
         }
         @keyframes games-float1 {
           0%, 100% { transform: translate(0, 0) rotate(0deg); }
-          50%      { transform: translate(15px, -20px) rotate(8deg); }
+          25%      { transform: translate(15px, -20px) rotate(90deg); }
+          50%      { transform: translate(-10px, -35px) rotate(180deg); }
+          75%      { transform: translate(-20px, -10px) rotate(270deg); }
         }
         @keyframes games-float2 {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); }
-          50%      { transform: translate(-12px, 18px) rotate(-6deg); }
+          0%, 100% { transform: translate(0, 0) rotate(45deg); }
+          33%      { transform: translate(-20px, 15px) rotate(135deg); }
+          66%      { transform: translate(10px, -25px) rotate(225deg); }
         }
         @keyframes games-float3 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          50%      { transform: translate(10px, -15px) scale(1.1); }
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          50%      { transform: translate(20px, 20px) rotate(180deg); }
         }
-        @keyframes games-pulse-ring {
-          0%   { transform: scale(0.8); opacity: 0.3; }
-          50%  { transform: scale(1.2); opacity: 0.6; }
-          100% { transform: scale(0.8); opacity: 0.3; }
+        @keyframes games-drift1 {
+          0%, 100% { transform: translate(0, 0); opacity: 0.3; }
+          50%      { transform: translate(30px, -40px); opacity: 0.6; }
+        }
+        @keyframes games-drift2 {
+          0%, 100% { transform: translate(0, 0); opacity: 0.2; }
+          50%      { transform: translate(-25px, 30px); opacity: 0.5; }
+        }
+        @keyframes games-drift3 {
+          0%, 100% { transform: translate(0, 0); opacity: 0.4; }
+          50%      { transform: translate(15px, 25px); opacity: 0.15; }
+        }
+        .games-geo-shape {
+          border: 1px solid rgba(91,58,232,0.12);
+          position: absolute;
+          pointer-events: none;
+        }
+        .games-dot {
+          position: absolute;
+          width: 2px;
+          height: 2px;
+          border-radius: 50%;
+          background: rgba(139,122,255,0.4);
+          pointer-events: none;
         }
       `}</style>
 
@@ -369,108 +392,55 @@ export default function GamesPage() {
           `
         }} />
         <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full pointer-events-none"
+          className="absolute left-1/2 top-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(91,58,232,0.15) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(91,58,232,0.2) 0%, rgba(91,58,232,0.05) 40%, transparent 70%)',
             animation: 'games-glow 6s ease-in-out infinite',
+            transform: 'translate(-50%, -50%)',
           }}
         />
 
-        {/* Decorative shapes */}
-        {/* Circle top-left */}
-        <div
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            width: 80, height: 80, top: '12%', left: '8%',
-            border: '2px solid rgba(139,122,255,0.15)',
-            animation: 'games-float1 7s ease-in-out infinite',
-          }}
-        />
-        {/* Small filled circle */}
-        <div
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            width: 12, height: 12, top: '25%', left: '18%',
-            background: 'rgba(139,122,255,0.25)',
-            animation: 'games-float2 5s ease-in-out infinite',
-          }}
-        />
-        {/* Square top-right */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: 50, height: 50, top: '15%', right: '10%',
-            border: '2px solid rgba(91,58,232,0.12)',
-            borderRadius: 8,
-            animation: 'games-float2 8s ease-in-out infinite',
-          }}
-        />
-        {/* Small square */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: 20, height: 20, top: '60%', right: '15%',
-            background: 'rgba(91,58,232,0.1)',
-            borderRadius: 4,
-            animation: 'games-float1 6s ease-in-out infinite 1s',
-          }}
-        />
-        {/* Light orb left */}
-        <div
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            width: 180, height: 180, bottom: '10%', left: '5%',
-            background: 'radial-gradient(circle, rgba(139,122,255,0.08) 0%, transparent 70%)',
-            animation: 'games-pulse-ring 5s ease-in-out infinite',
-          }}
-        />
-        {/* Dotted circle right */}
-        <div
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            width: 100, height: 100, bottom: '20%', right: '8%',
-            border: '2px dashed rgba(139,122,255,0.1)',
-            animation: 'games-float3 9s ease-in-out infinite',
-          }}
-        />
-        {/* Small filled dot bottom */}
-        <div
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            width: 8, height: 8, bottom: '30%', left: '30%',
-            background: 'rgba(196,181,253,0.3)',
-            animation: 'games-float1 4s ease-in-out infinite 0.5s',
-          }}
-        />
-        {/* Rotated square center-left */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: 30, height: 30, top: '45%', left: '12%',
-            border: '1.5px solid rgba(139,122,255,0.12)',
-            borderRadius: 4,
-            transform: 'rotate(45deg)',
-            animation: 'games-float3 7s ease-in-out infinite 2s',
-          }}
-        />
-        {/* Large light ring center-right */}
-        <div
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            width: 140, height: 140, top: '30%', right: '3%',
-            border: '1.5px solid rgba(91,58,232,0.07)',
-            animation: 'games-pulse-ring 8s ease-in-out infinite 1s',
-          }}
-        />
-        {/* Small dot top center */}
-        <div
-          className="absolute pointer-events-none rounded-full"
-          style={{
-            width: 6, height: 6, top: '10%', left: '45%',
-            background: 'rgba(196,181,253,0.2)',
-            animation: 'games-float2 6s ease-in-out infinite 1.5s',
-          }}
-        />
+        {/* Floating geometric shapes — matches home CTA */}
+        {/* Diamonds */}
+        <div className="games-geo-shape w-8 h-8 rotate-45 rounded-sm" style={{ top: '18%', left: '12%', animation: 'games-float1 18s ease-in-out infinite' }} />
+        <div className="games-geo-shape w-5 h-5 rotate-45 rounded-sm" style={{ bottom: '22%', left: '20%', animation: 'games-float3 15s ease-in-out infinite' }} />
+        <div className="games-geo-shape w-6 h-6 rotate-45 rounded-sm" style={{ top: '12%', right: '22%', animation: 'games-float2 16s ease-in-out infinite 2s' }} />
+        <div className="games-geo-shape w-4 h-4 rotate-45 rounded-sm" style={{ bottom: '15%', right: '8%', animation: 'games-float1 14s ease-in-out infinite 4s' }} />
+        <div className="games-geo-shape w-7 h-7 rotate-45 rounded-sm" style={{ top: '55%', left: '5%', animation: 'games-float3 19s ease-in-out infinite 1s' }} />
+
+        {/* Hexagons / Rounded squares */}
+        <div className="games-geo-shape w-12 h-12 rounded-lg" style={{ top: '25%', right: '10%', animation: 'games-float2 22s ease-in-out infinite', borderRadius: '30%' }} />
+        <div className="games-geo-shape w-9 h-9 rounded-lg" style={{ bottom: '18%', left: '35%', animation: 'games-float1 20s ease-in-out infinite 3s', borderRadius: '30%' }} />
+        <div className="games-geo-shape w-10 h-10 rounded-lg" style={{ top: '60%', right: '25%', animation: 'games-float3 17s ease-in-out infinite 6s', borderRadius: '30%' }} />
+
+        {/* Circles */}
+        <div className="games-geo-shape w-6 h-6 rounded-full" style={{ bottom: '30%', right: '15%', animation: 'games-float1 20s ease-in-out infinite 3s' }} />
+        <div className="games-geo-shape w-4 h-4 rounded-full" style={{ top: '15%', left: '28%', animation: 'games-float2 13s ease-in-out infinite 1s' }} />
+        <div className="games-geo-shape w-5 h-5 rounded-full" style={{ bottom: '40%', left: '8%', animation: 'games-float3 16s ease-in-out infinite 7s' }} />
+        <div className="games-geo-shape w-3 h-3 rounded-full" style={{ top: '70%', right: '5%', animation: 'games-float1 11s ease-in-out infinite 2s' }} />
+
+        {/* Large rings */}
+        <div className="games-geo-shape w-16 h-16 rounded-full" style={{ top: '40%', left: '6%', animation: 'games-float2 25s ease-in-out infinite 5s', borderColor: 'rgba(91,58,232,0.06)' }} />
+        <div className="games-geo-shape w-20 h-20 rounded-full" style={{ bottom: '10%', right: '6%', animation: 'games-float1 28s ease-in-out infinite 8s', borderColor: 'rgba(91,58,232,0.05)' }} />
+        <div className="games-geo-shape w-14 h-14 rounded-full" style={{ top: '8%', right: '40%', animation: 'games-float3 23s ease-in-out infinite 3s', borderColor: 'rgba(91,58,232,0.05)' }} />
+
+        {/* Drifting particles */}
+        <div className="games-dot" style={{ top: '20%', left: '30%', animation: 'games-drift1 8s ease-in-out infinite' }} />
+        <div className="games-dot" style={{ top: '60%', left: '55%', animation: 'games-drift2 10s ease-in-out infinite 2s' }} />
+        <div className="games-dot" style={{ top: '35%', right: '25%', animation: 'games-drift3 7s ease-in-out infinite 1s' }} />
+        <div className="games-dot" style={{ top: '70%', left: '20%', animation: 'games-drift1 9s ease-in-out infinite 4s' }} />
+        <div className="games-dot" style={{ top: '15%', right: '35%', animation: 'games-drift2 11s ease-in-out infinite 3s' }} />
+        <div className="games-dot" style={{ top: '50%', left: '75%', animation: 'games-drift3 8s ease-in-out infinite 6s' }} />
+        <div className="games-dot" style={{ top: '80%', left: '45%', animation: 'games-drift1 12s ease-in-out infinite 2s' }} />
+        <div className="games-dot" style={{ top: '45%', left: '10%', animation: 'games-drift2 9s ease-in-out infinite 5s' }} />
+        <div className="games-dot" style={{ top: '10%', left: '50%', animation: 'games-drift3 10s ease-in-out infinite 1s' }} />
+        <div className="games-dot" style={{ top: '75%', right: '20%', animation: 'games-drift1 7s ease-in-out infinite 3s' }} />
+        <div className="games-dot" style={{ top: '30%', left: '15%', animation: 'games-drift2 8s ease-in-out infinite 7s' }} />
+        <div className="games-dot" style={{ top: '55%', right: '10%', animation: 'games-drift3 11s ease-in-out infinite 4s' }} />
+        <div className="games-dot" style={{ top: '85%', left: '65%', animation: 'games-drift1 9s ease-in-out infinite 6s' }} />
+        <div className="games-dot" style={{ top: '25%', right: '45%', animation: 'games-drift2 13s ease-in-out infinite 8s' }} />
+        <div className="games-dot" style={{ top: '65%', left: '40%', animation: 'games-drift3 6s ease-in-out infinite 2s' }} />
+        <div className="games-dot" style={{ top: '40%', right: '30%', animation: 'games-drift1 10s ease-in-out infinite 5s' }} />
 
         <div ref={cta.ref} className="relative z-10 py-24 sm:py-28 text-center max-w-2xl mx-auto px-6 lg:px-8">
           <h2

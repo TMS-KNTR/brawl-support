@@ -1,9 +1,15 @@
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, useLocation } from 'react-router-dom'
 import { Suspense, useState, useEffect } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { AppRoutes } from './router'
 import { AuthProvider } from './contexts/AuthContext'
 import ErrorBoundary from './components/base/ErrorBoundary'
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 function OfflineBanner() {
   const [offline, setOffline] = useState(!navigator.onLine)
@@ -26,6 +32,7 @@ function App() {
   return (
     <HelmetProvider>
     <BrowserRouter>
+      <ScrollToTop />
       <ErrorBoundary>
       <OfflineBanner />
       <AuthProvider>
