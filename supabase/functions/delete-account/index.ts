@@ -92,8 +92,13 @@ serve(async (req: Request) => {
     // 4. Supabase auth ユーザーを削除
     const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
     if (deleteError) {
-      console.error("Auth user deletion failed:", deleteError.message);
-      // auth削除が失敗してもプロフィールは論理削除済みなので続行
+      console.error("Auth user deletion failed, reverting profile:", deleteError.message);
+      // auth削除失敗 → プロフィールの論理削除を戻す
+      await supabase
+        .from("profiles")
+        .update({ is_banned: false, deleted_at: null, username: null, balance: 0 })
+        .eq("id", userId);
+      throw new Error("アカウント削除に失敗しました。再度お試しください。");
     }
 
     return new Response(

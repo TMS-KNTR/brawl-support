@@ -64,6 +64,14 @@ serve(async (req: Request) => {
       const totalPrice = Number(meta.total_price) || 0;
       const payoutAmount = Number(meta.payout_amount) || 0;
 
+      if (totalPrice <= 0 || payoutAmount <= 0) {
+        console.error("Invalid price data in metadata:", { totalPrice, payoutAmount, meta });
+        return new Response(JSON.stringify({ received: true, error: "invalid price metadata" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       // 冪等性: 同じsession_idで既に注文が作成されていないか確認
       const { data: existingOrder } = await supabase
         .from("orders")

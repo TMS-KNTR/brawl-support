@@ -38,7 +38,7 @@ serve(async (req: Request) => {
     const { data: orders, error } = await supabase
       .from("orders")
       .select("id, user_id, service_type, game_title, status, price, payout_amount, current_rank, target_rank, current_trophy, target_trophy, character_name, character_strength, notes, created_at")
-      .in("status", ["paid", "pending", "open", "PAYMENT_PENDING"])
+      .in("status", ["paid", "pending", "open"])
       .is("employee_id", null)
       .order("created_at", { ascending: false });
 

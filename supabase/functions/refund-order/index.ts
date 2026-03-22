@@ -98,8 +98,8 @@ serve(async (req: Request) => {
       throw new Error("決済情報が見つかりません。Stripeダッシュボードから手動で返金してください。");
     }
 
-    // 注文ステータスを更新
-    const { error: updateError } = await supabase
+    // 注文ステータスを更新（楽観的ロックで二重返金を防止）
+    const { data: updatedOrder, error: updateError } = await supabase
       .from("orders")
       .update({
         status: "cancelled",
@@ -107,7 +107,14 @@ serve(async (req: Request) => {
         refund_id: refundResult?.id || null,
         refunded_at: new Date().toISOString(),
       })
-      .eq("id", order_id);
+      .eq("id", order_id)
+      .eq("is_refunded", false)
+      .select("id")
+      .single();
+
+    if (!updatedOrder) {
+      console.warn("Order already marked as refunded:", order_id);
+    }
 
     if (updateError) {
       console.error("DB update failed:", updateError);

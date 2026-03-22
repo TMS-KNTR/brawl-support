@@ -153,6 +153,7 @@ serve(async (req: Request) => {
       // Stripe送金失敗 → 残高を戻してwithdrawalをfailedに
       console.error("Stripe transfer failed, rolling back:", stripeErr.message);
       // 楽観的ロックで残高を安全に戻す（リトライ付き）
+      let rollbackSuccess = false;
       for (let attempt = 0; attempt < 3; attempt++) {
         const { data: currentProfile } = await supabase
           .from("profiles")
@@ -167,17 +168,24 @@ serve(async (req: Request) => {
           .eq("balance", curBal)
           .select("balance")
           .single();
-        if (rollbackOk && !rollbackErr) break;
-        if (attempt === 2) {
-          console.error("CRITICAL: 残高ロールバック失敗 - 手動対応が必要:", withdrawal.user_id);
+        if (rollbackOk && !rollbackErr) {
+          rollbackSuccess = true;
+          break;
         }
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
       }
-      await supabase
-        .from("withdrawals")
-        .update({ status: "failed", description: `送金失敗: ${stripeErr.message}` })
-        .eq("id", withdrawal_id);
 
-      throw new Error(`Stripe送金に失敗しました: ${stripeErr.message}。残高は返還されています。`);
+      if (rollbackSuccess) {
+        await supabase
+          .from("withdrawals")
+          .update({ status: "failed", description: `送金失敗: ${stripeErr.message}` })
+          .eq("id", withdrawal_id);
+        throw new Error(`Stripe送金に失敗しました: ${stripeErr.message}。残高は返還されています。`);
+      } else {
+        console.error("CRITICAL: 残高ロールバック失敗 - 手動対応が必要:", withdrawal.user_id, withdrawal_id);
+        // 残高復元できていないのでwithdrawalはpendingのままにして管理者に手動対応させる
+        throw new Error(`Stripe送金に失敗し、残高の自動復元にも失敗しました。管理者に連絡してください。`);
+      }
     }
 
     const { data: completedRow, error: completeError } = await supabase
