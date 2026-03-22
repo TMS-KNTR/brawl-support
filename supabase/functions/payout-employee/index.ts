@@ -55,8 +55,9 @@ serve(async (req: Request) => {
     const feeRate = Number(feeRateSetting?.value) || 0.20;
 
     const totalPrice = order.price || order.total_price || 0;
-    const platformFee = order.platform_fee || Math.round(totalPrice * feeRate);
-    const payoutAmount = totalPrice - platformFee;
+    // 注文時に保存されたpayout_amountを優先使用（手数料率変更の影響を受けない）
+    const payoutAmount = order.payout_amount || (totalPrice - (order.platform_fee || Math.round(totalPrice * feeRate)));
+    const platformFee = totalPrice - payoutAmount;
     if (payoutAmount <= 0) throw new Error("支払い金額が0以下です");
 
     // 従業員の残高を加算

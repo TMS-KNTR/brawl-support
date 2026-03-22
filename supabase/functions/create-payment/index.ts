@@ -55,7 +55,7 @@ serve(async (req) => {
         'line_items[0][price_data][currency]': 'jpy',
         'line_items[0][price_data][product_data][name]': `Brawl Stars ${service_type === 'rank' ? 'ランク上げ' : 'サービス'}`,
         'line_items[0][price_data][product_data][description]': `${current_rank ? `${current_rank} → ${target_rank}` : 'カスタムサービス'} (${character_count || 0}体)`,
-        'line_items[0][price_data][unit_amount]': (calculated_price * 100).toString(),
+        'line_items[0][price_data][unit_amount]': String(Math.round(calculated_price)),
         'line_items[0][quantity]': '1',
         'mode': 'payment',
         'success_url': `${siteUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,

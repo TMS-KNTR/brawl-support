@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
     const { data: expiredOrders, error: fetchError } = await supabase
       .from("orders")
       .select("*")
-      .in("status", ["paid", "PAYMENT_PENDING"])
+      .in("status", ["paid", "pending"])
       .is("employee_id", null)
       .eq("is_refunded", false)
       .lt("created_at", cutoff);

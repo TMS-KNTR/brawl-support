@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '../../../contexts/AuthContext'
 import { invokeEdgeFunction, supabase } from '../../../lib/supabase'
 import { useNavigate } from 'react-router-dom'
@@ -20,6 +20,7 @@ export default function BrawlStarsOrderForm() {
     preferredTime: '',
     contactMethod: 'in-app',
   })
+  const priceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null)
@@ -221,7 +222,8 @@ export default function BrawlStarsOrderForm() {
     }
 
     if (['serviceType', 'currentTrophies', 'targetTrophies'].includes(name)) {
-      setTimeout(calculatePrice, 500)
+      if (priceTimerRef.current) clearTimeout(priceTimerRef.current);
+      priceTimerRef.current = setTimeout(calculatePrice, 500);
     }
   }
 

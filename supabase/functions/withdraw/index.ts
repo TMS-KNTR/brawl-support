@@ -79,13 +79,23 @@ serve(async (req: Request) => {
     }
 
     // 出金申請を pending で記録（管理者の承認待ち）
-    await supabase.from("withdrawals").insert({
+    const { error: insertError } = await supabase.from("withdrawals").insert({
       user_id: user.id,
       amount: amount,
       type: "withdrawal",
       status: "pending",
       description: `出金申請 ¥${amount.toLocaleString()}`,
     });
+
+    if (insertError) {
+      // 出金レコード作成失敗 → 残高を戻す
+      await supabase
+        .from("profiles")
+        .update({ balance: currentBalance })
+        .eq("id", user.id)
+        .eq("balance", newBalance);
+      throw new Error("出金申請の記録に失敗しました。再度お試しください。");
+    }
 
     return new Response(
       JSON.stringify({

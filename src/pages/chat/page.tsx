@@ -186,7 +186,7 @@ export default function ChatPage() {
   if (!user || loading) {
     return (
       <div className="h-screen flex flex-col bg-white">
-        <XHeader onBack={() => navigate('/dashboard/customer', { replace: true })} />
+        <XHeader onBack={() => navigate(userProfile?.role === 'admin' ? '/dashboard/admin' : userProfile?.role === 'employee' || userProfile?.role === 'worker' ? '/dashboard/employee' : '/dashboard/customer', { replace: true })} />
         <div className="flex-1 flex items-center justify-center">
           <div className="w-6 h-6 border-2 border-[#111] border-t-transparent rounded-full animate-spin" />
         </div>
@@ -196,12 +196,12 @@ export default function ChatPage() {
   if (!hasAccess) {
     return (
       <div className="h-screen flex flex-col bg-white">
-        <XHeader onBack={() => navigate('/dashboard/customer', { replace: true })} />
+        <XHeader onBack={() => navigate(userProfile?.role === 'admin' ? '/dashboard/admin' : userProfile?.role === 'employee' || userProfile?.role === 'worker' ? '/dashboard/employee' : '/dashboard/customer', { replace: true })} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center px-6">
             <p className="text-[15px] font-bold text-[#0F1419] mb-1">アクセス権限がありません</p>
             <p className="text-[13px] text-[#536471] mb-4">このチャットにアクセスする権限がありません</p>
-            <button onClick={() => navigate('/dashboard/customer')}
+            <button onClick={() => navigate(userProfile?.role === 'admin' ? '/dashboard/admin' : userProfile?.role === 'employee' || userProfile?.role === 'worker' ? '/dashboard/employee' : '/dashboard/customer')}
               className="px-5 py-2 text-[14px] font-bold bg-[#0F1419] text-white rounded-full hover:bg-[#272C30] cursor-pointer transition-colors">
               戻る
             </button>
@@ -241,7 +241,7 @@ export default function ChatPage() {
   return (
     <div className="h-screen flex flex-col bg-[#F5F5F5]">
       {/* ── Header ── */}
-      <XHeader onBack={() => navigate('/dashboard/customer', { replace: true })} />
+      <XHeader onBack={() => navigate(userProfile?.role === 'admin' ? '/dashboard/admin' : userProfile?.role === 'employee' || userProfile?.role === 'worker' ? '/dashboard/employee' : '/dashboard/customer', { replace: true })} />
 
       {/* ── Messages ── */}
       <style>{`.chat-scroll::-webkit-scrollbar{display:none} .chat-scroll{scrollbar-width:none;}`}</style>
