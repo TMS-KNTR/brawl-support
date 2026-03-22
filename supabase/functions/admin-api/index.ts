@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
 // ============================================================
@@ -266,12 +267,12 @@ async function handleGetReports(
       .from("orders")
       .select("*")
       .gte("created_at", params.from_date)
-      .lte("created_at", params.to_date),
+      .lte("created_at", params.to_date + "T23:59:59.999Z"),
     sb
       .from("withdrawals")
       .select("id,user_id,amount,type,status,created_at,description")
       .gte("created_at", params.from_date)
-      .lte("created_at", params.to_date),
+      .lte("created_at", params.to_date + "T23:59:59.999Z"),
     sb
       .from("system_settings")
       .select("value")
@@ -547,6 +548,176 @@ async function handleUpdateSystemSetting(
 }
 
 // ============================================================
+// Expense CRUD
+// ============================================================
+
+async function handleListExpenses(
+  sb: SupabaseClient,
+  params: { from_date?: string; to_date?: string }
+) {
+  let query = sb
+    .from("expenses")
+    .select("*")
+    .order("expense_date", { ascending: false });
+
+  if (params.from_date) query = query.gte("expense_date", params.from_date);
+  if (params.to_date) query = query.lte("expense_date", params.to_date);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleCreateExpense(
+  sb: SupabaseClient,
+  params: {
+    category: string;
+    description: string;
+    amount: number;
+    expense_date: string;
+    receipt_url?: string;
+  },
+  adminUserId: string
+) {
+  if (!params.category || !params.description || !params.amount || !params.expense_date)
+    throw new Error("category, description, amount, expense_date が必要です");
+
+  const { data, error } = await sb
+    .from("expenses")
+    .insert({
+      category: params.category,
+      description: params.description,
+      amount: params.amount,
+      expense_date: params.expense_date,
+      receipt_url: params.receipt_url || null,
+      created_by: adminUserId,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleUpdateExpense(
+  sb: SupabaseClient,
+  params: {
+    id: string;
+    category?: string;
+    description?: string;
+    amount?: number;
+    expense_date?: string;
+    receipt_url?: string;
+  }
+) {
+  if (!params.id) throw new Error("id が必要です");
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (params.category !== undefined) updates.category = params.category;
+  if (params.description !== undefined) updates.description = params.description;
+  if (params.amount !== undefined) updates.amount = params.amount;
+  if (params.expense_date !== undefined) updates.expense_date = params.expense_date;
+  if (params.receipt_url !== undefined) updates.receipt_url = params.receipt_url;
+
+  const { data, error } = await sb
+    .from("expenses")
+    .update(updates)
+    .eq("id", params.id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleDeleteExpense(
+  sb: SupabaseClient,
+  params: { id: string }
+) {
+  if (!params.id) throw new Error("id が必要です");
+
+  const { error } = await sb.from("expenses").delete().eq("id", params.id);
+  if (error) throw new Error(error.message);
+  return { deleted: true };
+}
+
+// ============================================================
+// Stripe 決済手数料取得
+// ============================================================
+
+async function handleGetStripeFees(
+  params: { from_date: string; to_date: string }
+) {
+  if (!params.from_date || !params.to_date)
+    throw new Error("from_date と to_date が必要です");
+
+  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!stripeKey) throw new Error("STRIPE_SECRET_KEY が設定されていません");
+
+  const stripe = new Stripe(stripeKey, {
+    apiVersion: "2023-10-16",
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+
+  const fromTs = Math.floor(new Date(params.from_date).getTime() / 1000);
+  const toTs = Math.floor(new Date(params.to_date + "T23:59:59Z").getTime() / 1000);
+
+  // Balance transactions から手数料を集計
+  let totalFees = 0;
+  let totalGross = 0;
+  let totalNet = 0;
+  let transactionCount = 0;
+  const monthlyFees: Record<string, { fees: number; gross: number; net: number; count: number }> = {};
+
+  let hasMore = true;
+  let startingAfter: string | undefined;
+
+  while (hasMore) {
+    const listParams: Record<string, unknown> = {
+      created: { gte: fromTs, lte: toTs },
+      limit: 100,
+      type: "charge",
+    };
+    if (startingAfter) listParams.starting_after = startingAfter;
+
+    const txns = await stripe.balanceTransactions.list(listParams as any);
+
+    for (const txn of txns.data) {
+      const fee = txn.fee; // Stripe手数料（円）
+      const gross = txn.amount;
+      const net = txn.net;
+
+      totalFees += fee;
+      totalGross += gross;
+      totalNet += net;
+      transactionCount++;
+
+      // 月別集計
+      const d = new Date(txn.created * 1000);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthlyFees[key]) monthlyFees[key] = { fees: 0, gross: 0, net: 0, count: 0 };
+      monthlyFees[key].fees += fee;
+      monthlyFees[key].gross += gross;
+      monthlyFees[key].net += net;
+      monthlyFees[key].count++;
+    }
+
+    hasMore = txns.has_more;
+    if (txns.data.length > 0) {
+      startingAfter = txns.data[txns.data.length - 1].id;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return {
+    total_fees: totalFees,
+    total_gross: totalGross,
+    total_net: totalNet,
+    transaction_count: transactionCount,
+    monthly: monthlyFees,
+  };
+}
+
+// ============================================================
 // Main server
 // ============================================================
 
@@ -671,6 +842,25 @@ serve(async (req: Request) => {
         break;
       case "update-system-setting":
         result = await handleUpdateSystemSetting(supabase, params, user.id);
+        break;
+
+      // EXPENSES
+      case "list-expenses":
+        result = await handleListExpenses(supabase, params);
+        break;
+      case "create-expense":
+        result = await handleCreateExpense(supabase, params, user.id);
+        break;
+      case "update-expense":
+        result = await handleUpdateExpense(supabase, params);
+        break;
+      case "delete-expense":
+        result = await handleDeleteExpense(supabase, params);
+        break;
+
+      // STRIPE FEES
+      case "get-stripe-fees":
+        result = await handleGetStripeFees(params);
         break;
 
       default:
