@@ -68,7 +68,7 @@ export default function PrivacyPage() {
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">第6条（ゲームアカウント情報の取扱い）</h2>
           <div className="text-gray-700 mb-6 space-y-2">
             <p>代行に必要なゲームアカウント情報は以下のように管理します。</p>
-            <p>・代行作業に必要な最小限の情報のみ従業員に開示します</p>
+            <p>・代行作業に必要な最小限の情報のみ代行者に開示します</p>
             <p>・作業完了後、速やかにアクセス権を無効化することを推奨します</p>
             <p>・ゲームアカウント情報はサービス外で利用しません</p>
           </div>

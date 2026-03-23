@@ -54,13 +54,13 @@ export default function CompliancePage() {
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">サービス提供時期</td>
-                  <td className="px-6 py-4 text-gray-900">決済完了後、従業員が受注次第開始</td>
+                  <td className="px-6 py-4 text-gray-900">決済完了後、代行者が受注次第開始</td>
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">返品・キャンセル</td>
                   <td className="px-6 py-4 text-gray-900">
                     <p>・作業開始前：全額返金（決済手数料を除く）</p>
-                    <p>・従業員都合による中止：全額返金</p>
+                    <p>・代行者都合による中止：全額返金</p>
                     <p>・作業開始後のお客様都合：返金不可</p>
                     <p>・アカウントBAN等のゲーム側措置による中止：返金不可</p>
                   </td>
