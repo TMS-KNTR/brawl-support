@@ -143,11 +143,6 @@ export default function BrawlStarsOrderForm() {
           ]
             .filter(Boolean)
             .join(' - '),
-          credentials: {
-            username: formData.gameAccount,
-            password: formData.gamePassword,
-            notes: `デバイス: ${formData.deviceType}`,
-          },
           totalPrice: estimatedPrice || 0,
         })
 

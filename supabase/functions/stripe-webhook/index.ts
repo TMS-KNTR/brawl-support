@@ -72,6 +72,16 @@ serve(async (req: Request) => {
         });
       }
 
+      // Stripe決済額とメタデータの照合（改ざん防止）
+      const stripeAmount = session.amount_total ?? session.amount_subtotal;
+      if (stripeAmount != null && stripeAmount !== totalPrice) {
+        console.error("Price mismatch! stripe_amount:", stripeAmount, "metadata_price:", totalPrice);
+        return new Response(JSON.stringify({ received: true, error: "price mismatch" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       // 冪等性: 同じsession_idで既に注文が作成されていないか確認
       const { data: existingOrder } = await supabase
         .from("orders")

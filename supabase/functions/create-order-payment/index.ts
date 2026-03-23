@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
-import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCors, requireJsonContentType } from '../_shared/cors.ts'
 import { calcRankedPrice, calcTrophyPrice } from '../_shared/pricing.ts'
 import type { BrawlerStrength } from '../_shared/pricing.ts'
 
@@ -12,6 +12,8 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
+    requireJsonContentType(req)
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -29,6 +31,31 @@ serve(async (req) => {
 
     if (!user) {
       throw new Error('認証が必要です')
+    }
+
+    // ロールチェック: 顧客のみ注文作成可能
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('role, is_banned')
+      .eq('id', user.id)
+      .single()
+
+    if (userProfile?.is_banned) {
+      throw new Error('アカウントが停止されています')
+    }
+    if (userProfile?.role !== 'customer' && userProfile?.role !== 'client') {
+      throw new Error('注文は依頼者アカウントからのみ作成できます')
+    }
+
+    // レートリミット: 同一ユーザーの短期間の大量注文を防止
+    const { count: recentOrderCount } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
+
+    if ((recentOrderCount ?? 0) >= 10) {
+      throw new Error('短時間に多くの注文が作成されました。しばらく時間を置いてからお試しください。')
     }
 
     // メンテナンスモードチェック
@@ -55,7 +82,6 @@ serve(async (req) => {
       serviceType,
       region,
       notes,
-      credentials,
       totalPrice,
       // 料金検証に必要な追加パラメータ
       power11Count,

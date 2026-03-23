@@ -60,25 +60,34 @@ serve(async (req: Request) => {
     const platformFee = totalPrice - payoutAmount;
     if (payoutAmount <= 0) throw new Error("支払い金額が0以下です");
 
-    // 従業員の残高を加算
-    const { data: empProfile } = await supabase
-      .from("profiles")
-      .select("balance")
-      .eq("id", employeeId)
-      .single();
+    // 従業員の残高を加算（楽観ロック + リトライ）
+    let newBalance = 0;
+    let balanceUpdated = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: empProfile } = await supabase
+        .from("profiles")
+        .select("balance")
+        .eq("id", employeeId)
+        .single();
 
-    const currentBalance = empProfile?.balance || 0;
-    const newBalance = currentBalance + payoutAmount;
+      const currentBalance = empProfile?.balance || 0;
+      newBalance = currentBalance + payoutAmount;
 
-    const { data: balanceUpdated, error: balanceError } = await supabase
-      .from("profiles")
-      .update({ balance: newBalance })
-      .eq("id", employeeId)
-      .eq("balance", currentBalance)
-      .select("balance")
-      .single();
+      const { data: updated, error: balanceError } = await supabase
+        .from("profiles")
+        .update({ balance: newBalance })
+        .eq("id", employeeId)
+        .eq("balance", currentBalance)
+        .select("balance")
+        .single();
 
-    if (balanceError || !balanceUpdated) throw new Error("残高が変更されました。再度お試しください。");
+      if (updated && !balanceError) {
+        balanceUpdated = true;
+        break;
+      }
+      if (attempt < 2) await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+    }
+    if (!balanceUpdated) throw new Error("残高の更新に失敗しました。再度お試しください。");
 
     // 注文を確認済みに更新
     await supabase

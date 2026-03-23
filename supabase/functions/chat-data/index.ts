@@ -34,6 +34,17 @@ serve(async (req: Request) => {
     // Returns all profile IDs where role = 'admin'
     // =========================================================
     if (action === "get-admin-ids") {
+      // 管理者のみ呼び出し可能
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (callerProfile?.role !== "admin") {
+        return json({ success: false, error: "管理者権限が必要です" }, 403);
+      }
+
       const { data: admins, error } = await supabase
         .from("profiles")
         .select("id")

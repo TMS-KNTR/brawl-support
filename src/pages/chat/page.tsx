@@ -168,11 +168,20 @@ export default function ChatPage() {
     finally { setSending(false); }
   };
 
-  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { alert('画像ファイルを選択してください。'); return; }
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!ALLOWED_TYPES.includes(file.type)) { alert('対応形式: JPEG, PNG, GIF, WebP のみ'); return; }
     if (file.size > 5 * 1024 * 1024) { alert('画像は5MB以下にしてください。'); return; }
+    // マジックバイトで実際のファイルタイプを検証
+    const header = await file.slice(0, 8).arrayBuffer();
+    const bytes = new Uint8Array(header);
+    const isJpeg = bytes[0] === 0xFF && bytes[1] === 0xD8;
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
+    const isGif = bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46;
+    const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === undefined; // RIFF header
+    if (!isJpeg && !isPng && !isGif && !isWebp) { alert('不正なファイル形式です。画像ファイルを選択してください。'); return; }
     setAttachmentFile(file);
     const reader = new FileReader();
     reader.onload = () => setAttachmentPreview(reader.result as string);

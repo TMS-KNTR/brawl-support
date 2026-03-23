@@ -71,7 +71,7 @@ async function handleListWithdrawals(sb: SupabaseClient) {
       .limit(500),
     sb
       .from("profiles")
-      .select("id,username,full_name,balance,stripe_account_id,role")
+      .select("id,username,full_name,balance,role")
       .in("role", ["employee", "worker", "admin"]),
   ]);
   if (withdrawalsRes.error) throw new Error(withdrawalsRes.error.message);
@@ -887,11 +887,20 @@ serve(async (req: Request) => {
       "create-expense", "update-expense", "delete-expense",
     ];
     if (WRITE_ACTIONS.includes(action)) {
+      // 機密データをマスクしてからログに記録
+      const SENSITIVE_KEYS = ["password", "secret", "token", "stripe_account_id", "credentials", "api_key"];
+      const sanitizedParams = Object.fromEntries(
+        Object.entries(params || {}).map(([k, v]) =>
+          SENSITIVE_KEYS.some(sk => k.toLowerCase().includes(sk))
+            ? [k, "***MASKED***"]
+            : [k, v]
+        )
+      );
       await supabase.from("admin_logs").insert({
         actor_user_id: user.id,
         action,
         target_type: action,
-        meta_json: params,
+        meta_json: sanitizedParams,
       }).then(({ error: logErr }) => {
         if (logErr) console.error("Audit log failed:", logErr.message);
       });

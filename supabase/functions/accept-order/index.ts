@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCors, requireJsonContentType } from '../_shared/cors.ts'
+import { isEmployeeOrAdmin } from '../_shared/roles.ts'
 
 // 従業員が案件を受注する。サービスロールで orders を更新するため RLS の影響を受けない
 serve(async (req: Request) => {
@@ -10,6 +11,8 @@ serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
+    requireJsonContentType(req)
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -44,8 +47,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const role = (profile?.role ?? "").toString().toLowerCase();
-    if (role !== "employee" && role !== "worker" && role !== "admin") {
+    if (!isEmployeeOrAdmin(profile?.role)) {
       return new Response(
         JSON.stringify({ success: false, error: "従業員または管理者のみ利用できます" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }

@@ -25,8 +25,20 @@ export function getCorsHeaders(req?: Request): Record<string, string> {
   return {
     ...(origin ? { 'Access-Control-Allow-Origin': origin } : {}),
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature, x-internal-secret',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature, x-internal-secret, x-requested-with',
     'Vary': 'Origin',
+  }
+}
+
+/**
+ * CSRF防御: content-type ヘッダーの存在を確認
+ * ブラウザのシンプルリクエスト（フォームPOST等）はapplication/jsonを送れないため、
+ * content-type: application/json が無いリクエストはCSRF攻撃の可能性がある
+ */
+export function requireJsonContentType(req: Request): void {
+  const ct = req.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) {
+    throw new Error('Content-Type: application/json が必要です')
   }
 }
 

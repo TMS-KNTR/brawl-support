@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCors, requireJsonContentType } from '../_shared/cors.ts'
+import { isEmployeeOrAdmin } from '../_shared/roles.ts'
 
 serve(async (req: Request) => {
   const cors = handleCors(req)
@@ -11,6 +12,8 @@ serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
+    requireJsonContentType(req)
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
       apiVersion: "2023-10-16",
       httpClient: Stripe.createFetchHttpClient(),
@@ -34,8 +37,7 @@ serve(async (req: Request) => {
       .eq("id", user.id)
       .single();
 
-    const role = profile?.role;
-    if (!["worker", "employee", "admin"].includes(role || "")) {
+    if (!isEmployeeOrAdmin(profile?.role)) {
       throw new Error("従業員権限が必要です");
     }
 

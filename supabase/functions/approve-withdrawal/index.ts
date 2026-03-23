@@ -183,8 +183,32 @@ serve(async (req: Request) => {
         throw new Error(`Stripe送金に失敗しました: ${stripeErr.message}。残高は返還されています。`);
       } else {
         console.error("CRITICAL: 残高ロールバック失敗 - 手動対応が必要:", withdrawal.user_id, withdrawal_id);
-        // 残高復元できていないのでwithdrawalはpendingのままにして管理者に手動対応させる
-        throw new Error(`Stripe送金に失敗し、残高の自動復元にも失敗しました。管理者に連絡してください。`);
+        // ロールバック失敗を明示的に記録して管理者に手動対応を促す
+        await supabase
+          .from("withdrawals")
+          .update({
+            status: "rollback_failed",
+            description: `CRITICAL: Stripe送金失敗 + 残高ロールバック失敗。手動で残高 ¥${withdrawal.amount.toLocaleString()} を復元してください。エラー: ${stripeErr.message}`,
+          })
+          .eq("id", withdrawal_id);
+
+        // 管理者に緊急通知
+        try {
+          const { data: admins } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("role", "admin");
+          for (const admin of admins || []) {
+            await supabase.from("notifications").insert({
+              user_id: admin.id,
+              type: "system_alert",
+              title: "【緊急】残高ロールバック失敗",
+              body: `出金ID: ${withdrawal_id} / ユーザー: ${withdrawal.user_id} / 金額: ¥${withdrawal.amount.toLocaleString()} の残高復元に失敗しました。手動対応が必要です。`,
+            });
+          }
+        } catch { /* 通知失敗は無視 */ }
+
+        throw new Error(`Stripe送金に失敗し、残高の自動復元にも失敗しました。管理者に通知済みです。`);
       }
     }
 

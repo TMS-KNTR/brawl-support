@@ -35,10 +35,10 @@ export default function LoginPage() {
   const quickLogins: QuickLogin[] = useMemo(
     () => import.meta.env.DEV
       ? [
-          { label: 'テスト従業員', email: 'aasu6409@gmail.com' },
-          { label: 'テスト依頼者', email: 'm1k3y.bs@gmail.com' },
-          { label: '管理者', email: 'gemusuke.official@gmail.com' },
-        ]
+          { label: 'テスト従業員', email: import.meta.env.VITE_DEV_EMAIL_EMPLOYEE || '' },
+          { label: 'テスト依頼者', email: import.meta.env.VITE_DEV_EMAIL_CUSTOMER || '' },
+          { label: '管理者', email: import.meta.env.VITE_DEV_EMAIL_ADMIN || '' },
+        ].filter(q => q.email)
       : [],
     []
   )
