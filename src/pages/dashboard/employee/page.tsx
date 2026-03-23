@@ -507,12 +507,12 @@ function EmployeeDashboardContent() {
         {/* ═══ Header ═══ */}
         <section className="pt-[72px] border-b border-[#E5E5E5] bg-white">
           <div className="max-w-3xl mx-auto px-6 pt-5 pb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h1 className="text-[22px] font-bold text-[#111] tracking-tight">代行者ダッシュボード</h1>
+                <h1 className="text-[20px] sm:text-[22px] font-bold text-[#111] tracking-tight">代行者ダッシュボード</h1>
                 <p className="text-[13px] text-[#888] mt-1">案件の受注・作業管理ができます</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {ratingStats.count > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA]">
                     <span className="text-[11px] text-[#888]">評価</span>
@@ -567,10 +567,10 @@ function EmployeeDashboardContent() {
             )}
 
             {/* Tabs */}
-            <div className="flex gap-1 mt-5">
+            <div className="flex flex-wrap gap-1 mt-5 overflow-x-auto -mx-1 px-1">
               {tabs.map((t) => (
                 <button key={t.key} onClick={() => setActiveTab(t.key)}
-                  className={`px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-colors cursor-pointer ${
+                  className={`px-3 sm:px-3.5 py-1.5 text-[11px] sm:text-[12px] font-semibold rounded-full transition-colors cursor-pointer whitespace-nowrap ${
                     activeTab === t.key
                       ? 'bg-[#111] text-white'
                       : 'text-[#888] hover:bg-[#F5F5F5] hover:text-[#111]'

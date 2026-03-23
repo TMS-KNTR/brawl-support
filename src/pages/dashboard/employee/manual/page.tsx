@@ -311,7 +311,7 @@ function ManualContent() {
 
       {/* ═══ Page Header ═══ */}
       <section className="pt-[72px] border-b border-[#E5E5E5] bg-white">
-        <div className="max-w-3xl mx-auto px-6 pt-5 pb-6">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-5 pb-6">
           <button
             onClick={() => navigate('/dashboard/employee')}
             className="inline-flex items-center gap-1.5 text-[12px] text-[#888] hover:text-[#111] transition-colors mb-4 cursor-pointer"
@@ -319,13 +319,13 @@ function ManualContent() {
             <i className="ri-arrow-left-s-line text-[14px]"></i>
             ダッシュボードに戻る
           </button>
-          <h1 className="text-[22px] font-bold text-[#111] tracking-tight">代行者マニュアル</h1>
+          <h1 className="text-[20px] sm:text-[22px] font-bold text-[#111] tracking-tight">代行者マニュアル</h1>
           <p className="text-[13px] text-[#888] mt-1">業務の手順やルールを確認できます</p>
         </div>
       </section>
 
       {/* ═══ Table of Contents ═══ */}
-      <section className="max-w-3xl mx-auto px-6 pt-6">
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-6">
         <div className="rounded-lg bg-white border border-[#E5E5E5] p-5 mb-6">
           <h2 className="text-[13px] font-bold text-[#111] mb-3">目次</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">

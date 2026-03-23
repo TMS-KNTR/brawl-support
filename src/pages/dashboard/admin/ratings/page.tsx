@@ -95,9 +95,9 @@ export default function AdminRatingsPage() {
     <ProtectedRoute allowedRoles={['admin']}>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
-        <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+        <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 pt-[80px]">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">従業員の評価一覧</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">従業員の評価一覧</h1>
             <p className="text-gray-600 text-sm">
               各従業員の平均評価と件数を確認できます。
             </p>
@@ -110,36 +110,40 @@ export default function AdminRatingsPage() {
             ) : rows.length === 0 ? (
               <div className="p-6 text-sm text-gray-500">まだ評価はありません。</div>
             ) : (
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">従業員</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">平均評価</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">件数</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {rows.map((r) => (
-                    <tr
-                      key={r.employee_id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => openDetails(r)}
-                    >
-                      <td className="px-4 py-2">{r.name}</td>
-                      <td className="px-4 py-2">
-                        <span className="text-yellow-400 mr-1">
-                          {'★'.repeat(Math.round(r.avg))}
-                          <span className="text-gray-300">
-                            {'★'.repeat(5 - Math.round(r.avg))}
-                          </span>
-                        </span>
-                        <span className="text-gray-700">{r.avg.toFixed(1)} / 5</span>
-                      </td>
-                      <td className="px-4 py-2">{r.count}</td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-700 text-xs sm:text-sm">従業員</th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-700 text-xs sm:text-sm">平均評価</th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-700 text-xs sm:text-sm">件数</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {rows.map((r) => (
+                      <tr
+                        key={r.employee_id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => openDetails(r)}
+                      >
+                        <td className="px-3 sm:px-4 py-2 text-xs sm:text-sm break-all">{r.name}</td>
+                        <td className="px-3 sm:px-4 py-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1">
+                            <span className="text-yellow-400">
+                              {'★'.repeat(Math.round(r.avg))}
+                              <span className="text-gray-300">
+                                {'★'.repeat(5 - Math.round(r.avg))}
+                              </span>
+                            </span>
+                            <span className="text-gray-700 text-xs sm:text-sm">{r.avg.toFixed(1)} / 5</span>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-4 py-2 text-xs sm:text-sm">{r.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </main>
