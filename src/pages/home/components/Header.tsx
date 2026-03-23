@@ -47,11 +47,29 @@ export default function Header() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [headerVisible, setHeaderVisible] = useState(true)
+  const lastScrollY = useRef(0)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10)
-    window.addEventListener('scroll', onScroll)
+    const onScroll = () => {
+      const currentY = window.scrollY
+      setScrolled(currentY > 10)
+
+      // Hide/show on mobile (< 768px)
+      if (window.innerWidth < 768) {
+        if (currentY > lastScrollY.current && currentY > 64) {
+          setHeaderVisible(false)
+          setMenuOpen(false)
+        } else {
+          setHeaderVisible(true)
+        }
+      } else {
+        setHeaderVisible(true)
+      }
+      lastScrollY.current = currentY
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
@@ -102,9 +120,9 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] ${
         scrolled ? 'shadow-sm' : ''
-      }`}
+      } ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
       {/* Dropdown keyframes */}
       <style>{`
