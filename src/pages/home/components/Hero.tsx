@@ -185,13 +185,13 @@ export default function Hero() {
           {/* Main heading */}
           <h1 className="mb-7">
             <span
-              className="hero-heading-line block text-[clamp(2rem,6vw,4.5rem)] font-extrabold leading-[1.05] text-white"
+              className="hero-heading-line block text-[clamp(1.75rem,8vw,4.5rem)] font-extrabold leading-[1.1] text-white"
               style={{ fontFamily: '"Orbitron", sans-serif', animationDelay: '0.15s' }}
             >
               ゲームの代行を
             </span>
             <span
-              className="hero-heading-line block text-[clamp(2rem,6vw,4.5rem)] font-extrabold leading-[1.05] text-white"
+              className="hero-heading-line block text-[clamp(1.75rem,8vw,4.5rem)] font-extrabold leading-[1.1] text-white"
               style={{ fontFamily: '"Orbitron", sans-serif', animationDelay: '0.3s' }}
             >
               プロに任せよう
@@ -209,7 +209,7 @@ export default function Hero() {
           </div>
 
           {/* Subtitle */}
-          <p className="hero-subtitle text-[15px] sm:text-[16px] text-[#9090B0] leading-relaxed max-w-lg mx-auto mb-12 font-medium">
+          <p className="hero-subtitle text-[13px] sm:text-[15px] text-[#9090B0] leading-relaxed max-w-lg mx-auto mb-12 font-medium">
             厳選されたプロプレイヤーがあなたの目標を確実に達成。
             <br />
             安全な決済と匿名チャットで、安心のお取引を提供します。
