@@ -301,6 +301,14 @@ export default function AdminOrdersPage() {
                         {o.status === 'paid' && !o.employee_id && (
                           <button onClick={() => changeStatusOnly(o.id, 'pending')} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200">保留に戻す</button>
                         )}
+
+                        {/* 返金済みだがステータスがキャンセルでない場合 → ステータスのみキャンセル */}
+                        {o.is_refunded && o.status !== 'cancelled' && (
+                          <button onClick={() => changeStatusOnly(o.id, 'cancelled')}
+                            className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200">
+                            ステータスをキャンセルに変更
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
