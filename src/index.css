@@ -14,6 +14,15 @@ select,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+@media screen and (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Disable hover transforms on touch devices to prevent tap delays */
 @media (hover: none) {
   *:hover {

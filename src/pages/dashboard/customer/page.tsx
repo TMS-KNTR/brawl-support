@@ -209,8 +209,8 @@ export default function CustomerDashboardPage() {
     setRefreshing(false);
   };
 
-  const activeStatuses = ['assigned', 'in_progress', 'paid', 'payment_pending', 'open', 'pending'];
-  const doneStatuses = ['completed', 'confirmed', 'cancelled', 'disputed', 'refunded'];
+  const activeStatuses = ['assigned', 'in_progress', 'paid', 'payment_pending', 'open', 'pending', 'completed'];
+  const doneStatuses = ['confirmed', 'cancelled', 'disputed', 'refunded'];
 
   const filteredOrders = orders.filter((o) => {
     const ns = normalizeStatus(o.status);

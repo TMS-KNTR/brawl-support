@@ -244,7 +244,7 @@ export default function OrderDetailPage() {
   const ns = normalizeStatus(order.status);
   const chatVisible = chatThreadId && ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(ns);
   const canConfirm = ns === 'completed' && !order.is_paid_out;
-  const canDispute = ['paid', 'assigned', 'in_progress', 'completed'].includes(ns);
+  const canDispute = ['paid', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(ns);
 
   const createdAt = new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   const updatedAt = order.updated_at
