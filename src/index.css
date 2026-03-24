@@ -23,10 +23,12 @@ select,
   }
 }
 
-/* Disable hover transforms on touch devices to prevent tap delays */
+/* Disable hover lift on cards for touch devices (prevents tap delay) */
 @media (hover: none) {
-  *:hover {
+  .mc-order-card:hover,
+  .games-card:hover,
+  .games-coming-card:hover,
+  .order-card:hover {
     transform: none !important;
-    box-shadow: inherit !important;
   }
 }
