@@ -30,9 +30,14 @@ export default class ErrorBoundary extends React.Component<Props, State> {
               </svg>
             </div>
             <h1 className="text-[18px] font-bold text-[#111] mb-2">エラーが発生しました</h1>
-            <p className="text-[13px] text-[#888] mb-6">
+            <p className="text-[13px] text-[#888] mb-4">
               予期しないエラーが発生しました。ページを再読み込みしてください。
             </p>
+            {this.state.error && (
+              <p className="text-[11px] text-[#AAA] mb-4 break-all font-mono bg-[#F5F5F5] rounded-lg p-3 text-left">
+                {this.state.error.message}
+              </p>
+            )}
             <button
               onClick={() => window.location.reload()}
               className="inline-block px-6 py-2.5 text-[13px] font-bold bg-[#111] text-white rounded-xl hover:bg-[#333] transition-colors cursor-pointer"
