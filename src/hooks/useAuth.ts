@@ -33,7 +33,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | { __timeou
 }
 
 const PROFILE_CACHE_KEY = 'brawl_support_profile'
-const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000 // 5分
+const PROFILE_CACHE_TTL_MS = 60 * 60 * 1000 // 1時間（バックグラウンドで常に最新を取得するため長めでOK）
 
 function getProfileFromCache(userId: string): UserProfile | null {
   try {
@@ -48,6 +48,33 @@ function getProfileFromCache(userId: string): UserProfile | null {
   } catch {
     return null
   }
+}
+
+/** SupabaseセッションのlocalStorageからユーザーIDを同期的に取得 */
+function getSessionUserIdSync(): string | null {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const raw = localStorage.getItem(key)
+        if (!raw) continue
+        const parsed = JSON.parse(raw)
+        return parsed?.user?.id ?? null
+      }
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+/** 同期的に初期状態を復元（リロード時の即時レンダリング用） */
+function getInitialAuthState() {
+  const userId = getSessionUserIdSync()
+  if (!userId) return { user: null, profile: null, loading: true }
+  const cached = getProfileFromCache(userId)
+  if (cached) {
+    return { user: { id: userId } as any, profile: cached, loading: false }
+  }
+  return { user: null, profile: null, loading: true }
 }
 
 function setProfileCache(userId: string, profile: UserProfile) {
@@ -70,15 +97,17 @@ function clearProfileCache() {
 }
 
 export function useAuthImpl() {
-  const [user, setUser] = useState<any>(null)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [authLoading, setAuthLoading] = useState(true)
-  const [profileStatus, setProfileStatus] = useState<ProfileStatus>('idle')
+  // 同期的にキャッシュから初期状態を復元（リロード時に即座にページを表示するため）
+  const [initial] = useState(() => getInitialAuthState())
+  const [user, setUser] = useState<any>(initial.user)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(initial.profile)
+  const [authLoading, setAuthLoading] = useState(initial.loading)
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>(initial.profile ? 'ready' : 'idle')
   const [profileError, setProfileError] = useState<string | null>(null)
 
   const activeProfileReqId = useRef(0)
   /** 最後に正常取得したプロフィール。タイムアウト時に上書きしないために使用 */
-  const lastKnownProfileRef = useRef<UserProfile | null>(null)
+  const lastKnownProfileRef = useRef<UserProfile | null>(initial.profile)
 
   const signOut = useCallback(async () => {
     try {
@@ -330,7 +359,10 @@ export function useAuthImpl() {
     let mounted = true
     let initialSessionHandled = false
 
-    setAuthLoading(true)
+    // キャッシュから復元済みの場合はloadingをtrueに戻さない
+    if (!initial.profile) {
+      setAuthLoading(true)
+    }
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
