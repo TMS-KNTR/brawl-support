@@ -77,6 +77,9 @@ function EmployeeDashboardContent() {
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeLoading, setDisputeLoading] = useState(false);
 
+  // ステータス変更確認モーダル
+  const [statusConfirm, setStatusConfirm] = useState<{ orderId: string; status: string; order: any } | null>(null);
+
   // 残高・出金
   const [balance, setBalance] = useState(0);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
@@ -322,12 +325,15 @@ function EmployeeDashboardContent() {
   };
 
   /** ステータス変更（作業開始・作業完了）Edge Function 経由で RLS をバイパス */
+  const openStatusConfirm = (orderId: string, newStatus: string) => {
+    const order = myOrders.find((o) => o.id === orderId);
+    if (!order) return;
+    setStatusConfirm({ orderId, status: newStatus, order });
+  };
+
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     if (!user?.id) return;
-    const confirmMsg = newStatus === 'in_progress'
-      ? 'この案件の作業を開始しますか？'
-      : '作業完了として報告しますか？\n\n※ 依頼者が確認後に報酬が支払われます。';
-    if (!window.confirm(confirmMsg)) return;
+    setStatusConfirm(null);
     setActionLoading(orderId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -714,13 +720,13 @@ function EmployeeDashboardContent() {
                             </div>
                             <div className="flex flex-wrap gap-2 pt-3 border-t border-[#F0F0F0]" onClick={(e) => e.stopPropagation()}>
                               {order.status === 'assigned' && (
-                                <button onClick={() => handleStatusChange(order.id, 'in_progress')} disabled={actionLoading === order.id}
+                                <button onClick={() => openStatusConfirm(order.id, 'in_progress')} disabled={actionLoading === order.id}
                                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#D97706] text-white hover:bg-[#B45309] transition-colors disabled:opacity-40">
                                   <i className="ri-play-line text-[11px]"></i>{actionLoading === order.id ? '処理中...' : '作業開始'}
                                 </button>
                               )}
                               {order.status === 'in_progress' && (
-                                <button onClick={() => handleStatusChange(order.id, 'completed')} disabled={actionLoading === order.id}
+                                <button onClick={() => openStatusConfirm(order.id, 'completed')} disabled={actionLoading === order.id}
                                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-40">
                                   <i className="ri-check-double-line text-[11px]"></i>{actionLoading === order.id ? '処理中...' : '作業完了'}
                                 </button>
@@ -986,6 +992,51 @@ function EmployeeDashboardContent() {
                   <button onClick={handleAcceptConfirmed}
                     className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors cursor-pointer">
                     受注する
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ ステータス変更確認モーダル ═══ */}
+        {statusConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setStatusConfirm(null)}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[#F0F0F0]">
+                <h2 className="text-[15px] font-bold text-[#111]">
+                  {statusConfirm.status === 'in_progress' ? '作業開始の確認' : '作業完了の確認'}
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="bg-[#F7F9F9] rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-1.5 mb-2 text-[12px] text-[#888]">
+                    <span className="font-semibold text-[#111]">{statusConfirm.order?.game_title || 'Brawl Stars'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[14px] font-bold text-[#111]">
+                    <span>{statusConfirm.order?.current_rank || '—'}</span>
+                    <i className="ri-arrow-right-line text-[12px] text-[#CCC]"></i>
+                    <span>{statusConfirm.order?.target_rank || '—'}</span>
+                  </div>
+                  <p className="text-[12px] font-semibold text-[#059669] mt-2">
+                    報酬: ¥{Math.floor((statusConfirm.order?.price || 0) * EMPLOYEE_RATE).toLocaleString()}
+                  </p>
+                </div>
+                <p className="text-[13px] text-[#666] mb-5">
+                  {statusConfirm.status === 'in_progress'
+                    ? 'この案件の作業を開始します。依頼者に通知されます。'
+                    : '作業完了を報告します。依頼者が確認後に報酬が支払われます。'}
+                </p>
+                <div className="flex justify-end gap-2.5">
+                  <button onClick={() => setStatusConfirm(null)}
+                    className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
+                    キャンセル
+                  </button>
+                  <button onClick={() => handleStatusChange(statusConfirm.orderId, statusConfirm.status)} disabled={!!actionLoading}
+                    className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors cursor-pointer disabled:opacity-40">
+                    {actionLoading ? '処理中...' : statusConfirm.status === 'in_progress' ? '作業開始' : '作業完了'}
                   </button>
                 </div>
               </div>

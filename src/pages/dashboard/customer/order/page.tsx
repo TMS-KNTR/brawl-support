@@ -111,7 +111,6 @@ export default function OrderDetailPage() {
 
   const handleConfirmComplete = async () => {
     if (!order || confirming) return;
-    if (!window.confirm('代行が完了したことを確認しますか？\n\n※ 確認すると代行者に報酬が支払われます。')) return;
     setConfirming(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
