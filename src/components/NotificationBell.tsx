@@ -41,7 +41,7 @@ export default function NotificationBell() {
   const handleClickNotification = (n: Notification) => {
     if (!n.read_at) markAsRead(n.id);
     setOpen(false);
-    if (n.link_url) navigate(n.link_url);
+    if (n.link_url && n.link_url.startsWith('/')) navigate(n.link_url);
   };
 
   if (!user) return null;

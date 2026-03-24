@@ -234,7 +234,7 @@ async function handleListLogs(sb: SupabaseClient) {
 async function handleListRatings(sb: SupabaseClient) {
   const { data, error } = await sb
     .from("ratings")
-    .select("employee_id, score, employee:profiles(id,username,full_name)");
+    .select("employee_id, score, employee:profiles!ratings_employee_id_fkey(id,username,full_name)");
   if (error) throw new Error(error.message);
   return data;
 }

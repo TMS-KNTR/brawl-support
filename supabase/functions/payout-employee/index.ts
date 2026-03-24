@@ -42,6 +42,7 @@ serve(async (req: Request) => {
       .single();
     if (orderError || !order) throw new Error("注文が見つかりません");
     if (order.is_paid_out) throw new Error("既に支払い済みです");
+    if (order.status !== "completed") throw new Error("完了済みの注文のみ支払い可能です（現在: " + order.status + "）");
 
     const employeeId = order.employee_id;
     if (!employeeId) throw new Error("従業員が割り当てられていません");
@@ -89,8 +90,8 @@ serve(async (req: Request) => {
     }
     if (!balanceUpdated) throw new Error("残高の更新に失敗しました。再度お試しください。");
 
-    // 注文を確認済みに更新
-    await supabase
+    // 注文を確認済みに更新（楽観ロックで二重支払い防止）
+    const { data: updatedOrder, error: orderUpdateError } = await supabase
       .from("orders")
       .update({
         status: "confirmed",
@@ -98,7 +99,19 @@ serve(async (req: Request) => {
         payout_amount: payoutAmount,
         paid_out_at: new Date().toISOString(),
       })
-      .eq("id", order_id);
+      .eq("id", order_id)
+      .eq("is_paid_out", false)
+      .select("id")
+      .single();
+
+    if (orderUpdateError || !updatedOrder) {
+      // 残高を戻す
+      await supabase
+        .from("profiles")
+        .update({ balance: newBalance - payoutAmount })
+        .eq("id", employeeId);
+      throw new Error("注文の更新に失敗しました（既に処理済みの可能性があります）");
+    }
 
     // 出金履歴に記録（type: 'earning'）
     await supabase.from("withdrawals").insert({
@@ -122,8 +135,17 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     console.error("Payout error:", err.message);
+    const safeMessages = [
+      "認証が必要です", "アカウントが停止されています", "管理者権限が必要です",
+      "order_idが必要です", "注文が見つかりません", "既に支払い済みです",
+      "従業員が割り当てられていません", "支払い金額が0以下です",
+      "残高の更新に失敗しました。再度お試しください。",
+      "注文の更新に失敗しました（既に処理済みの可能性があります）",
+    ];
+    const isSafe = safeMessages.some(m => err.message?.includes(m)) ||
+      err.message?.startsWith("完了済みの注文のみ");
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: isSafe ? err.message : "処理中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

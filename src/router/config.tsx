@@ -11,9 +11,6 @@ const ForgotPasswordPage = lazy(() => import('../pages/auth/forgot-password'))
 const AuthCallbackPage = lazy(() => import('../pages/auth/callback'))
 const NotFoundPage = lazy(() => import('../pages/NotFound'))
 
-// Brawl Stars
-const BrawlStarsPage = lazy(() => import('../pages/brawlstars/page'))
-
 // Order / Payment
 const OrderNewPage = lazy(() => import('../pages/order/new/page'))
 const PaymentSuccessPage = lazy(() => import('../pages/payment-success/page'))
@@ -64,8 +61,7 @@ const routes: RouteObject[] = [
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/auth/callback', element: <AuthCallbackPage /> },
   { path: '/games', element: <GamesPage /> },
-  { path: '/games/brawl-stars', element: <BrawlStarsPage /> },
-  { path: '/legal/terms', element: <TermsPage /> },
+{ path: '/legal/terms', element: <TermsPage /> },
   { path: '/legal/privacy', element: <PrivacyPage /> },
   { path: '/legal/compliance', element: <CompliancePage /> },
 

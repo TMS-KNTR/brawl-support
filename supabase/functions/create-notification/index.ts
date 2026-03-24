@@ -63,22 +63,30 @@ serve(async (req: Request) => {
         });
       }
 
-      // チャット通知の場合: 送信者が対象注文の参加者であることを確認
-      if (type === "chat_message" && link_url) {
-        const threadIdMatch = link_url.match(/\/chat\/([^/]+)/);
-        if (threadIdMatch) {
-          const { data: thread } = await supabase
-            .from("chat_threads")
-            .select("order:orders(user_id, employee_id)")
-            .eq("id", threadIdMatch[1])
-            .single();
-          const order = (thread as any)?.order;
-          if (!order || (order.user_id !== user.id && order.employee_id !== user.id)) {
-            return new Response(JSON.stringify({ success: false, error: "このチャットへのアクセス権がありません" }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 403,
-            });
-          }
+      // ng_word_violation は管理者のみ
+      if (type === "ng_word_violation") {
+        return new Response(JSON.stringify({ success: false, error: "この通知タイプは管理者のみ送信可能です" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403,
+        });
+      }
+
+      // チャット通知の場合: 送信者と対象ユーザーが同じ注文の参加者であることを確認
+      if (type === "chat_message") {
+        // 送信者と対象ユーザーが同じ注文に参加しているか確認
+        const { data: sharedOrders } = await supabase
+          .from("orders")
+          .select("id")
+          .or(
+            `and(user_id.eq.${user.id},employee_id.eq.${user_id}),and(user_id.eq.${user_id},employee_id.eq.${user.id})`
+          )
+          .limit(1);
+
+        if (!sharedOrders || sharedOrders.length === 0) {
+          return new Response(JSON.stringify({ success: false, error: "対象ユーザーとの共有注文がありません" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 403,
+          });
         }
       }
     }

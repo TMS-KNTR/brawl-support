@@ -132,8 +132,15 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     console.error("Refund error:", err.message);
+    const safeMessages = [
+      "認証が必要です", "アカウントが停止されています", "管理者権限が必要です",
+      "order_idが必要です", "注文が見つかりません", "既にキャンセル済みです",
+      "既に返金済みです", "payment_intentが見つかりません", "決済情報が見つかりません",
+      "返金は成功しましたが、DB更新に失敗しました",
+    ];
+    const isSafe = safeMessages.some(m => err.message?.includes(m));
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: isSafe ? err.message : "返金処理中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

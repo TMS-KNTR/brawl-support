@@ -29,10 +29,35 @@ serve(async (req: Request) => {
       );
     }
 
+    // ユーザーのプロフィールを取得してロールを確認
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    const isAdmin = userProfile?.role === "admin";
+
+    // 管理者以外は自分が参加者である注文のみ許可
+    let allowedOrderIds = orderIds;
+    if (!isAdmin) {
+      const { data: ownOrders } = await supabase
+        .from("orders")
+        .select("id")
+        .in("id", orderIds)
+        .or(`user_id.eq.${user.id},employee_id.eq.${user.id}`);
+      allowedOrderIds = (ownOrders ?? []).map((o: any) => o.id);
+      if (allowedOrderIds.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, data: {} }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+    }
+
     const { data: threads, error } = await supabase
       .from("chat_threads")
       .select("id, order_id")
-      .in("order_id", orderIds);
+      .in("order_id", allowedOrderIds);
 
     if (error) {
       console.error("get-chat-thread-ids error:", error);
@@ -100,7 +125,7 @@ serve(async (req: Request) => {
   } catch (err: any) {
     console.error("get-chat-thread-ids:", err.message);
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: "処理中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

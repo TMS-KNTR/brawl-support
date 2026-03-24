@@ -1,0 +1,193 @@
+tablename,policyname,cmd,qual,with_check
+admin_logs,admin_only_logs,ALL,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+admin_logs,admin_only,ALL,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+admin_logs,admin_logs_insert_authenticated,INSERT,null,true
+admin_logs,admin_logs_select_admin,SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+admin_users,Self can read admin_users,SELECT,(auth.uid() = id),null
+admin_users,admin_users_select_own,SELECT,(id = auth.uid()),null
+audit_logs,admin_only,ALL,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+audit_logs,audit_logs_admin_only,ALL,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+audit_logs,admin_delete_all,DELETE,is_admin(),null
+audit_logs,Service role can create audit logs,INSERT,null,((auth.jwt() ->> 'role'::text) = 'service_role'::text)
+audit_logs,admin_insert_all,INSERT,null,is_admin()
+audit_logs,Admins can view audit logs,SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+audit_logs,admin_select_all,SELECT,is_admin(),null
+audit_logs,admin_update_all,UPDATE,is_admin(),is_admin()
+chat_messages,admin_override_chat,ALL,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))","(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))"
+chat_messages,admin_override_chat_restrictive,ALL,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))","(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))"
+chat_messages,admin_delete_all,DELETE,is_admin(),null
+chat_messages,ban_block_chat_insert,INSERT,null,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_banned = false) AND (p.is_suspended = false))))"
+chat_messages,Users can insert own messages,INSERT,null,(auth.uid() = sender_id)
+chat_messages,admin_insert_all,INSERT,null,is_admin()
+chat_messages,Users can view own messages,SELECT,((auth.uid() = sender_id) OR (auth.uid() = receiver_id)),null
+chat_messages,admin_select_all,SELECT,is_admin(),null
+chat_messages,admin_update_all,UPDATE,is_admin(),is_admin()
+chat_threads,admin_delete_all,DELETE,is_admin(),null
+chat_threads,Service role can create threads,INSERT,null,((auth.jwt() ->> 'role'::text) = 'service_role'::text)
+chat_threads,Users can create chat threads,INSERT,null,((auth.uid())::text = ANY (participants_fixed))
+chat_threads,Users can create threads for related orders,INSERT,null,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = chat_threads.order_id) AND ((orders.user_id = auth.uid()) OR (orders.employee_id = auth.uid())))))"
+chat_threads,admin_insert_all,INSERT,null,is_admin()
+chat_threads,chat_threads_select_order_participants,SELECT,"(EXISTS ( SELECT 1
+   FROM orders o
+  WHERE ((o.id = chat_threads.order_id) AND ((o.user_id = auth.uid()) OR (o.employee_id = auth.uid())))))",null
+chat_threads,Users can view chat threads,SELECT,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = chat_threads.order_id) AND ((orders.user_id = auth.uid()) OR (orders.employee_id = auth.uid())))))",null
+chat_threads,admin_select_all,SELECT,is_admin(),null
+chat_threads,chat_threads_select_admin,SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+chat_threads,Users can update their chat threads,UPDATE,((auth.uid())::text = ANY (participants_fixed)),((auth.uid())::text = ANY (participants_fixed))
+chat_threads,admin_update_all,UPDATE,is_admin(),is_admin()
+chat_violations,chat_violations_insert_authenticated,INSERT,null,true
+chat_violations,chat_violations_select_admin,SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+credential_vaults,Users can insert credentials for their orders,INSERT,null,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = credential_vaults.order_id) AND (orders.user_id = auth.uid()))))"
+credential_vaults,Users can view authorized credentials,SELECT,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = credential_vaults.order_id) AND ((orders.user_id = auth.uid()) OR (orders.employee_id = auth.uid())))))",null
+dispute_evidence,admin_only_evidence,ALL,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+dispute_evidence,admin_only,ALL,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+dispute_messages,admin_insert_dispute_messages,INSERT,null,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))"
+dispute_messages,participants_insert,INSERT,null,"(EXISTS ( SELECT 1
+   FROM disputes d
+  WHERE ((d.id = dispute_messages.dispute_id) AND ((d.customer_id = auth.uid()) OR (d.employee_id = auth.uid()) OR (d.admin_assigned = auth.uid())))))"
+dispute_messages,participants_only,SELECT,"(EXISTS ( SELECT 1
+   FROM disputes d
+  WHERE ((d.id = dispute_messages.dispute_id) AND ((d.customer_id = auth.uid()) OR (d.employee_id = auth.uid()) OR (d.admin_assigned = auth.uid())))))",null
+dispute_messages,admin_select_dispute_messages,SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+disputes,admin_all_disputes,ALL,is_admin(),is_admin()
+disputes,disputes_admin_all,ALL,is_admin(),is_admin()
+disputes,admin_delete_all,DELETE,is_admin(),null
+disputes,disputes_employee_create,INSERT,null,(auth.uid() = employee_id)
+disputes,Users can create disputes for own orders,INSERT,null,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = disputes.order_id) AND (orders.user_id = auth.uid()))))"
+disputes,admin_insert_all,INSERT,null,is_admin()
+disputes,party_insert_disputes,INSERT,null,((auth.uid() = customer_id) OR (auth.uid() = employee_id))
+disputes,disputes_customer_create,INSERT,null,(auth.uid() = customer_id)
+disputes,Users can view related disputes,SELECT,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = disputes.order_id) AND ((orders.user_id = auth.uid()) OR (orders.employee_id = auth.uid())))))",null
+disputes,admin_select_all,SELECT,is_admin(),null
+disputes,disputes_parties_select,SELECT,((auth.uid() = customer_id) OR (auth.uid() = employee_id)),null
+disputes,party_select_disputes,SELECT,((auth.uid() = customer_id) OR (auth.uid() = employee_id)),null
+disputes,admin_update_all,UPDATE,is_admin(),is_admin()
+messages,admin_delete_all,DELETE,is_admin(),null
+messages,admin_insert_all,INSERT,null,is_admin()
+messages,Service role can create system messages,INSERT,null,((is_system = true) AND ((auth.jwt() ->> 'role'::text) = 'service_role'::text))
+messages,Users can send messages,INSERT,null,(auth.uid() = sender_id)
+messages,Users can send messages for related orders,INSERT,null,"((auth.uid() = sender_id) AND (EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = messages.order_id) AND ((orders.user_id = auth.uid()) OR (orders.employee_id = auth.uid()))))))"
+messages,Users can view messages for related orders,SELECT,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = messages.order_id) AND ((orders.user_id = auth.uid()) OR (orders.employee_id = auth.uid())))))",null
+messages,Users can view messages,SELECT,"((auth.uid())::text IN ( SELECT unnest(chat_threads.participants_fixed) AS unnest
+   FROM chat_threads
+  WHERE (chat_threads.order_id = messages.order_id)))",null
+messages,admin_select_all,SELECT,is_admin(),null
+messages,admin_update_all,UPDATE,is_admin(),is_admin()
+messages,Users can mark received messages as read,UPDATE,(receiver_id = auth.uid()),(receiver_id = auth.uid())
+notifications,notifications_insert_authenticated,INSERT,null,(auth.uid() IS NOT NULL)
+notifications,notifications_select_own,SELECT,(user_id = auth.uid()),null
+notifications,notifications_select_admin,SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+notifications,notifications_update_own,UPDATE,(user_id = auth.uid()),(user_id = auth.uid())
+notifications,notifications_update_admin,UPDATE,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))","(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))"
+orders,admin_orders_full_access,ALL,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+orders,admin_delete_all,DELETE,is_admin(),null
+orders,orders_insert_customer_only,INSERT,null,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'customer'::text) AND (p.is_banned = false) AND (p.is_suspended = false))))"
+orders,ban_block_orders_insert,INSERT,null,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_banned = false) AND (p.is_suspended = false))))"
+orders,admin_insert_all,INSERT,null,is_admin()
+orders,Customers can view own orders,SELECT,(auth.uid() = user_id),null
+orders,Employees can view pending orders,SELECT,"((status = ANY (ARRAY['pending'::text, 'paid'::text, 'open'::text])) AND (employee_id IS NULL) AND (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['worker'::text, 'employee'::text]))))))",null
+orders,Employees can view assigned orders,SELECT,(auth.uid() = employee_id),null
+orders,orders_admin_select,SELECT,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+orders,admin_select_all,SELECT,is_admin(),null
+orders,Employees can claim orders,UPDATE,"((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['worker'::text, 'employee'::text, 'admin'::text]))))) AND (status = 'pending'::text) AND (employee_id IS NULL))",((employee_id = auth.uid()) AND (status = 'assigned'::text))
+orders,orders_admin_update,UPDATE,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+orders,Customers can update own orders,UPDATE,(auth.uid() = user_id),(auth.uid() = user_id)
+orders,employee_update_own_orders,UPDATE,"((EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'employee'::text) AND (p.is_banned = false) AND (p.is_suspended = false)))) AND (assigned_employee_id = auth.uid()))",null
+orders,employee_assign_self,UPDATE,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'employee'::text) AND (p.is_banned = false) AND (p.is_suspended = false))))",(assigned_employee_id = auth.uid())
+orders,ban_block_orders_update,UPDATE,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_banned = false) AND (p.is_suspended = false))))",null
+orders,Employees can accept available orders,UPDATE,(employee_id IS NULL),(employee_id = auth.uid())
+orders,admin_update_all,UPDATE,is_admin(),is_admin()
+orders,Employees can update assigned orders,UPDATE,(auth.uid() = employee_id),(auth.uid() = employee_id)
+orders,orders_employee_accept_update,UPDATE,"((employee_id IS NULL) AND (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['employee'::text, 'worker'::text, 'admin'::text]))))))","((employee_id IS NULL) AND (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['employee'::text, 'worker'::text, 'admin'::text]))))))"
+payments,Service role can manage payments,ALL,((auth.jwt() ->> 'role'::text) = 'service_role'::text),null
+payments,admin_delete_all,DELETE,is_admin(),null
+payments,admin_insert_all,INSERT,null,is_admin()
+payments,Users can view own payments,SELECT,"(EXISTS ( SELECT 1
+   FROM orders
+  WHERE ((orders.id = payments.order_id) AND (orders.user_id = auth.uid()))))",null
+payments,admin_select_all,SELECT,is_admin(),null
+payments,admin_update_all,UPDATE,is_admin(),is_admin()
+pricing_rules,Admins can manage pricing rules,ALL,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))",null
+pricing_rules,admin_delete_all,DELETE,is_admin(),null

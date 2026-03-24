@@ -84,7 +84,7 @@ serve(async (req: Request) => {
       .update({ status: newStatus })
       .eq("id", orderId);
 
-    if (role !== "admin") {
+    if (profile?.role !== "admin") {
       query = query.eq("employee_id", user.id);
     }
 

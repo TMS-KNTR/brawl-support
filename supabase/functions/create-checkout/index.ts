@@ -17,44 +17,9 @@ Deno.serve(async (req) => {
 
   const corsHeaders = getCorsHeaders(req)
 
-  try {
-    // JWT認証
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("認証が必要です");
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user } } = await supabase.auth.getUser(token);
-    if (!user) throw new Error("認証が必要です");
-
-    const { price, orderData } = await req.json();
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "jpy",
-            product_data: { name: "Brawl Stars 代行" },
-            unit_amount: Math.round(price),
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: `${Deno.env.get("SITE_URL")}/order/success`,
-      cancel_url: `${Deno.env.get("SITE_URL")}/order/new`,
-      metadata: {
-        userId: user.id,
-        orderData: JSON.stringify(orderData),
-      },
-    });
-
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
-    });
-  }
+  // このエンドポイントは廃止されました。create-order-payment を使用してください。
+  return new Response(
+    JSON.stringify({ error: "このエンドポイントは廃止されました。create-order-payment を使用してください。" }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 410 }
+  );
 });

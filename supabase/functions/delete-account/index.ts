@@ -23,12 +23,24 @@ serve(async (req: Request) => {
 
     const userId = user.id;
 
-    // 1. 進行中の注文をキャンセル（依頼者として）
+    // 1. 支払済み注文がある場合は削除を拒否（返金が必要なため）
+    const { data: paidOrders } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("user_id", userId)
+      .in("status", ["paid", "assigned", "in_progress"])
+      .limit(1);
+
+    if (paidOrders && paidOrders.length > 0) {
+      throw new Error("支払済みまたは進行中の注文があります。先にキャンセル・返金を行ってからアカウントを削除してください。");
+    }
+
+    // 未払い注文のみキャンセル
     await supabase
       .from("orders")
       .update({ status: "cancelled" })
       .eq("user_id", userId)
-      .in("status", ["paid", "pending", "open", "assigned", "in_progress"]);
+      .in("status", ["pending", "open"]);
 
     // 2. 受注中の案件から外す（従業員として）+ 依頼者に通知
     const { data: employeeOrders } = await supabase
@@ -107,8 +119,13 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     console.error("delete-account error:", err.message);
+    const safeMessages = [
+      "認証が必要です", "アカウント削除に失敗しました",
+      "支払済みまたは進行中の注文があります",
+    ];
+    const isSafe = safeMessages.some(m => err.message?.includes(m));
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: isSafe ? err.message : "アカウント削除中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

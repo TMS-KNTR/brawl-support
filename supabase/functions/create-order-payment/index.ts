@@ -130,7 +130,7 @@ serve(async (req) => {
 
     // Stripe Checkoutセッションを作成（注文はWebhookで決済完了後に作成）
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'paypay'],
+      payment_method_types: ['card'], // TODO: PayPayが正式リリースされたら 'paypay' を追加
       line_items: [
         {
           price_data: {
