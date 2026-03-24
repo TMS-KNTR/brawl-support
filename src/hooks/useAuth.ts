@@ -189,7 +189,7 @@ export function useAuthImpl() {
             setProfileStatus('ready')
             return fromCache2
           }
-          console.error('[fetchUserProfile] TIMEOUT after retry - no profile available')
+          if (import.meta.env.DEV) console.error('[fetchUserProfile] TIMEOUT after retry - no profile available')
           setProfileError('プロフィールの取得がタイムアウトしました。再度お試しください。')
           setProfileStatus('error')
           setAuthLoading(false)
@@ -203,7 +203,7 @@ export function useAuthImpl() {
 
       // エラーがある場合
       if (error) {
-        console.error('[fetchUserProfile] query error:', error.code, error.message)
+        if (import.meta.env.DEV) console.error('[fetchUserProfile] query error:', error.code, error.message)
 
         // PGRST116 = プロフィールが存在しない → 自動作成
         if (error.code === 'PGRST116') {
@@ -222,7 +222,7 @@ export function useAuthImpl() {
           setProfileStatus('ready')
           return fromCache
         }
-        console.error('[fetchUserProfile] profile fetch failed - no fallback')
+        if (import.meta.env.DEV) console.error('[fetchUserProfile] profile fetch failed - no fallback')
         setProfileError('プロフィールの取得に失敗しました。再度お試しください。')
         setProfileStatus('error')
         setAuthLoading(false)
@@ -250,7 +250,7 @@ export function useAuthImpl() {
       return normalized
 
     } catch (e: any) {
-      console.error('[fetchUserProfile] catch:', e)
+      if (import.meta.env.DEV) console.error('[fetchUserProfile] catch:', e)
       if (reqId !== activeProfileReqId.current) return null
       if (lastKnownProfileRef.current?.id === userId) {
         setProfileStatus('ready')
@@ -288,7 +288,7 @@ export function useAuthImpl() {
       )
 
       if (insertResult && '__timeout' in insertResult) {
-        console.error('[autoCreateProfile] insert timeout')
+        if (import.meta.env.DEV) console.error('[autoCreateProfile] insert timeout')
         const fallback: UserProfile = { id: userId, role: 'customer' }
         setUserProfile(fallback)
         setProfileStatus('ready')
@@ -299,7 +299,7 @@ export function useAuthImpl() {
       const { error: insertError } = insertResult as any
 
       if (insertError) {
-        console.error('[autoCreateProfile] insert failed:', insertError.message)
+        if (import.meta.env.DEV) console.error('[autoCreateProfile] insert failed:', insertError.message)
       }
 
       // 再取得
@@ -321,7 +321,7 @@ export function useAuthImpl() {
       const { data: created, error: refetchError } = refetchResult as any
 
       if (refetchError || !created) {
-        console.warn('[autoCreateProfile] refetch failed, using fallback')
+        if (import.meta.env.DEV) console.warn('[autoCreateProfile] refetch failed, using fallback')
         const fallback: UserProfile = { id: userId, role: 'customer' }
         setUserProfile(fallback)
         setProfileStatus('ready')
@@ -342,7 +342,7 @@ export function useAuthImpl() {
       setProfileStatus('ready')
       return normalized
     } catch (e: any) {
-      console.error('[autoCreateProfile] catch:', e)
+      if (import.meta.env.DEV) console.error('[autoCreateProfile] catch:', e)
       if (reqId !== activeProfileReqId.current) return null
       const fallback: UserProfile = { id: userId, role: 'customer' }
       setUserProfile(fallback)

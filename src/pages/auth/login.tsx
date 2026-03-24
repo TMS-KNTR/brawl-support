@@ -29,6 +29,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [lockCountdown, setLockCountdown] = useState(0)
+
+  // Rate limit countdown
+  useEffect(() => {
+    if (!lockedUntil) return
+    const tick = () => {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000)
+      if (remaining <= 0) {
+        setLockedUntil(null)
+        setLockCountdown(0)
+        setFailedAttempts(0)
+      } else {
+        setLockCountdown(remaining)
+      }
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [lockedUntil])
+
+  const isLocked = lockedUntil !== null && Date.now() < lockedUntil
 
   const showDevQuickLogin = resolveShowDevQuickLogin()
 
@@ -57,6 +80,10 @@ export default function LoginPage() {
   }, [user, userProfile, loading, navigate])
 
   async function signIn(targetEmail: string, targetPassword: string) {
+    if (isLocked) {
+      setErrorMsg(`試行回数が多すぎます。${lockCountdown}秒後にお試しください。`)
+      return
+    }
     setErrorMsg(null)
     setSubmitting(true)
     try {
@@ -65,10 +92,18 @@ export default function LoginPage() {
         password: targetPassword,
       })
       if (error) {
-        setErrorMsg(error.message)
+        const next = failedAttempts + 1
+        setFailedAttempts(next)
+        if (next >= 5) {
+          setLockedUntil(Date.now() + 30_000)
+          setErrorMsg('試行回数が多すぎます。30秒後にお試しください。')
+        } else {
+          setErrorMsg('メールアドレスまたはパスワードが正しくありません。')
+        }
         setSubmitting(false)
         return
       }
+      setFailedAttempts(0)
       // ログイン成功 → プロフィールを取得して即ナビゲーション
       if (data.user) {
         const { data: profile } = await supabase
@@ -224,11 +259,11 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || isLocked}
               className="auth-btn w-full py-3 text-[12px] font-bold tracking-[0.08em] uppercase bg-[#6366F1] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
-              {submitting ? 'ログイン中...' : 'ログイン'}
+              {isLocked ? `${lockCountdown}秒後に再試行` : submitting ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
 

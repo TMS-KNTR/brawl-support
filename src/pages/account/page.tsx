@@ -111,7 +111,8 @@ export default function AccountPage() {
       setShowPasswordModal(false);
       showToast('パスワードを変更しました');
     } catch (err: any) {
-      setPasswordMsg({ type: 'error', text: err.message || 'パスワードの変更に失敗しました' });
+      console.error('[password-change]', err);
+      setPasswordMsg({ type: 'error', text: 'パスワードの変更に失敗しました。もう一度お試しください。' });
     } finally { setPasswordSaving(false); }
   };
 
@@ -173,7 +174,8 @@ export default function AccountPage() {
       setShowEmailModal(false);
       showToast('確認メールを送信しました。現在のメールアドレスに届いたリンクをクリックして変更を完了してください。');
     } catch (err: any) {
-      setEmailMsg({ type: 'error', text: err.message || 'メールアドレスの変更に失敗しました' });
+      console.error('[email-change]', err);
+      setEmailMsg({ type: 'error', text: 'メールアドレスの変更に失敗しました。もう一度お試しください。' });
     } finally { setEmailSaving(false); }
   };
 
@@ -202,7 +204,8 @@ export default function AccountPage() {
       await signOut();
       navigate('/');
     } catch (err: any) {
-      setDeleteMsg({ type: 'error', text: err.message || 'アカウント削除に失敗しました' });
+      console.error('[delete-account]', err);
+      setDeleteMsg({ type: 'error', text: 'アカウント削除に失敗しました。もう一度お試しください。' });
     } finally { setDeleteProcessing(false); }
   };
 

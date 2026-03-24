@@ -54,20 +54,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // 同時受注数のレートリミット
-    const { count: activeCount } = await supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("employee_id", user.id)
-      .in("status", ["assigned", "in_progress"]);
-
-    if ((activeCount ?? 0) >= 5) {
-      return new Response(
-        JSON.stringify({ success: false, error: "同時に受注できる注文数の上限に達しています" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
     const body = await req.json().catch(() => ({}));
     const orderId = body?.order_id ?? body?.orderId;
     if (!orderId || typeof orderId !== "string") {
@@ -77,23 +63,95 @@ serve(async (req: Request) => {
       );
     }
 
-    const { data: updated, error: updateError } = await supabase
-      .from("orders")
-      .update({ employee_id: user.id, status: "assigned" })
-      .eq("id", orderId)
-      .is("employee_id", null)
-      .in("status", ["paid", "open", "pending"])
-      .select();
+    // 同時受注数チェックと注文割り当てをアトミックに実行（RPC経由）
+    // rpc が使えない場合のフォールバック: 割り当て後に再チェック
+    const { data: updated, error: updateError } = await supabase.rpc(
+      "assign_order_if_under_limit",
+      {
+        p_order_id: orderId,
+        p_employee_id: user.id,
+        p_max_active: 5,
+      }
+    );
 
-    if (updateError) {
-      console.error("accept-order update error:", updateError);
+    // RPCが存在しない場合のフォールバック
+    if (updateError && updateError.message?.includes("function") && updateError.message?.includes("does not exist")) {
+      console.warn("assign_order_if_under_limit RPC not found, using fallback with post-check");
+
+      // 同時受注数のレートリミット
+      const { count: activeCount } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("employee_id", user.id)
+        .in("status", ["assigned", "in_progress"]);
+
+      if ((activeCount ?? 0) >= 5) {
+        return new Response(
+          JSON.stringify({ success: false, error: "同時に受注できる注文数の上限に達しています" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+
+      const { data: fallbackUpdated, error: fallbackError } = await supabase
+        .from("orders")
+        .update({ employee_id: user.id, status: "assigned" })
+        .eq("id", orderId)
+        .is("employee_id", null)
+        .in("status", ["paid", "open", "pending"])
+        .select();
+
+      if (fallbackError) {
+        console.error("accept-order update error:", fallbackError);
+        return new Response(
+          JSON.stringify({ success: false, error: fallbackError.message }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+
+      if (!fallbackUpdated || fallbackUpdated.length === 0) {
+        throw new Error("この注文は既に他の代行者が受注しました");
+      }
+
+      // 割り当て後に再度カウントを確認し、上限超過なら割り当てを取り消す
+      const { count: postCount } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("employee_id", user.id)
+        .in("status", ["assigned", "in_progress"]);
+
+      if ((postCount ?? 0) > 5) {
+        // 上限超過 → 割り当てを取り消す
+        await supabase
+          .from("orders")
+          .update({ employee_id: null, status: "paid" })
+          .eq("id", orderId)
+          .eq("employee_id", user.id);
+        return new Response(
+          JSON.stringify({ success: false, error: "同時に受注できる注文数の上限に達しています" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    } else if (updateError) {
+      console.error("accept-order RPC error:", updateError);
       return new Response(
-        JSON.stringify({ success: false, error: updateError.message }),
+        JSON.stringify({ success: false, error: "受注処理に失敗しました" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
-    }
+    } else if (updated === false || (Array.isArray(updated) && updated.length === 0)) {
+      // RPC returned no rows or false — either order taken or limit reached
+      // Check which case
+      const { count: activeCount } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("employee_id", user.id)
+        .in("status", ["assigned", "in_progress"]);
 
-    if (!updated || updated.length === 0) {
+      if ((activeCount ?? 0) >= 5) {
+        return new Response(
+          JSON.stringify({ success: false, error: "同時に受注できる注文数の上限に達しています" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
       throw new Error("この注文は既に他の代行者が受注しました");
     }
 
@@ -188,8 +246,15 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     console.error("accept-order:", err.message);
+    const safeMessages = [
+      "認証が必要です", "アカウントが停止されています",
+      "この注文は既に他の代行者が受注しました",
+      "同時に受注できる注文数の上限に達しています",
+      "order_id が必要です",
+    ];
+    const isSafe = safeMessages.some(m => err.message?.includes(m));
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: isSafe ? err.message : "処理中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

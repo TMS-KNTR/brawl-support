@@ -85,11 +85,19 @@ serve(async (req: Request) => {
       // 冪等性: 同じsession_idで既に注文が作成されていないか確認
       const { data: existingOrder } = await supabase
         .from("orders")
-        .select("id")
+        .select("id, price")
         .eq("stripe_checkout_session_id", session.id)
         .maybeSingle();
 
       if (existingOrder) {
+        // DB上の注文価格とStripe決済額を照合
+        if (stripeAmount != null && existingOrder.price != null && stripeAmount !== existingOrder.price) {
+          console.error("CRITICAL: DB price mismatch! stripe_amount:", stripeAmount, "db_price:", existingOrder.price, "order_id:", existingOrder.id);
+          return new Response(JSON.stringify({ received: true, error: "db price mismatch" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
         console.log("Order already exists for session:", session.id);
         // 既存の注文をpaidに更新（念のため）
         await supabase
@@ -169,6 +177,6 @@ serve(async (req: Request) => {
     });
   } catch (err: any) {
     console.error("Webhook error:", err.message);
-    return new Response(JSON.stringify({ error: err.message }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Webhook processing failed" }), { status: 400 });
   }
 });

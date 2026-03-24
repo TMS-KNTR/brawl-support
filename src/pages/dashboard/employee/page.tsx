@@ -126,6 +126,9 @@ function EmployeeDashboardContent() {
       if (res.error) throw new Error(res.error.message);
       const result = res.data;
       if (result?.success && result?.url) {
+        if (!result.url.startsWith('https://connect.stripe.com')) {
+          throw new Error('不正なリダイレクト先が検出されました。');
+        }
         // 戻ってきた時に最新のprofileを取得するためキャッシュをクリア
         try { localStorage.removeItem('brawl_support_profile'); } catch {}
         window.location.href = result.url; // Stripeの登録画面に移動
@@ -133,7 +136,8 @@ function EmployeeDashboardContent() {
         throw new Error(result?.error || '口座登録に失敗しました');
       }
     } catch (err: any) {
-      alert('エラー: ' + err.message);
+      console.error('[stripe-connect]', err);
+      alert('口座登録に失敗しました。もう一度お試しください。');
     }
     setConnectLoading(false);
   }
@@ -301,7 +305,7 @@ function EmployeeDashboardContent() {
 
       const result = res.data;
       if (res.error) {
-        alert('受注に失敗しました: ' + (res.error.message || '通信エラー'));
+        console.error('[accept-order]', res.error); alert('受注に失敗しました。もう一度お試しください。');
         return;
       }
       if (!result?.success) {
@@ -334,7 +338,7 @@ function EmployeeDashboardContent() {
 
       const result = res.data;
       if (res.error) {
-        alert('更新に失敗しました: ' + (res.error.message || '通信エラー'));
+        console.error('[update-order-status]', res.error); alert('更新に失敗しました。もう一度お試しください。');
         return;
       }
       if (!result?.success) {
@@ -372,7 +376,7 @@ function EmployeeDashboardContent() {
       });
 
       if (error) {
-        alert('紛争作成に失敗: ' + error.message);
+        console.error('[create-dispute]', error); alert('紛争作成に失敗しました。もう一度お試しください。');
       } else {
         alert('紛争を作成しました');
       }
@@ -420,7 +424,7 @@ function EmployeeDashboardContent() {
         throw new Error(result?.error || '出金に失敗しました');
       }
     } catch (err: any) {
-      alert('❌ エラー: ' + err.message);
+      console.error('[withdraw]', err); alert('出金に失敗しました。もう一度お試しください。');
     }
     setWithdrawLoading(false);
   };

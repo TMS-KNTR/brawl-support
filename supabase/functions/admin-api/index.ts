@@ -469,6 +469,19 @@ async function handleAdjustBalance(
 ) {
   if (!params.user_id) throw new Error("user_id が必要です");
   if (params.new_balance == null) throw new Error("new_balance が必要です");
+  if (params.new_balance < 0) throw new Error("new_balance は0以上である必要があります");
+  if (!params.description || typeof params.description !== "string" || params.description.trim() === "") {
+    throw new Error("reason（description）が必要です");
+  }
+
+  // 変更前の残高を取得（監査ログ用）
+  const { data: oldProfile, error: fetchErr } = await sb
+    .from("profiles")
+    .select("balance")
+    .eq("id", params.user_id)
+    .single();
+  if (fetchErr) throw new Error(fetchErr.message);
+  const oldBalance = oldProfile?.balance ?? 0;
 
   const { data: profile, error: updateErr } = await sb
     .from("profiles")
@@ -477,6 +490,8 @@ async function handleAdjustBalance(
     .select()
     .single();
   if (updateErr) throw new Error(updateErr.message);
+
+  console.log("Balance adjusted:", { user_id: params.user_id, old_balance: oldBalance, new_balance: params.new_balance, reason: params.description });
 
   const { error: insertErr } = await sb.from("withdrawals").insert({
     user_id: params.user_id,
@@ -739,6 +754,15 @@ serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
+    // ---- Request size validation ----
+    const contentLength = req.headers.get("Content-Length");
+    if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
+      return new Response(
+        JSON.stringify({ success: false, error: "リクエストサイズが大きすぎます" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 413 }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -886,6 +910,10 @@ serve(async (req: Request) => {
       "force-complete-order", "update-system-setting",
       "create-expense", "update-expense", "delete-expense",
     ];
+    const SENSITIVE_ACTIONS = [
+      "adjust-balance", "change-role", "ban-user", "unban-user",
+      "force-complete-order", "approve-withdrawal",
+    ];
     if (WRITE_ACTIONS.includes(action)) {
       // 機密データをマスクしてからログに記録
       const SENSITIVE_KEYS = ["password", "secret", "token", "stripe_account_id", "credentials", "api_key"];
@@ -896,14 +924,18 @@ serve(async (req: Request) => {
             : [k, v]
         )
       );
-      await supabase.from("admin_logs").insert({
+      const { error: logErr } = await supabase.from("admin_logs").insert({
         actor_user_id: user.id,
         action,
         target_type: action,
         meta_json: sanitizedParams,
-      }).then(({ error: logErr }) => {
-        if (logErr) console.error("Audit log failed:", logErr.message);
       });
+      if (logErr) {
+        console.error("Audit log failed:", logErr.message);
+        if (SENSITIVE_ACTIONS.includes(action)) {
+          throw new Error("監査ログの記録に失敗したため、操作を中止しました");
+        }
+      }
     }
 
     return new Response(
@@ -916,8 +948,23 @@ serve(async (req: Request) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "不明なエラー";
     console.error("admin-api error:", message);
+    // クライアントには安全なエラーメッセージのみ返す（認証・バリデーション系はそのまま）
+    const safeMessages = [
+      "認証が必要です", "アカウントが停止されています", "管理者権限が必要です",
+      "user_id が必要です", "new_balance が必要です", "new_balance は0以上である必要があります",
+      "reason（description）が必要です", "order_id が必要です", "order_id と new_status が必要です",
+      "user_id と new_role が必要です", "employee_id が必要です", "ids が必要です",
+      "dispute_id が必要です", "order_id が必要です", "from_date と to_date が必要です",
+      "key が必要です", "title が必要です", "監査ログの記録に失敗したため、操作を中止しました",
+      "category, description, amount, expense_date が必要です", "id が必要です",
+      "リクエストサイズが大きすぎます",
+    ];
+    const isSafe = safeMessages.some(m => message.includes(m)) ||
+      message.startsWith("無効なロールです") ||
+      message.startsWith("変更できない設定キーです") ||
+      message.startsWith("不明なアクション");
     return new Response(
-      JSON.stringify({ success: false, error: message }),
+      JSON.stringify({ success: false, error: isSafe ? message : "処理中にエラーが発生しました" }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,

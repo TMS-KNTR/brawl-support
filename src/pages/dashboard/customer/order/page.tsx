@@ -125,7 +125,7 @@ export default function OrderDetailPage() {
           setShowRating(true);
         }
       } else { throw new Error(res.data?.error || '完了確認に失敗しました'); }
-    } catch (err: any) { alert('完了確認に失敗しました: ' + err.message); } finally { setConfirming(false); }
+    } catch (err: any) { console.error('[confirm-order]', err); alert('完了確認に失敗しました。もう一度お試しください。'); } finally { setConfirming(false); }
   };
 
   const handleCreateDispute = async () => {
@@ -135,7 +135,7 @@ export default function OrderDetailPage() {
       order_id: order.id, customer_id: user?.id, employee_id: order.employee_id || null,
       status: 'open', reason: disputeReason, description: disputeDesc,
     });
-    if (error) alert('紛争作成に失敗: ' + error.message);
+    if (error) { console.error('[create-dispute]', error); alert('紛争作成に失敗しました。もう一度お試しください。'); }
     else alert('問題を報告しました。管理者が確認します。');
     setShowDispute(false); setDisputeReason(''); setDisputeDesc('');
   };
@@ -154,7 +154,7 @@ export default function OrderDetailPage() {
       setShowRating(false);
       await fetchOrder();
     } catch (e: any) {
-      alert('評価の送信に失敗しました: ' + (e.message || '不明なエラー'));
+      console.error('[submit-rating]', e); alert('評価の送信に失敗しました。もう一度お試しください。');
     } finally { setRatingSaving(false); }
   };
 

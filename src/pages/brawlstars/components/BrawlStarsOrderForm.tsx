@@ -100,7 +100,7 @@ export default function BrawlStarsOrderForm() {
       }
     } catch (error: any) {
       console.error('価格計算エラー:', error)
-      setPriceError(error.message || '料金計算に失敗しました')
+      setPriceError('料金計算に失敗しました')
     }
   }
 
@@ -193,7 +193,7 @@ export default function BrawlStarsOrderForm() {
       }
     } catch (error: any) {
       console.error('送信エラー:', error)
-      alert(error.message || '送信に失敗しました。再度お試しください。')
+      alert('送信に失敗しました。再度お試しください。')
     } finally {
       setIsSubmitting(false)
     }

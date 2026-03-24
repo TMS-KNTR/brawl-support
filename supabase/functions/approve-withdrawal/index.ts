@@ -67,25 +67,46 @@ serve(async (req: Request) => {
     if (withdrawal.status !== "pending") throw new Error("この申請は既に処理済みです");
 
     if (action === "reject") {
-      // 却下：残高を戻す（楽観的ロックで競合防止）
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("balance")
-        .eq("id", withdrawal.user_id)
-        .single();
+      // 却下：残高をアトミックに戻す
+      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+        "increment_balance",
+        { p_user_id: withdrawal.user_id, p_amount: withdrawal.amount }
+      );
 
-      const currentBalance = profile?.balance || 0;
-      const restoredBalance = currentBalance + withdrawal.amount;
-      const { data: updated, error: updateError } = await supabase
-        .from("profiles")
-        .update({ balance: restoredBalance })
-        .eq("id", withdrawal.user_id)
-        .eq("balance", currentBalance)
-        .select("balance")
-        .single();
+      let restoredBalance: number;
 
-      if (updateError || !updated) {
-        throw new Error("残高が変更されました。再度お試しください。");
+      if (rpcError && rpcError.message?.includes("function") && rpcError.message?.includes("does not exist")) {
+        // RPCが存在しない場合のフォールバック: 楽観的ロック
+        console.warn("increment_balance RPC not found, using optimistic lock fallback");
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("balance")
+          .eq("id", withdrawal.user_id)
+          .single();
+
+        const currentBalance = profile?.balance || 0;
+        restoredBalance = currentBalance + withdrawal.amount;
+        const { data: updated, error: updateError } = await supabase
+          .from("profiles")
+          .update({ balance: restoredBalance })
+          .eq("id", withdrawal.user_id)
+          .eq("balance", currentBalance)
+          .select("balance")
+          .single();
+
+        if (updateError || !updated) {
+          throw new Error("残高が変更されました。再度お試しください。");
+        }
+      } else if (rpcError) {
+        throw new Error("残高の復元に失敗しました。再度お試しください。");
+      } else {
+        // RPC成功 - 復元後の残高を取得
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("balance")
+          .eq("id", withdrawal.user_id)
+          .single();
+        restoredBalance = profile?.balance || 0;
       }
 
       const { data: rejectedRow, error: rejectError } = await supabase
@@ -152,27 +173,37 @@ serve(async (req: Request) => {
     } catch (stripeErr: any) {
       // Stripe送金失敗 → 残高を戻してwithdrawalをfailedに
       console.error("Stripe transfer failed, rolling back:", stripeErr.message);
-      // 楽観的ロックで残高を安全に戻す（リトライ付き）
+      // アトミックに残高を戻す
       let rollbackSuccess = false;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const { data: currentProfile } = await supabase
-          .from("profiles")
-          .select("balance")
-          .eq("id", withdrawal.user_id)
-          .single();
-        const curBal = currentProfile?.balance || 0;
-        const { data: rollbackOk, error: rollbackErr } = await supabase
-          .from("profiles")
-          .update({ balance: curBal + withdrawal.amount })
-          .eq("id", withdrawal.user_id)
-          .eq("balance", curBal)
-          .select("balance")
-          .single();
-        if (rollbackOk && !rollbackErr) {
-          rollbackSuccess = true;
-          break;
+      const { error: rollbackRpcErr } = await supabase.rpc(
+        "increment_balance",
+        { p_user_id: withdrawal.user_id, p_amount: withdrawal.amount }
+      );
+
+      if (rollbackRpcErr && rollbackRpcErr.message?.includes("function") && rollbackRpcErr.message?.includes("does not exist")) {
+        // RPCが存在しない場合のフォールバック: 楽観的ロック（リトライ付き）
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const { data: currentProfile } = await supabase
+            .from("profiles")
+            .select("balance")
+            .eq("id", withdrawal.user_id)
+            .single();
+          const curBal = currentProfile?.balance || 0;
+          const { data: rollbackOk, error: rollbackErr } = await supabase
+            .from("profiles")
+            .update({ balance: curBal + withdrawal.amount })
+            .eq("id", withdrawal.user_id)
+            .eq("balance", curBal)
+            .select("balance")
+            .single();
+          if (rollbackOk && !rollbackErr) {
+            rollbackSuccess = true;
+            break;
+          }
+          if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
         }
-        if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+      } else if (!rollbackRpcErr) {
+        rollbackSuccess = true;
       }
 
       if (rollbackSuccess) {
@@ -248,8 +279,18 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     console.error("approve-withdrawal error:", err.message);
+    const safeMessages = [
+      "認証が必要です", "アカウントが停止されています", "管理者権限が必要です",
+      "withdrawal_id が必要です", "action は approve または reject",
+      "出金申請が見つかりません", "この申請は既に処理済みです",
+      "残高が変更されました。再度お試しください。",
+      "残高の復元に失敗しました。再度お試しください。",
+      "従業員の銀行口座が未登録です",
+      "従業員のStripeアカウントが送金可能な状態ではありません",
+    ];
+    const isSafe = safeMessages.some(m => err.message?.includes(m));
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: isSafe ? err.message : "処理中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

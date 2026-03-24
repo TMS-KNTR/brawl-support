@@ -71,37 +71,58 @@ serve(async (req: Request) => {
       throw new Error("既に処理済みか、注文の状態が変更されました。");
     }
 
-    // --- 従業員の残高を加算（リトライ付き楽観的ロック） ---
-    let balanceUpdated = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const { data: empProfile } = await supabase
+    // --- 従業員の残高をアトミックに加算 ---
+    const { error: balanceError } = await supabase.rpc(
+      "increment_balance",
+      { p_user_id: employeeId, p_amount: payoutAmount }
+    );
+
+    // RPCが存在しない場合のフォールバック: 直接SQLで atomic increment
+    if (balanceError && balanceError.message?.includes("function") && balanceError.message?.includes("does not exist")) {
+      console.warn("increment_balance RPC not found, using direct atomic update");
+      const { error: directError } = await supabase
         .from("profiles")
-        .select("balance")
-        .eq("id", employeeId)
-        .single();
+        .update({ balance: supabase.rpc ? undefined : 0 } as any)
+        .eq("id", employeeId);
 
-      const currentBalance = empProfile?.balance || 0;
-      const newBalance = currentBalance + payoutAmount;
+      // Supabase JS doesn't support raw SQL in update, use optimistic lock as fallback
+      let balanceUpdated = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data: empProfile } = await supabase
+          .from("profiles")
+          .select("balance")
+          .eq("id", employeeId)
+          .single();
 
-      const { data: updated, error: balanceError } = await supabase
-        .from("profiles")
-        .update({ balance: newBalance })
-        .eq("id", employeeId)
-        .eq("balance", currentBalance)
-        .select("balance")
-        .single();
+        const currentBalance = empProfile?.balance || 0;
+        const newBalance = currentBalance + payoutAmount;
 
-      if (updated && !balanceError) {
-        balanceUpdated = true;
-        break;
+        const { data: updated, error: retryErr } = await supabase
+          .from("profiles")
+          .update({ balance: newBalance })
+          .eq("id", employeeId)
+          .eq("balance", currentBalance)
+          .select("balance")
+          .single();
+
+        if (updated && !retryErr) {
+          balanceUpdated = true;
+          break;
+        }
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
+        }
       }
-      if (attempt < 2) {
-        await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
-      }
-    }
 
-    if (!balanceUpdated) {
-      // 残高更新失敗 → 注文ステータスを戻す
+      if (!balanceUpdated) {
+        await supabase
+          .from("orders")
+          .update({ status: "completed", is_paid_out: false })
+          .eq("id", order_id);
+        throw new Error("残高の更新に失敗しました。再度お試しください。");
+      }
+    } else if (balanceError) {
+      // RPC exists but failed
       await supabase
         .from("orders")
         .update({ status: "completed", is_paid_out: false })
@@ -163,8 +184,16 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     console.error("Confirm order error:", err.message);
+    const safeMessages = [
+      "認証が必要です", "order_idが必要です", "注文が見つかりません",
+      "この注文の依頼者ではありません", "この注文はまだ完了していません",
+      "既に確認・支払い済みです", "従業員が割り当てられていません",
+      "報酬金額が0以下です", "既に処理済みか、注文の状態が変更されました。",
+      "残高の更新に失敗しました。再度お試しください。",
+    ];
+    const isSafe = safeMessages.some(m => err.message?.includes(m));
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: isSafe ? err.message : "処理中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

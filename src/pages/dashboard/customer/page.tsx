@@ -114,7 +114,7 @@ export default function CustomerDashboardPage() {
         .select('*, chat_threads:chat_threads(order_id, id)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) throw new Error('データ取得エラー: ' + error.message);
+      if (error) { console.error('[fetchOrders]', error); throw new Error('注文の取得に失敗しました'); }
       const ordersWithChatId = (data || []).map((order: any) => {
         const thread = Array.isArray(order.chat_threads) ? order.chat_threads[0] : order.chat_threads;
         return { ...order, chat_thread_id: thread?.id ?? null };
@@ -165,7 +165,7 @@ export default function CustomerDashboardPage() {
           setShowRating(true);
         } else { await fetchOrders(); }
       } else { throw new Error(res.data?.error || '完了確認に失敗しました'); }
-    } catch (err: any) { alert('完了確認に失敗しました: ' + err.message); } finally { setConfirmingId(null); }
+    } catch (err: any) { console.error('[confirm-order]', err); alert('完了確認に失敗しました。もう一度お試しください。'); } finally { setConfirmingId(null); }
   };
 
   const handleCreateDispute = async () => {
@@ -177,7 +177,7 @@ export default function CustomerDashboardPage() {
       order_id: disputeOrderId, customer_id: user?.id, employee_id: order.employee_id || null,
       status: 'open', reason: disputeReason, description: disputeDesc,
     });
-    if (error) alert('紛争作成に失敗: ' + error.message);
+    if (error) { console.error('[create-dispute]', error); alert('紛争作成に失敗しました。もう一度お試しください。'); }
     else alert('問題を報告しました。管理者が確認します。');
     setShowDispute(false); setDisputeReason(''); setDisputeDesc(''); setDisputeOrderId(null);
   };
@@ -196,7 +196,7 @@ export default function CustomerDashboardPage() {
       setShowRating(false);
       await fetchOrders();
     } catch (e: any) {
-      alert('評価の送信に失敗しました: ' + (e.message || '不明なエラー'));
+      console.error('[submit-rating]', e); alert('評価の送信に失敗しました。もう一度お試しください。');
     } finally { setRatingSaving(false); }
   };
 

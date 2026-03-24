@@ -373,7 +373,14 @@ export default function OrderPage() {
       })
 
       if (result.success && result.data?.checkoutUrl) {
-        window.location.href = result.data.checkoutUrl
+        const checkoutUrl = result.data.checkoutUrl
+        if (
+          !checkoutUrl.startsWith('https://checkout.stripe.com') &&
+          !checkoutUrl.startsWith(window.location.origin)
+        ) {
+          throw new Error('不正なリダイレクト先が検出されました。')
+        }
+        window.location.href = checkoutUrl
       } else {
         throw new Error(result.error || '注文の作成に失敗しました')
       }
