@@ -92,7 +92,7 @@ export default function AdminChatsPage() {
       }>('admin-api', { action: 'list-chat-threads' });
 
       if (result.success) {
-        setThreads(result.data.threads || []);
+        setThreads(Array.isArray(result.data) ? result.data : (result.data?.threads || []));
       }
     } catch (err) {
       console.error('loadThreads error:', err);
@@ -110,7 +110,8 @@ export default function AdminChatsPage() {
       }>('admin-api', { action: 'list-violations' });
 
       if (result.success) {
-        setViolations(result.data.violations || []);
+        const vData = result.data;
+        setViolations(Array.isArray(vData) ? vData : (vData?.violations || []));
       } else {
         setViolations([]);
       }

@@ -50,7 +50,7 @@ export default function AdminDisputesPage() {
         return;
       }
 
-      const disputes = listResult.data.disputes || [];
+      const disputes = Array.isArray(listResult.data) ? listResult.data : (listResult.data?.disputes || []);
 
       // Enrich each dispute with order detail
       const enriched = await Promise.all(disputes.map(async (d: any) => {

@@ -96,7 +96,7 @@ export default function AdminLogsPage() {
       }>('admin-api', { action: 'list-logs' });
 
       if (result.success) {
-        setLogs(result.data.logs || []);
+        setLogs(Array.isArray(result.data) ? result.data : (result.data?.logs || []));
       } else {
         setError(
           '監査ログテーブル（admin_logs）が見つかりません。Supabase の SQL エディタでテーブルを作成してください。'
