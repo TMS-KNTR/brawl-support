@@ -106,7 +106,7 @@ export default function AdminOrdersPage() {
       alert(`✅ 返金完了\n\n返金ID: ${result.refund_id || '-'}\n金額: ¥${(result.amount || 0).toLocaleString()}`);
     } catch (err: any) {
       alert(`❌ エラー: ${err.message}\n\nStripeダッシュボード(dashboard.stripe.com)から手動で返金してください。`);
-      await invokeEdgeFunction('admin-api', { action: 'update-order-status', order_id: order.id, status: 'cancelled' }).catch(() => {});
+      await invokeEdgeFunction('admin-api', { action: 'change-order-status', order_id: order.id, new_status: 'cancelled' }).catch(() => {});
       await logAdminAction({ action: 'order_force_cancelled_fallback', targetType: 'order', targetId: order.id, details: `返金エラー、ステータスのみキャンセルに変更`, meta: { error: err.message } });
     }
 
@@ -129,7 +129,7 @@ export default function AdminOrdersPage() {
 
     try {
       const result = await callEdgeFunction('payout-employee', { order_id: order.id });
-      await invokeEdgeFunction('admin-api', { action: 'update-order-status', order_id: order.id, status: 'confirmed', is_paid_out: true });
+      await invokeEdgeFunction('admin-api', { action: 'change-order-status', order_id: order.id, new_status: 'confirmed' });
       await logAdminAction({ action: 'order_force_completed', targetType: 'order', targetId: order.id, details: `注文を強制完了+従業員支払い ¥${payoutAmount.toLocaleString()}`, meta: { total_price: totalPrice, platform_fee: platformFee, payout_amount: payoutAmount } });
       // 依頼者に通知
       if (order.user_id) {
@@ -142,7 +142,7 @@ export default function AdminOrdersPage() {
       alert(`✅ 完了\n\n${result.message}`);
     } catch (err: any) {
       alert(`❌ エラー: ${err.message}`);
-      await invokeEdgeFunction('admin-api', { action: 'update-order-status', order_id: order.id, status: 'completed' }).catch(() => {});
+      await invokeEdgeFunction('admin-api', { action: 'change-order-status', order_id: order.id, new_status: 'completed' }).catch(() => {});
       await logAdminAction({ action: 'order_force_completed_fallback', targetType: 'order', targetId: order.id, details: `支払いエラー、ステータスのみ完了に変更`, meta: { error: err.message } });
     }
 
@@ -154,7 +154,7 @@ export default function AdminOrdersPage() {
   async function changeStatusOnly(orderId: string, newStatus: string) {
     if (!window.confirm(`ステータスを「${statusLabel(newStatus)}」に変更しますか？\n\n※ お金の移動はありません`)) return;
     try {
-      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'update-order-status', order_id: orderId, status: newStatus });
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>('admin-api', { action: 'change-order-status', order_id: orderId, new_status: newStatus });
       if (!result.success) { alert('エラー: ' + result.error); return; }
     } catch (err: any) { alert('エラー: ' + err.message); return; }
     await logAdminAction({ action: 'order_status_changed', targetType: 'order', targetId: orderId, details: `注文ステータスを ${statusLabel(newStatus)} に変更`, meta: { new_status: newStatus } });

@@ -21,7 +21,7 @@ export default function AdminMetricsPage() {
         setLoading(false);
         return;
       }
-      const { orders, users, disputes } = result.data;
+      const { orders, profiles: users, disputes } = result.data;
 
       const totalOrders = orders?.length ?? 0;
       const paidOrders = orders?.filter((o: any) => o.status === 'paid').length ?? 0;

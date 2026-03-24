@@ -38,7 +38,8 @@ export default function AdminRatingsPage() {
         const data = result.data || [];
         const map = new Map<string, { name: string; sum: number; count: number }>();
         data.forEach((r: any) => {
-          const name = r.employee_id ? `${r.employee_id.slice(0, 8)}...` : '不明';
+          const emp = r.employee;
+          const name = emp?.full_name || emp?.username || (r.employee_id ? `${r.employee_id.slice(0, 8)}...` : '不明');
           const key = r.employee_id;
           const current = map.get(key) || { name, sum: 0, count: 0 };
           current.sum += r.score || 0;

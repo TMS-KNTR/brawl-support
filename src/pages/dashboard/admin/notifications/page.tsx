@@ -153,12 +153,13 @@ export default function AdminNotificationsPage() {
         error?: string;
       }>('admin-api', { action: 'get-broadcast-targets', role: bcTarget });
 
-      if (!targetResult.success || !targetResult.data.targets || targetResult.data.targets.length === 0) {
+      const targetData = Array.isArray(targetResult.data) ? targetResult.data : (targetResult.data?.targets || []);
+      if (!targetResult.success || targetData.length === 0) {
         setBcResult('対象ユーザーが見つかりませんでした。');
         setBcSending(false);
         return;
       }
-      targets = targetResult.data.targets;
+      targets = targetData;
     } catch {
       setBcResult('対象ユーザーが見つかりませんでした。');
       setBcSending(false);
@@ -192,7 +193,7 @@ export default function AdminNotificationsPage() {
         success: boolean;
         data: { notifications: { id: string; user_id: string }[] };
       }>('admin-api', { action: 'get-broadcast-notifications', title: bcTitle.trim(), limit: targets.length });
-      const created = bcNotifResult.success ? bcNotifResult.data.notifications : [];
+      const created = bcNotifResult.success ? (Array.isArray(bcNotifResult.data) ? bcNotifResult.data : (bcNotifResult.data?.notifications || [])) : [];
 
       for (const n of created || []) {
         try {

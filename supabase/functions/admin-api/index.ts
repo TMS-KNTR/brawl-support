@@ -71,7 +71,7 @@ async function handleListWithdrawals(sb: SupabaseClient) {
       .limit(500),
     sb
       .from("profiles")
-      .select("id,username,full_name,balance,role")
+      .select("id,username,full_name,balance,role,stripe_account_id")
       .in("role", ["employee", "worker", "admin"]),
   ]);
   if (withdrawalsRes.error) throw new Error(withdrawalsRes.error.message);
@@ -505,12 +505,19 @@ async function handleAdjustBalance(
   return profile;
 }
 
+const ALLOWED_ORDER_STATUSES = [
+  "pending", "open", "paid", "assigned", "in_progress",
+  "completed", "confirmed", "cancelled",
+];
+
 async function handleChangeOrderStatus(
   sb: SupabaseClient,
   params: { order_id: string; new_status: string }
 ) {
   if (!params.order_id || !params.new_status)
     throw new Error("order_id と new_status が必要です");
+  if (!ALLOWED_ORDER_STATUSES.includes(params.new_status))
+    throw new Error(`無効なステータスです: ${params.new_status}`);
 
   const { data, error } = await sb
     .from("orders")
@@ -546,6 +553,7 @@ const ALLOWED_SETTING_KEYS = [
   "platform_fee_rate",
   "auto_cancel_hours",
   "maintenance_mode",
+  "ng_words",
 ];
 
 async function handleUpdateSystemSetting(
@@ -754,6 +762,15 @@ serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
+    // ---- Content-Type validation (CSRF protection) ----
+    const contentType = req.headers.get("Content-Type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Content-Type: application/json が必要です" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 415 }
+      );
+    }
+
     // ---- Request size validation ----
     const contentLength = req.headers.get("Content-Length");
     if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
