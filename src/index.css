@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Mobile tap responsiveness ── */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+select,
+.cursor-pointer {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Disable hover transforms on touch devices to prevent tap delays */
+@media (hover: none) {
+  *:hover {
+    transform: none !important;
+    box-shadow: inherit !important;
+  }
+}

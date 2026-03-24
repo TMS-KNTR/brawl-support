@@ -117,8 +117,8 @@ export default function LoginPage() {
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
       style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
       <Helmet>
-        <title>ログイン | GEMSUKE</title>
-        <meta name="description" content="GEMSUKEにログインして、ブロスタの代行依頼を管理しましょう。" />
+        <title>ログイン | GEMUSUKE</title>
+        <meta name="description" content="げむ助にログインして、ブロスタの代行依頼を管理しましょう。" />
         <link rel="canonical" href="https://gemsuke.com/login" />
       </Helmet>
       <AuthBackground />
@@ -158,7 +158,7 @@ export default function LoginPage() {
               className="text-[15px] font-bold tracking-[0.15em] text-[#1A1A2E]"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
-              GEMSUKE
+              GEMUSUKE
             </span>
           </Link>
         </div>
@@ -204,7 +204,6 @@ export default function LoginPage() {
                 inputMode="email"
                 placeholder="you@example.com"
                 className="auth-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
-                style={{ fontFamily: '"Rajdhani", sans-serif' }}
               />
             </div>
 
@@ -220,7 +219,6 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 placeholder="••••••••"
                 className="auth-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
-                style={{ fontFamily: '"Rajdhani", sans-serif' }}
               />
             </div>
 

@@ -15,7 +15,7 @@ export default function Footer() {
                 className="text-base font-bold tracking-[0.15em] text-white"
                 style={{ fontFamily: '"Orbitron", sans-serif' }}
               >
-                GEMSUKE
+                GEMUSUKE
               </span>
             </div>
             <p className="text-[12px] text-[#888] leading-relaxed mb-6 max-w-xs font-medium">
@@ -73,7 +73,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="border-t border-[#222] pt-8 flex flex-col sm:flex-row justify-between items-center gap-3">
           <p className="text-[11px] text-[#666] font-medium">
-            &copy; 2026 GEMSUKE. All rights reserved.
+            &copy; 2026 GEMUSUKE. All rights reserved.
           </p>
           <div className="flex items-center gap-2 text-[11px] text-[#666]">
             <i className="ri-shield-check-line text-[#444]"></i>

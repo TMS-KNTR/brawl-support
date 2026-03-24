@@ -86,8 +86,8 @@ export default function RegisterPage() {
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
       style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
       <Helmet>
-        <title>新規登録 | GEMSUKE - ゲーム代行サービス</title>
-        <meta name="description" content="GEMSUKEに無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
+        <title>新規登録 | GEMUSUKE - ゲーム代行サービス</title>
+        <meta name="description" content="げむ助に無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
         <link rel="canonical" href="https://gemsuke.com/register" />
       </Helmet>
       <RegisterBackground />
@@ -127,7 +127,7 @@ export default function RegisterPage() {
               className="text-[15px] font-bold tracking-[0.15em] text-[#1A1A2E]"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
-              GEMSUKE
+              GEMUSUKE
             </span>
           </Link>
         </div>
@@ -173,7 +173,6 @@ export default function RegisterPage() {
                 inputMode="email"
                 placeholder="you@example.com"
                 className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
-                style={{ fontFamily: '"Rajdhani", sans-serif' }}
               />
             </div>
 
@@ -189,7 +188,6 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 placeholder="8文字以上・英字+数字"
                 className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
-                style={{ fontFamily: '"Rajdhani", sans-serif' }}
               />
               {password && (
                 <div className="flex gap-3 mt-2">
@@ -215,7 +213,6 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 placeholder="もう一度入力"
                 className="reg-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
-                style={{ fontFamily: '"Rajdhani", sans-serif' }}
               />
             </div>
 

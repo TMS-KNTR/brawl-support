@@ -279,16 +279,18 @@ export default function CustomerDashboardPage() {
             to { opacity: 1; transform: translateY(0); }
           }
           .mc-order-card {
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: border-color 0.2s ease;
           }
-          .mc-order-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
-            border-color: #CCC !important;
+          @media (hover: hover) {
+            .mc-order-card:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+              border-color: #CCC !important;
+              transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+            }
           }
           .mc-order-card:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transform: scale(0.99);
           }
         `}</style>
 

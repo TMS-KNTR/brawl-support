@@ -182,7 +182,7 @@ export default function Header() {
                 className={`text-sm font-bold tracking-[0.15em] transition-colors duration-500 ${logoColor}`}
                 style={{ fontFamily: '"Orbitron", sans-serif' }}
               >
-                GEMSUKE
+                GEMUSUKE
               </span>
             </div>
 

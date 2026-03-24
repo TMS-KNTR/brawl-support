@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import Header from '../home/components/Header'
-import Footer from '../home/components/Footer'
+import { AuthBackground } from './login'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -12,7 +12,10 @@ export default function ForgotPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim()) return
+    if (!email.trim()) {
+      setErrorMsg('メールアドレスを入力してください')
+      return
+    }
     setErrorMsg(null)
     setSubmitting(true)
 
@@ -29,66 +32,173 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
-      <Header />
-      <div className="flex-1 flex items-center justify-center px-4 pt-[72px]">
-        <div className="w-full max-w-sm">
-          <h1 className="text-[20px] font-bold text-[#111] text-center mb-2">パスワードをリセット</h1>
-          <p className="text-[13px] text-[#888] text-center mb-6">
-            登録済みのメールアドレスにリセットリンクを送信します
-          </p>
+  if (sent) {
+    return (
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
+        style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
+        <AuthBackground />
 
-          {sent ? (
-            <div className="bg-white rounded-xl border border-[#E5E5E5] p-6 text-center">
-              <i className="ri-mail-check-line text-3xl text-[#059669] mb-3 block"></i>
-              <p className="text-[14px] font-semibold text-[#111] mb-1.5">メールを送信しました</p>
-              <p className="text-[12px] text-[#666] mb-4">
-                {email} にパスワードリセットリンクを送信しました。メールを確認してください。
-              </p>
+        <style>{`
+          @keyframes fp-fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+
+        <div className="relative z-10 w-full max-w-[400px]">
+          {/* Logo */}
+          <div className="text-center mb-8" style={{ animation: 'fp-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+            <Link to="/" className="inline-flex items-center gap-2.5 group">
+              <div className="w-8 h-8 border border-[#6366F1]/20 rounded-lg flex items-center justify-center group-hover:border-[#6366F1]/40 transition-colors">
+                <i className="ri-gamepad-fill text-[#6366F1] text-sm"></i>
+              </div>
+              <span
+                className="text-[15px] font-bold tracking-[0.15em] text-[#1A1A2E]"
+                style={{ fontFamily: '"Orbitron", sans-serif' }}
+              >
+                GEMUSUKE
+              </span>
+            </Link>
+          </div>
+
+          {/* Card */}
+          <div className="rounded-2xl border border-[#E0E7FF] p-6 sm:p-8 bg-white text-center"
+            style={{
+              boxShadow: '0 20px 60px rgba(99,102,241,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+              animation: 'fp-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both',
+            }}>
+            <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center bg-[#EEF2FF]">
+              <i className="ri-mail-check-line text-[22px] text-[#6366F1]"></i>
+            </div>
+            <h2 className="text-[18px] font-bold text-[#1A1A2E] mb-2"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}>メールを送信しました</h2>
+            <p className="text-[13px] text-[#6B7280] leading-relaxed"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+              {email} にパスワードリセットリンクを送信しました。<br />メールを確認してください。
+            </p>
+            <div className="mt-6">
               <Link to="/login"
-                className="inline-block px-5 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors">
+                className="fp-btn inline-block w-full py-3 text-[12px] font-bold tracking-[0.08em] uppercase bg-[#6366F1] text-white rounded-lg"
+                style={{ fontFamily: '"Orbitron", sans-serif' }}>
                 ログインに戻る
               </Link>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-[#E5E5E5] p-6">
-              {errorMsg && (
-                <div className="mb-4 px-3 py-2 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5]">
-                  <p className="text-[11px] text-[#DC2626]">{errorMsg}</p>
-                </div>
-              )}
-
-              <div className="mb-4">
-                <label className="block text-[11px] font-semibold text-[#666] mb-1.5">メールアドレス</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@mail.com"
-                  className="w-full border border-[#E5E5E5] rounded-lg p-3 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111] transition-colors placeholder:text-[#CCC]"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting || !email.trim()}
-                className="w-full py-2.5 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {submitting ? '送信中...' : 'リセットリンクを送信'}
-              </button>
-
-              <div className="mt-4 text-center">
-                <Link to="/login" className="text-[11px] text-[#9CA3AF] hover:text-[#6366F1] transition-colors">
-                  ログインに戻る
-                </Link>
-              </div>
-            </form>
-          )}
+          </div>
         </div>
       </div>
-      <Footer />
+    )
+  }
+
+  return (
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
+      style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
+      <Helmet>
+        <title>パスワードリセット | GEMUSUKE</title>
+        <meta name="description" content="げむ助のパスワードをリセットします。登録済みのメールアドレスにリセットリンクを送信します。" />
+        <link rel="canonical" href="https://gemsuke.com/forgot-password" />
+      </Helmet>
+      <AuthBackground />
+
+      <style>{`
+        @keyframes fp-fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fp-card {
+          animation: fp-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+        }
+        .fp-btn {
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .fp-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 0 20px rgba(99,102,241,0.25);
+        }
+        .fp-input {
+          transition: all 0.25s ease;
+        }
+        .fp-input:focus {
+          border-color: #6366F1;
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+      `}</style>
+
+      <div className="relative z-10 w-full max-w-[400px]">
+        {/* Logo */}
+        <div className="text-center mb-8" style={{ animation: 'fp-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+          <Link to="/" className="inline-flex items-center gap-2.5 group">
+            <div className="w-8 h-8 border border-[#6366F1]/20 rounded-lg flex items-center justify-center group-hover:border-[#6366F1]/40 transition-colors">
+              <i className="ri-gamepad-fill text-[#6366F1] text-sm"></i>
+            </div>
+            <span
+              className="text-[15px] font-bold tracking-[0.15em] text-[#1A1A2E]"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              GEMUSUKE
+            </span>
+          </Link>
+        </div>
+
+        {/* Card */}
+        <div className="fp-card rounded-2xl border border-[#E0E7FF] p-6 sm:p-8 bg-white"
+          style={{
+            boxShadow: '0 20px 60px rgba(99,102,241,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+          }}>
+          <div className="mb-6">
+            <h1
+              className="text-[20px] font-bold text-[#1A1A2E]"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}
+            >
+              パスワードをリセット
+            </h1>
+            <p className="text-[13px] text-[#6B7280] mt-1" style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+              登録済みのメールアドレスにリセットリンクを送信します
+            </p>
+          </div>
+
+          {errorMsg && (
+            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-600 px-3.5 py-2.5 text-[12px] font-medium"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+              <i className="ri-error-warning-line mr-1.5"></i>{errorMsg}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-bold text-[#6B7280] mb-1.5 tracking-wider uppercase"
+                style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+                メールアドレス
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                inputMode="email"
+                placeholder="you@example.com"
+                className="fp-input w-full border border-[#E0E7FF] rounded-lg p-3 text-[13px] text-[#1A1A2E] bg-[#F9FAFB] focus:outline-none placeholder:text-[#9CA3AF]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="fp-btn w-full py-3 text-[12px] font-bold tracking-[0.08em] uppercase bg-[#6366F1] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              {submitting ? '送信中...' : 'リセットリンクを送信'}
+            </button>
+          </form>
+
+          <div className="mt-4 text-center">
+            <Link to="/login"
+              className="text-[11px] text-[#9CA3AF] hover:text-[#6366F1] transition-colors"
+              style={{ fontFamily: '"Rajdhani", sans-serif' }}>
+              ログインに戻る
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
