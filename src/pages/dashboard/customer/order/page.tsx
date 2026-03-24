@@ -72,6 +72,8 @@ export default function OrderDetailPage() {
 
   const [confirming, setConfirming] = useState(false);
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeDesc, setDisputeDesc] = useState('');
@@ -422,9 +424,9 @@ export default function OrderDetailPage() {
                     </button>
                   )}
                   {canConfirm && (
-                    <button onClick={handleConfirmComplete} disabled={confirming}
+                    <button onClick={() => setShowConfirmModal(true)} disabled={confirming}
                       className="inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-lg cursor-pointer bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      {confirming ? <><i className="ri-loader-4-line text-[12px] animate-spin"></i>処理中...</> : <><i className="ri-check-double-line text-[12px]"></i>完了を確認する</>}
+                      <i className="ri-check-double-line text-[12px]"></i>完了を確認する
                     </button>
                   )}
                   {canDispute && (
@@ -438,6 +440,56 @@ export default function OrderDetailPage() {
             )}
           </div>
         </div>
+
+        {/* ═══ Confirm Complete Modal ═══ */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowConfirmModal(false)}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[#F0F0F0]">
+                <h2 className="text-[15px] font-bold text-[#111]">完了確認</h2>
+              </div>
+              <div className="p-6">
+                <div className="bg-[#F7F9F9] rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-1.5 mb-2 text-[12px] text-[#888]">
+                    <span className="font-semibold text-[#111]">{order?.game_title || 'Brawl Stars'}</span>
+                    <span className="text-[#CCC]">/</span>
+                    <span>{svcLabel}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[14px] font-bold text-[#111]">
+                    <span>{order?.current_rank || '—'}</span>
+                    <i className="ri-arrow-right-line text-[12px] text-[#CCC]"></i>
+                    <span>{order?.target_rank || '—'}</span>
+                  </div>
+                  <p className="text-[12px] font-semibold text-[#111] mt-2">
+                    お支払い額: ¥{(order?.price || 0).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-4 py-3 mb-5">
+                  <div className="flex items-start gap-2">
+                    <i className="ri-error-warning-fill text-[14px] text-[#F59E0B] mt-0.5 shrink-0"></i>
+                    <p className="text-[12px] text-[#92400E]">
+                      確認すると代行者に報酬が支払われます。作業内容に問題がないことを確認してください。
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2.5">
+                  <button onClick={() => setShowConfirmModal(false)}
+                    className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
+                    キャンセル
+                  </button>
+                  <button onClick={() => { setShowConfirmModal(false); handleConfirmComplete(); }} disabled={confirming}
+                    className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors cursor-pointer disabled:opacity-40">
+                    {confirming ? '処理中...' : '完了を確認する'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ═══ Dispute Modal ═══ */}
         {showDispute && (

@@ -61,6 +61,8 @@ export default function EmployeeOrderDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [confirmAction, setConfirmAction] = useState<{ status: string; label: string; description: string } | null>(null);
+
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeDesc, setDisputeDesc] = useState('');
@@ -328,13 +330,13 @@ export default function EmployeeOrderDetailPage() {
                 <p className="text-[11px] font-medium text-[#999] mb-3">アクション</p>
                 <div className="flex flex-wrap gap-2">
                   {canStart && (
-                    <button onClick={() => handleStatusChange('in_progress')} disabled={actionLoading}
+                    <button onClick={() => setConfirmAction({ status: 'in_progress', label: '作業開始', description: 'この案件の作業を開始します。依頼者に通知されます。' })} disabled={actionLoading}
                       className="inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-lg cursor-pointer bg-[#D97706] text-white hover:bg-[#B45309] transition-colors disabled:opacity-40">
                       <i className="ri-play-line text-[12px]"></i>作業開始
                     </button>
                   )}
                   {canComplete && (
-                    <button onClick={() => handleStatusChange('completed')} disabled={actionLoading}
+                    <button onClick={() => setConfirmAction({ status: 'completed', label: '作業完了', description: '作業完了を報告します。依頼者に確認の通知が送られます。' })} disabled={actionLoading}
                       className="inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-lg cursor-pointer bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-40">
                       <i className="ri-check-double-line text-[12px]"></i>作業完了
                     </button>
@@ -354,6 +356,47 @@ export default function EmployeeOrderDetailPage() {
             )}
           </div>
         </div>
+
+        {/* ═══ Confirm Action Modal ═══ */}
+        {confirmAction && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setConfirmAction(null)}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[#F0F0F0]">
+                <h2 className="text-[15px] font-bold text-[#111]">{confirmAction.label}の確認</h2>
+              </div>
+              <div className="p-6">
+                <div className="bg-[#F7F9F9] rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-1.5 mb-2 text-[12px] text-[#888]">
+                    <span className="font-semibold text-[#111]">{order?.game_title || 'Brawl Stars'}</span>
+                    <span className="text-[#CCC]">/</span>
+                    <span>{svcLabel}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[14px] font-bold text-[#111]">
+                    <span>{order?.current_rank || '—'}</span>
+                    <i className="ri-arrow-right-line text-[12px] text-[#CCC]"></i>
+                    <span>{order?.target_rank || '—'}</span>
+                  </div>
+                  <p className="text-[12px] font-semibold text-[#059669] mt-2">
+                    報酬: ¥{Math.floor((order?.price || 0) * EMPLOYEE_RATE).toLocaleString()}
+                  </p>
+                </div>
+                <p className="text-[13px] text-[#666] mb-5">{confirmAction.description}</p>
+                <div className="flex justify-end gap-2.5">
+                  <button onClick={() => setConfirmAction(null)}
+                    className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
+                    キャンセル
+                  </button>
+                  <button onClick={() => { handleStatusChange(confirmAction.status); setConfirmAction(null); }} disabled={actionLoading}
+                    className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors cursor-pointer disabled:opacity-40">
+                    {actionLoading ? '処理中...' : confirmAction.label}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ═══ Dispute Modal ═══ */}
         {showDispute && (
