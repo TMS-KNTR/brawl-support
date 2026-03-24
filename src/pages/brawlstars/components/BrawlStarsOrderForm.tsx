@@ -147,47 +147,16 @@ export default function BrawlStarsOrderForm() {
         })
 
         if (result.success && result.data?.checkoutUrl) {
-          window.location.href = result.data.checkoutUrl
+          const checkoutUrl = result.data.checkoutUrl
+          if (!checkoutUrl.startsWith('https://checkout.stripe.com') && !checkoutUrl.startsWith(window.location.origin)) {
+            throw new Error('不正なリダイレクト先です')
+          }
+          window.location.href = checkoutUrl
         } else {
           throw new Error(result.error || '注文の作成に失敗しました')
         }
       } else {
-        const { supabase } = await import('../../../lib/supabase')
-
-        const { data: orderData, error } = await supabase
-          .from('orders')
-          .insert([
-            {
-              user_id: user.id,
-              game_title: 'Brawl Stars',
-              service_type: formData.serviceType,
-              current_rank: formData.currentTrophies,
-              target_rank: formData.targetTrophies,
-              price: estimatedPrice || 0,
-              status: 'pending',
-            },
-          ])
-          .select()
-          .single()
-
-        if (error) throw error
-
-        if (orderData) {
-          const { error: chatError } = await supabase
-            .from('chat_threads')
-            .insert({
-              order_id: orderData.id,
-              participants: JSON.stringify([user.id]),
-              last_message_at: new Date().toISOString(),
-            })
-          if (chatError) console.error('チャットスレッド作成エラー:', chatError)
-        }
-
-        // NOTE: Game credentials are NOT stored in the database.
-        // The customer should share account credentials via the in-app chat
-        // after an employee is assigned, so they are protected by RLS
-        // and not persisted in a reversible format.
-
+        // 見積もり依頼: 注文は作成せず、問い合わせとして受け付ける
         setShowSuccess(true)
         setTimeout(() => navigate('/dashboard/customer'), 2000)
       }
