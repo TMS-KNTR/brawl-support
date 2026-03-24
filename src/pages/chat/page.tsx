@@ -43,10 +43,18 @@ export default function ChatPage() {
   useEffect(() => {
     if (orderId) {
       fetchMessages();
-      const sub = supabase.channel(`messages:${orderId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` }, () => fetchMessages())
-        .subscribe();
-      return () => { sub.unsubscribe(); };
+      let sub: any = null;
+      try {
+        sub = supabase.channel(`messages:${orderId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` }, () => fetchMessages())
+          .subscribe();
+      } catch (e) {
+        console.warn('Realtime subscription failed, falling back to polling:', e);
+        // WebSocketが使えない場合はポーリングでメッセージを取得
+        const interval = setInterval(fetchMessages, 5000);
+        return () => clearInterval(interval);
+      }
+      return () => { sub?.unsubscribe(); };
     }
   }, [orderId]);
 
