@@ -69,6 +69,21 @@ const SERVICE_TYPES: Record<string, { label: string; icon: string }> = {
 };
 const fallbackService = { label: '代行', icon: 'ri-gamepad-line' };
 
+/* ── Status guide messages for customers ── */
+const STATUS_GUIDE: Record<string, { icon: string; text: string }> = {
+  paid:        { icon: 'ri-key-2-line',        text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください' },
+  open:        { icon: 'ri-key-2-line',        text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください' },
+  assigned:    { icon: 'ri-user-follow-line',  text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください' },
+  in_progress: { icon: 'ri-loader-4-line',     text: '代行作業中です。完了までお待ちください' },
+  completed:   { icon: 'ri-check-line',        text: '代行が完了しました。ゲームを開いて結果を確認し、"完了を確認"を押してください' },
+  confirmed:   { icon: 'ri-check-double-line', text: 'お取引完了です。ありがとうございました' },
+};
+
+/* ── Step labels for guide banner linking ── */
+const STEP_LABELS: Record<string, string> = {
+  paid: '受注待ち', open: '受注待ち', assigned: '受注済', in_progress: '作業中', completed: '完了', confirmed: '確認済',
+};
+
 export default function CustomerDashboardPage() {
   const navigate = useNavigate();
   const { user, userProfile, loading } = useAuth();
@@ -470,6 +485,24 @@ export default function CustomerDashboardPage() {
                           <div className="flex items-center gap-1.5 mb-4 px-2.5 py-1.5 rounded-md" style={{ background: `${s.color}08`, border: `1px solid ${s.color}15` }}>
                             <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
                             <span className="text-[11px] font-semibold" style={{ color: s.color }}>{s.label}</span>
+                          </div>
+                        )}
+
+                        {/* Status Guide */}
+                        {STATUS_GUIDE[ns] && (
+                          <div className="flex items-start gap-2.5 mb-4 px-3 py-2.5 rounded-lg relative overflow-hidden"
+                            style={{ background: `${s.color}08`, border: `1px solid ${s.color}18` }}>
+                            <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full" style={{ background: s.color }} />
+                            <div className="w-[20px] h-[20px] rounded-full flex items-center justify-center shrink-0 mt-px"
+                              style={{ background: `${s.color}15` }}>
+                              <i className={`${STATUS_GUIDE[ns].icon} text-[11px]`} style={{ color: s.color }}></i>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {STEP_LABELS[ns] && (
+                                <span className="text-[10px] font-bold leading-none mb-1 block" style={{ color: s.color }}>{STEP_LABELS[ns]}</span>
+                              )}
+                              <p className="text-[11px] text-[#555] leading-relaxed">{STATUS_GUIDE[ns].text}</p>
+                            </div>
                           </div>
                         )}
 

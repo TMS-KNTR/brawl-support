@@ -92,7 +92,7 @@ const TIER_COLORS = ['#C4B5FD', '#8B7AFF', '#FFD700'];
 export default function Features() {
   const cards = [
     { icon: 'ri-shield-check-line', highlight: 'PayPay', suffix: '', title: 'PayPay対応の安全決済', desc: 'クレジットカード・PayPayに対応。エスクロー方式で代行完了まで代金を安全に保全。', fx: 'shield' },
-    { icon: 'ri-chat-private-line', highlight: '0', suffix: '件', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。引き継ぎも専用チャットで安全に。', fx: 'rings' },
+    { icon: 'ri-chat-private-line', highlight: '0', suffix: '件', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。アカウント共有も専用チャットで安全に。', fx: 'rings' },
     { icon: 'ri-star-line', highlight: '99', suffix: '%', title: 'プロの技術', desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。', fx: 'stars' },
   ];
 

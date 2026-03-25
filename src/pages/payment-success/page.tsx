@@ -156,7 +156,7 @@ export default function PaymentSuccessPage() {
               <p className="text-[15px] font-bold text-[#92400E]">まだ終わりではありません</p>
             </div>
             <p className="text-[13px] text-[#92400E] leading-relaxed">
-              代行を開始するにはアカウントの引き継ぎが必要です。<br />
+              代行を開始するにはアカウントの共有が必要です。<br />
               チャット画面の手順に沿って進めてください。
             </p>
           </div>

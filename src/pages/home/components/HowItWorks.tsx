@@ -68,7 +68,7 @@ export default function HowItWorks() {
     },
     {
       num: '04',
-      title: 'チャットで引き継ぎ',
+      title: 'チャットでアカウント共有',
       desc: '匿名チャットでアカウント情報を安全に共有。個人情報は一切不要。',
       icon: 'ri-chat-private-line',
     },

@@ -110,7 +110,7 @@ export default function CompliancePage() {
 
           <h3 className="text-xl font-semibold text-gray-900 mt-8 mb-4">禁止事項</h3>
           <div className="text-gray-700 mb-6 space-y-2">
-            <p>・チャットでの個人情報（電話番号、SNS ID等）の交換（ただし、代行作業に必要なゲームアカウント情報・引き継ぎ用メールアドレスの共有は除く）</p>
+            <p>・チャットでの個人情報（電話番号、SNS ID等）の交換（ただし、代行作業に必要なゲームアカウント情報・アカウント共有用メールアドレスの共有は除く）</p>
             <p>・プラットフォーム外での直接取引</p>
             <p>・虚偽情報による登録や取引</p>
             <p>・他ユーザーへの嫌がらせや脅迫</p>

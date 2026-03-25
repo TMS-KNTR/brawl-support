@@ -64,7 +64,7 @@ export default function ChatPage() {
     if (!user || !threadId) return;
     try {
       const { data: thread, error } = await supabase
-        .from('chat_threads').select('*, order:orders(id, user_id, employee_id)').eq('id', threadId).single();
+        .from('chat_threads').select('*, order:orders(id, user_id, employee_id, status)').eq('id', threadId).single();
       if (error || !thread) { setHasAccess(false); setLoading(false); return; }
       setThreadInfo(thread);
       const order = thread.order;
@@ -264,7 +264,7 @@ export default function ChatPage() {
       <style>{`.chat-scroll::-webkit-scrollbar{display:none} .chat-scroll{scrollbar-width:none;}`}</style>
       <div className="chat-scroll flex-1 overflow-y-auto bg-[#F5F5F5]">
         <div className="max-w-[600px] mx-auto px-4 py-2 min-h-full bg-white border-x border-[#EFF3F4]">
-          {/* アカウント引き継ぎガイド（依頼者のみ） */}
+          {/* アカウント共有ガイド（依頼者のみ） */}
           {threadInfo?.order?.user_id === user?.id && <AccountGuide />}
 
           {messages.length === 0 ? (
@@ -490,10 +490,15 @@ function DateSeparator({ label }: { label: string }) {
 
 /* ── Account Guide ── */
 function AccountGuide() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('guide_collapsed') === '1');
+  const toggleCollapsed = (v: boolean) => { setCollapsed(v); if (v) localStorage.setItem('guide_collapsed', '1'); };
   const [zoomImg, setZoomImg] = useState<string | null>(null);
 
   const steps = [
+    {
+      img: '/guide/step1_supercell_id.jpg',
+      text: <>ブロスタを開き、<strong>Supercell ID 設定画面</strong>を開く</>,
+    },
     {
       img: '/guide/step1.jpg',
       text: <>設定画面で「代行するアカウント」の<strong>メールアドレスをコピー</strong></>,
@@ -518,7 +523,7 @@ function AccountGuide() {
         className="w-full my-3 px-4 py-2.5 rounded-xl bg-[#F7F9F9] border border-[#EFF3F4] flex items-center justify-between cursor-pointer hover:bg-[#EFF3F4] transition-colors">
         <span className="flex items-center gap-2 text-[13px] font-semibold text-[#536471]">
           <i className="ri-shield-keyhole-line text-[14px]"></i>
-          アカウント引き継ぎ手順を表示
+          ブロスタアカウント共有手順を表示
         </span>
         <i className="ri-arrow-down-s-line text-[16px] text-[#536471]"></i>
       </button>
@@ -531,11 +536,12 @@ function AccountGuide() {
         <div className="px-4 py-3 flex items-center justify-between">
           <span className="flex items-center gap-2 text-[13px] font-bold text-[#0F1419]">
             <i className="ri-shield-keyhole-line text-[14px] text-[#536471]"></i>
-            アカウント引き継ぎ手順
+            ブロスタアカウント共有手順
           </span>
-          <button onClick={() => setCollapsed(true)}
-            className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-[#E1E8ED] cursor-pointer transition-colors">
-            <i className="ri-arrow-up-s-line text-[16px] text-[#536471]"></i>
+          <button onClick={() => toggleCollapsed(true)}
+            className="px-2.5 py-1 rounded-full border border-[#CFD9DE] flex items-center gap-1 hover:bg-[#E1E8ED] cursor-pointer transition-colors">
+            <span className="text-[11px] font-medium text-[#536471]">閉じる</span>
+            <i className="ri-arrow-up-s-line text-[14px] text-[#536471]"></i>
           </button>
         </div>
         <div className="px-4 pb-4 space-y-4">
@@ -574,5 +580,31 @@ function AccountGuide() {
         </div>
       )}
     </>
+  );
+}
+
+/* ── Status Banner ── */
+function StatusBanner({ status }: { status?: string }) {
+  const s = (status || '').toLowerCase();
+  const config: Record<string, { icon: string; text: string; bg: string; border: string; color: string }> = {
+    paid:             { icon: 'ri-time-line',       text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    paid_unassigned:  { icon: 'ri-time-line',       text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    open:             { icon: 'ri-time-line',       text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    assigned:         { icon: 'ri-user-follow-line', text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    claimed:          { icon: 'ri-user-follow-line', text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    in_progress:      { icon: 'ri-loader-4-line',   text: '代行作業中です。完了までお待ちください', bg: 'bg-[#FFFBEB]', border: 'border-[#FDE68A]', color: 'text-[#92400E]' },
+    completed:        { icon: 'ri-check-line',       text: '代行が完了しました。ゲームを開いて結果を確認し、"完了を確認"を押してください', bg: 'bg-[#ECFDF5]', border: 'border-[#A7F3D0]', color: 'text-[#065F46]' },
+    delivered:        { icon: 'ri-check-line',       text: '代行が完了しました。ゲームを開いて結果を確認し、"完了を確認"を押してください', bg: 'bg-[#ECFDF5]', border: 'border-[#A7F3D0]', color: 'text-[#065F46]' },
+    confirmed:        { icon: 'ri-check-double-line', text: 'お取引完了です。ありがとうございました', bg: 'bg-[#F7F9F9]', border: 'border-[#EFF3F4]', color: 'text-[#536471]' },
+  };
+  const c = config[s];
+  if (!c) return null;
+  return (
+    <div className={`${c.bg} border-b ${c.border}`}>
+      <div className="max-w-[600px] mx-auto px-4 py-2.5 flex items-start gap-2">
+        <i className={`${c.icon} text-[15px] ${c.color} shrink-0 mt-0.5`}></i>
+        <p className={`text-[12px] ${c.color} leading-relaxed`}>{c.text}</p>
+      </div>
+    </div>
   );
 }
