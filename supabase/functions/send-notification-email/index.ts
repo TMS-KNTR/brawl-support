@@ -125,7 +125,7 @@ serve(async (req: Request) => {
     }
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
-    const fromEmail = Deno.env.get("FROM_EMAIL") || "Brawl Support <onboarding@resend.dev>";
+    const fromEmail = Deno.env.get("FROM_EMAIL") || "Gemsuke <onboarding@resend.dev>";
 
     if (!resendKey) {
       console.error("RESEND_API_KEY not set");
@@ -148,7 +148,7 @@ serve(async (req: Request) => {
     const html = `
       <p>${bodyText ? escapeHtml(bodyText).replace(/\n/g, "<br>") : ""}</p>
       ${link_url ? `<p><a href="${escapeHtml(safeUrl)}">アプリで確認する</a></p>` : ""}
-      <p style="color:#888;font-size:12px;">このメールは Brawl Support からの自動通知です。</p>
+      <p style="color:#888;font-size:12px;">このメールは Gemsuke からの自動通知です。</p>
     `;
 
     const res = await fetch(RESEND_API, {

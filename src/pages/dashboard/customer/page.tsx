@@ -405,7 +405,7 @@ export default function CustomerDashboardPage() {
                   const terminal = isTerminal(order.status);
 
                   const ns = normalizeStatus(order.status);
-                  const chatVisible = order.chat_thread_id && ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(ns);
+                  const chatVisible = order.chat_thread_id && ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed', 'confirmed', 'cancelled', 'disputed', 'refunded'].includes(ns);
                   const canConfirm = ns === 'completed' && !order.is_paid_out;
                   const canDispute = false; // 詳細ページのみで表示
                   const dateStr = new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });

@@ -230,6 +230,7 @@ export default function ChatPage() {
 
   // ── Helpers ──
   const order = threadInfo?.order;
+  const orderClosed = order && ['cancelled', 'disputed', 'refunded'].includes(order.status?.toLowerCase());
   const getSenderLabel = (sid: string) => {
     if (sid === order?.user_id) return '依頼者';
     if (sid === order?.employee_id) return '代行者';
@@ -398,15 +399,19 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* ── Banned ── */}
-      {userProfile?.is_banned && (
-        <div className="border-t border-[#EFF3F4] bg-white px-4 py-3 text-center">
-          <p className="text-[13px] text-[#F4212E] font-medium">アカウント停止中のためメッセージを送信できません</p>
+      {/* ── Banned / Closed ── */}
+      {(userProfile?.is_banned || orderClosed) && (
+        <div className="border-t border-[#EFF3F4] bg-[#F5F5F5]">
+          <div className="max-w-[600px] mx-auto px-4 py-3 border-x border-[#EFF3F4] bg-white text-center">
+            <p className="text-[13px] text-[#536471] font-medium">
+              {userProfile?.is_banned ? 'アカウント停止中のためメッセージを送信できません' : 'この注文は終了したため、チャットは閲覧のみです'}
+            </p>
+          </div>
         </div>
       )}
 
       {/* ── Input ── */}
-      {!userProfile?.is_banned && (
+      {!userProfile?.is_banned && !orderClosed && (
         <div className="border-t border-[#EFF3F4] bg-[#F5F5F5]">
           <div className="max-w-[600px] mx-auto px-2 py-2 border-x border-[#EFF3F4] bg-white">
             {attachmentPreview && (

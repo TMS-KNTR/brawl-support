@@ -243,7 +243,7 @@ export default function OrderDetailPage() {
   const activeIdx = currentStepIdx === -1 ? STEPS.length - 1 : Math.max(0, currentStepIdx - 1);
 
   const ns = normalizeStatus(order.status);
-  const chatVisible = chatThreadId && ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(ns);
+  const chatVisible = chatThreadId && ['paid', 'payment_pending', 'assigned', 'in_progress', 'completed', 'confirmed', 'cancelled', 'disputed', 'refunded'].includes(ns);
   const canConfirm = ns === 'completed' && !order.is_paid_out;
   const canDispute = ['paid', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(ns);
 

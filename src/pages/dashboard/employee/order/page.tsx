@@ -205,7 +205,7 @@ export default function EmployeeOrderDetailPage() {
   const currentStepIdx = STEPS.findIndex(step => s.progress < step.min);
   const activeIdx = currentStepIdx === -1 ? STEPS.length - 1 : Math.max(0, currentStepIdx - 1);
 
-  const chatVisible = chatThreadId && ['assigned', 'in_progress', 'completed'].includes(order.status);
+  const chatVisible = chatThreadId && ['assigned', 'in_progress', 'completed', 'confirmed', 'cancelled', 'disputed', 'refunded'].includes(order.status);
   const canStart = order.status === 'assigned';
   const canComplete = order.status === 'in_progress';
 
