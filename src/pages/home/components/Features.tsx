@@ -350,7 +350,7 @@ export default function Features() {
               animation: header.visible ? 'feat-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) both' : 'none',
             }}
           >
-            Why げむ助
+            Why GEMUSUKE
           </span>
           <h2
             className="text-[clamp(1.5rem,4vw,2.5rem)] font-extrabold text-[#1A1A2E] tracking-wider mb-5"
