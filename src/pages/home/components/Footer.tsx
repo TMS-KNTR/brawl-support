@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function Footer() {
+  const { user } = useAuth();
   return (
     <footer className="border-t border-[#222] bg-[#111]">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
@@ -41,7 +43,7 @@ export default function Footer() {
               <ul className="space-y-3">
                 <li><Link to="/games" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">対応ゲーム</Link></li>
                 <li><Link to="/order/new" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">依頼する</Link></li>
-                <li><Link to="/register" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">新規登録</Link></li>
+                <li><Link to={user ? "/dashboard/customer" : "/register"} className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 font-medium">{user ? "注文履歴" : "新規登録"}</Link></li>
                 <li>
                   <a href="mailto:gemusuke.official@gmail.com" className="text-[12px] text-[#888] hover:text-white transition-colors duration-300 cursor-pointer font-medium">
                     お問い合わせ
