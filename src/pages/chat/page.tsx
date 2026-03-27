@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, invokeEdgeFunction } from '../../lib/supabase';
 
@@ -495,7 +495,9 @@ function DateSeparator({ label }: { label: string }) {
 
 /* ── Account Guide ── */
 function AccountGuide() {
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('guide_collapsed') === '1');
+  const [searchParams] = useSearchParams();
+  const guideOpen = searchParams.get('guide') === 'open';
+  const [collapsed, setCollapsed] = useState(() => guideOpen ? false : localStorage.getItem('guide_collapsed') === '1');
   const toggleCollapsed = (v: boolean) => { setCollapsed(v); if (v) localStorage.setItem('guide_collapsed', '1'); };
   const [zoomImg, setZoomImg] = useState<string | null>(null);
 
