@@ -114,8 +114,6 @@ export default function Header() {
     }
   }
 
-  // Color helpers based on scroll state
-  const logoColor = 'text-[#1A1A2E]'
   const navColor = 'text-[#6B7280] hover:text-[#1A1A2E]'
 
   return (
@@ -172,18 +170,14 @@ export default function Header() {
           <div className="flex items-center gap-6 sm:gap-8">
             {/* Logo */}
             <div
-              className="flex items-center gap-2 cursor-pointer group"
+              className="flex items-center cursor-pointer group"
               onClick={() => navigate('/')}
             >
-              <div className={`w-7 h-7 border rounded flex items-center justify-center transition-colors duration-300 ${scrolled ? 'border-[#5B3AE8]/20 group-hover:border-[#5B3AE8]/40' : 'border-[#5B3AE8]/30 group-hover:border-[#5B3AE8]/60'}`}>
-                <i className="ri-gamepad-fill text-[#5B3AE8] text-xs"></i>
-              </div>
-              <span
-                className={`text-sm font-bold tracking-[0.15em] transition-colors duration-500 ${logoColor}`}
-                style={{ fontFamily: '"Orbitron", sans-serif' }}
-              >
-                GEMUSUKE
-              </span>
+              <img
+                src="/logo.png"
+                alt="GEMUSUKE"
+                className="h-14 w-auto"
+              />
             </div>
 
             {/* Nav links */}

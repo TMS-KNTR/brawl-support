@@ -7,28 +7,24 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 border border-[#333] rounded-lg flex items-center justify-center">
-                <i className="ri-gamepad-fill text-white text-sm"></i>
-              </div>
-              <span
-                className="text-base font-bold tracking-[0.15em] text-white"
-                style={{ fontFamily: '"Orbitron", sans-serif' }}
-              >
-                GEMUSUKE
-              </span>
+            <div className="flex items-center mb-6">
+              <img
+                src="/logo-white.png"
+                alt="GEMUSUKE"
+                className="h-16 w-auto"
+              />
             </div>
-            <p className="text-[12px] text-[#888] leading-relaxed mb-6 max-w-xs font-medium">
+            <p className="text-sm text-[#888] leading-relaxed mb-6 max-w-sm font-medium">
               プロの代行者による安全・確実なゲーム代行サービス。
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <a
                 href="https://x.com/nxpyzo"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-8 h-8 border border-[#333] rounded flex items-center justify-center text-[#555] hover:text-white hover:border-[#555] transition-colors"
+                className="w-9 h-9 border border-[#333] rounded-lg flex items-center justify-center text-[#555] hover:text-white hover:border-[#555] transition-colors"
               >
-                <i className="ri-twitter-x-fill text-xs"></i>
+                <i className="ri-twitter-x-fill text-sm"></i>
               </a>
             </div>
           </div>

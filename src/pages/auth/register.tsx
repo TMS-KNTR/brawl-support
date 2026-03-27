@@ -119,16 +119,8 @@ export default function RegisterPage() {
       <div className="relative z-10 w-full max-w-[400px]">
         {/* Logo */}
         <div className="text-center mb-8" style={{ animation: 'reg-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
-          <Link to="/" className="inline-flex items-center gap-2.5 group">
-            <div className="w-8 h-8 border border-[#6366F1]/20 rounded-lg flex items-center justify-center group-hover:border-[#6366F1]/40 transition-colors">
-              <i className="ri-gamepad-fill text-[#6366F1] text-sm"></i>
-            </div>
-            <span
-              className="text-[15px] font-bold tracking-[0.15em] text-[#1A1A2E]"
-              style={{ fontFamily: '"Orbitron", sans-serif' }}
-            >
-              GEMUSUKE
-            </span>
+          <Link to="/" className="inline-flex items-center group">
+            <img src="/logo.png" alt="GEMUSUKE" className="h-20 w-auto" />
           </Link>
         </div>
 
