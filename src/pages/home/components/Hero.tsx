@@ -210,9 +210,9 @@ export default function Hero() {
 
           {/* Subtitle */}
           <p className="hero-subtitle text-[13px] sm:text-[15px] text-[#9090B0] leading-relaxed max-w-lg mx-auto mb-12 font-medium">
-            厳選されたプロプレイヤーがあなたの目標を確実に達成。
+            面倒なランク上げは、プロに任せて待つだけ。
             <br />
-            安全な決済と匿名チャットで、安心のお取引を提供します。
+            安全決済・匿名チャット・返金保証つき。
           </p>
 
           {/* CTA buttons */}
