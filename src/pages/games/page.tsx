@@ -38,6 +38,7 @@ export default function GamesPage() {
         <meta name="description" content="げむ助が対応しているゲームタイトル一覧。Brawl Stars（ブロスタ）のトロフィー上げ・ランク上げ代行に対応中。対応タイトルは順次拡大予定。" />
         <meta property="og:title" content="対応ゲーム | GEMUSUKE" />
         <meta property="og:description" content="げむ助が対応しているゲームタイトル一覧。ブロスタの代行サービスを提供中。" />
+        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
         <link rel="canonical" href="https://gemsuke.com/games" />
       </Helmet>
       <Header />

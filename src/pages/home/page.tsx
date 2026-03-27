@@ -21,6 +21,7 @@ export default function Home() {
         <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならげむ助。PayPay対応・全額返金保証・匿名チャットで安心。" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="GEMUSUKE - ブロスタ代行サービス" />
+        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
         <link rel="canonical" href="https://gemsuke.com" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
