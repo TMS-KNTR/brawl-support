@@ -54,15 +54,16 @@ export default function CompliancePage() {
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">サービス提供時期</td>
-                  <td className="px-6 py-4 text-gray-900">決済完了後、代行者が受注次第開始</td>
+                  <td className="px-6 py-4 text-gray-900">決済完了後、代行者が受注次第開始（目安：受注から1〜7日で完了。注文内容により変動します）</td>
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">返品・キャンセル</td>
                   <td className="px-6 py-4 text-gray-900">
-                    <p>・作業開始前：全額返金（決済手数料を除く）</p>
+                    <p>・作業開始前：全額返金</p>
                     <p>・代行者都合による中止：全額返金</p>
                     <p>・作業開始後のお客様都合：返金不可</p>
                     <p>・アカウントBAN等のゲーム側措置による中止：返金不可</p>
+                    <p className="text-gray-500 text-xs mt-1">※返金処理に係る手数料は当サービスが負担します</p>
                   </td>
                 </tr>
                 <tr>
@@ -97,7 +98,7 @@ export default function CompliancePage() {
 
           <h3 className="text-xl font-semibold text-gray-900 mt-8 mb-4">年齢制限</h3>
           <div className="text-gray-700 mb-6 space-y-2">
-            <p>・18歳未満の方は保護者の同意が必要です</p>
+            <p>・未成年者の方は親権者等の法定代理人の同意が必要です</p>
             <p>・13歳未満の方はサービスをご利用いただけません</p>
           </div>
 
