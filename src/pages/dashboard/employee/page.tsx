@@ -91,6 +91,9 @@ function EmployeeDashboardContent() {
   const [stripeStatus, setStripeStatus] = useState<'not_created' | 'incomplete' | 'pending' | 'active'>('not_created');
   const [connectLoading, setConnectLoading] = useState(false);
   const [ratingStats, setRatingStats] = useState<{ avg: number; count: number }>({ avg: 0, count: 0 });
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingDetails, setRatingDetails] = useState<any[]>([]);
+  const [ratingDetailsLoading, setRatingDetailsLoading] = useState(false);
 
   useEffect(() => {
     if (userProfile?.stripe_account_id) {
@@ -280,6 +283,28 @@ function EmployeeDashboardContent() {
     }
 
     setDataLoading(false);
+  };
+
+  useEffect(() => {
+    if (showRatingModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [showRatingModal]);
+
+  const openRatingModal = async () => {
+    setShowRatingModal(true);
+    setRatingDetailsLoading(true);
+    const { data } = await supabase
+      .from('ratings')
+      .select('id, score, comment, created_at')
+      .eq('employee_id', user?.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setRatingDetails(data || []);
+    setRatingDetailsLoading(false);
   };
 
   // 受注確認モーダル
@@ -524,11 +549,14 @@ function EmployeeDashboardContent() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {ratingStats.count > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA]">
+                  <button
+                    onClick={openRatingModal}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#F0F0F0] transition-colors cursor-pointer"
+                  >
                     <span className="text-[11px] text-[#888]">評価</span>
                     <span className="text-[13px] text-[#FBBF24]">{'★'.repeat(Math.round(ratingStats.avg))}<span className="text-[#E5E5E5]">{'★'.repeat(5 - Math.round(ratingStats.avg))}</span></span>
                     <span className="text-[11px] text-[#666]">{ratingStats.avg.toFixed(1)}（{ratingStats.count}件）</span>
-                  </div>
+                  </button>
                 )}
                 <button
                   onClick={() => navigate('/dashboard/employee/manual')}
@@ -1081,6 +1109,60 @@ function EmployeeDashboardContent() {
                     {disputeLoading ? '送信中...' : '報告する'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ 評価詳細モーダル ═══ */}
+        {showRatingModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowRatingModal(false)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div
+              className="relative bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* ヘッダー */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E5E5]">
+                <div>
+                  <h3 className="text-[15px] font-bold text-[#111]">評価一覧</h3>
+                  <p className="text-[11px] text-[#888] mt-0.5">
+                    平均 {ratingStats.avg.toFixed(1)} / 5.0（{ratingStats.count}件）
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowRatingModal(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                >
+                  <i className="ri-close-line text-[18px] text-[#999]"></i>
+                </button>
+              </div>
+
+              {/* コンテンツ */}
+              <div className="overflow-y-auto flex-1 px-5 py-4">
+                {ratingDetailsLoading ? (
+                  <div className="text-center py-8 text-[13px] text-[#999]">読み込み中...</div>
+                ) : ratingDetails.length === 0 ? (
+                  <div className="text-center py-8 text-[13px] text-[#999]">評価はまだありません</div>
+                ) : (
+                  <div className="space-y-4">
+                    {ratingDetails.map((r: any) => (
+                      <div key={r.id} className="border border-[#E5E5E5] rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[14px] text-[#FBBF24]">
+                            {'★'.repeat(r.score)}<span className="text-[#E5E5E5]">{'★'.repeat(5 - r.score)}</span>
+                          </span>
+                          <span className="text-[11px] text-[#AAA]">
+                            {new Date(r.created_at).toLocaleDateString('ja-JP')}
+                          </span>
+                        </div>
+                        {r.comment && (
+                          <p className="text-[13px] text-[#555] leading-relaxed">{r.comment}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
