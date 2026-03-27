@@ -48,16 +48,8 @@ export default function ForgotPasswordPage() {
         <div className="relative z-10 w-full max-w-[400px]">
           {/* Logo */}
           <div className="text-center mb-8" style={{ animation: 'fp-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
-            <Link to="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-8 h-8 border border-[#6366F1]/20 rounded-lg flex items-center justify-center group-hover:border-[#6366F1]/40 transition-colors">
-                <i className="ri-gamepad-fill text-[#6366F1] text-sm"></i>
-              </div>
-              <span
-                className="text-[15px] font-bold tracking-[0.15em] text-[#1A1A2E]"
-                style={{ fontFamily: '"Orbitron", sans-serif' }}
-              >
-                GEMUSUKE
-              </span>
+            <Link to="/" className="inline-flex items-center group">
+              <img src="/logo.png" alt="げむ助" className="h-20 w-auto" />
             </Link>
           </div>
 
@@ -93,7 +85,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
       style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
       <Helmet>
-        <title>パスワードリセット | GEMUSUKE</title>
+        <title>パスワードリセット | げむ助</title>
         <meta name="description" content="げむ助のパスワードをリセットします。登録済みのメールアドレスにリセットリンクを送信します。" />
         <link rel="canonical" href="https://gemsuke.com/forgot-password" />
       </Helmet>
@@ -127,7 +119,7 @@ export default function ForgotPasswordPage() {
         {/* Logo */}
         <div className="text-center mb-8" style={{ animation: 'fp-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
           <Link to="/" className="inline-flex items-center group">
-            <img src="/logo.png" alt="GEMUSUKE" className="h-20 w-auto" />
+            <img src="/logo.png" alt="げむ助" className="h-20 w-auto" />
           </Link>
         </div>
 

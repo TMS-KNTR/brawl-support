@@ -130,7 +130,7 @@ export default function Hero() {
         <div className="absolute inset-0 bg-[#080810]" />
         <img
           src="/hero-bg.webp"
-          alt="GEMUSUKE ゲーム代行サービス"
+          alt="げむ助 ゲーム代行サービス"
           className="absolute inset-0 w-full h-full object-cover object-center opacity-60"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#080810]/40 via-[#080810]/30 to-[#080810]/60" />

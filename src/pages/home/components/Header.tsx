@@ -175,7 +175,7 @@ export default function Header() {
             >
               <img
                 src="/logo.png"
-                alt="GEMUSUKE"
+                alt="げむ助"
                 className="h-14 w-auto"
               />
             </div>

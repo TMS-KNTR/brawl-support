@@ -86,7 +86,7 @@ export default function RegisterPage() {
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
       style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
       <Helmet>
-        <title>新規登録 | GEMUSUKE - ゲーム代行サービス</title>
+        <title>新規登録 | げむ助 - ゲーム代行サービス</title>
         <meta name="description" content="げむ助に無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
         <link rel="canonical" href="https://gemsuke.com/register" />
       </Helmet>
@@ -120,7 +120,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8" style={{ animation: 'reg-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
           <Link to="/" className="inline-flex items-center group">
-            <img src="/logo.png" alt="GEMUSUKE" className="h-20 w-auto" />
+            <img src="/logo.png" alt="げむ助" className="h-20 w-auto" />
           </Link>
         </div>
 

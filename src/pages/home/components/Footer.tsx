@@ -10,7 +10,7 @@ export default function Footer() {
             <div className="flex items-center mb-6">
               <img
                 src="/logo-white.png"
-                alt="GEMUSUKE"
+                alt="げむ助"
                 className="h-16 w-auto"
               />
             </div>
@@ -69,7 +69,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="border-t border-[#222] pt-8 flex flex-col sm:flex-row justify-between items-center gap-3">
           <p className="text-[11px] text-[#666] font-medium">
-            &copy; 2026 GEMUSUKE. All rights reserved.
+            &copy; 2026 げむ助. All rights reserved.
           </p>
           <div className="flex items-center gap-2 text-[11px] text-[#666]">
             <i className="ri-shield-check-line text-[#444]"></i>

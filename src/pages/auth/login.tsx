@@ -152,7 +152,7 @@ export default function LoginPage() {
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
       style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
       <Helmet>
-        <title>ログイン | GEMUSUKE</title>
+        <title>ログイン | げむ助</title>
         <meta name="description" content="げむ助にログインして、ブロスタの代行依頼を管理しましょう。" />
         <link rel="canonical" href="https://gemsuke.com/login" />
       </Helmet>
@@ -186,7 +186,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8" style={{ animation: 'auth-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
           <Link to="/" className="inline-flex items-center group">
-            <img src="/logo.png" alt="GEMUSUKE" className="h-20 w-auto" />
+            <img src="/logo.png" alt="げむ助" className="h-20 w-auto" />
           </Link>
         </div>
 
