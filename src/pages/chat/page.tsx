@@ -551,7 +551,19 @@ function AccountGuide() {
             <i className="ri-arrow-up-s-line text-[14px] text-[#536471]"></i>
           </button>
         </div>
-        <div className="px-4 pb-4 space-y-4">
+        <div className="px-4 pb-4">
+          <div className="mb-4 rounded-xl overflow-hidden bg-[#EFF6FF] border border-[#BFDBFE]">
+            <div className="px-3.5 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center shrink-0">
+                <i className="ri-check-line text-[16px] text-[#2563EB]"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-bold text-[#1E40AF] leading-snug">決済が完了しました</p>
+                <p className="text-[11px] text-[#1E3A8A] mt-0.5 leading-relaxed">下の手順に従ってアカウント情報を送信 ↓</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4">
           {steps.map((step, i) => (
             <div key={i} className="flex gap-3">
               <div className="flex flex-col items-center shrink-0">
@@ -570,6 +582,7 @@ function AccountGuide() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       </div>
 
