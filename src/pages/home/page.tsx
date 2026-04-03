@@ -15,10 +15,10 @@ export default function Home() {
     >
       <Helmet>
         <title>げむ助 | ブロスタ代行サービス - ランク上げ・トロフィー上げ代行</title>
-        <meta name="description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行ならげむ助。PayPay対応。プロの代行者が安全・確実に目標を達成。全額返金保証付き。" />
+        <meta name="description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行ならげむ助。PayPay対応。プロの代行者が安全・確実に目標を達成。30日間返金保証付き。" />
         <meta name="keywords" content="ブロスタ,代行,Brawl Stars,ランク上げ,トロフィー上げ,ガチバトル,ブロスタ代行,ゲーム代行,GEMUSUKE,げむ助,PayPay" />
         <meta property="og:title" content="げむ助 | ブロスタ代行サービス - ランク上げ・トロフィー上げ" />
-        <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならげむ助。PayPay対応・全額返金保証・匿名チャットで安心。" />
+        <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならげむ助。PayPay対応・30日間返金保証・匿名チャットで安心。" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="げむ助 - ブロスタ代行サービス" />
         <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
@@ -29,7 +29,7 @@ export default function Home() {
           "name": "げむ助",
           "alternateName": "GEMUSUKE",
           "url": "https://gemsuke.com",
-          "description": "ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行サービス。PayPay対応・全額返金保証。",
+          "description": "ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行サービス。PayPay対応・30日間返金保証。",
           "sameAs": ["https://x.com/nxpyzo"]
         })}</script>
         <script type="application/ld+json">{JSON.stringify({
@@ -54,7 +54,7 @@ export default function Home() {
             {
               "@type": "Question",
               "name": "目標が達成できなかった場合、返金はできますか？",
-              "acceptedAnswer": { "@type": "Answer", "text": "全額返金保証があります。依頼した目標が達成されなかった場合、お支払い金額を全額返金いたします。エスクロー方式を採用しているため、代行完了が確認されるまで代金は安全に保全されます。" }
+              "acceptedAnswer": { "@type": "Answer", "text": "30日間の返金保証があります。購入後30日以内に依頼した目標が達成されなかった場合、お支払い金額を全額返金いたします。エスクロー方式を採用しているため、代行完了が確認されるまで代金は安全に保全されます。" }
             },
             {
               "@type": "Question",

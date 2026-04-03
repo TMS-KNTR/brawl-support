@@ -259,7 +259,7 @@ export default function CTA() {
         >
           {[
             { icon: 'ri-price-tag-3-line', text: '登録無料' },
-            { icon: 'ri-refund-line', text: '全額返金保証' },
+            { icon: 'ri-refund-line', text: '30日間返金保証' },
             { icon: 'ri-time-line', text: '24時間対応' },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-2">

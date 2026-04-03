@@ -98,7 +98,7 @@ export default function Features() {
 
   const secondary = [
     { icon: 'ri-time-line', title: '24時間対応', desc: 'いつでも依頼OK' },
-    { icon: 'ri-refund-line', title: '全額返金保証', desc: '未達成なら返金' },
+    { icon: 'ri-refund-line', title: '30日間返金保証', desc: '未達成なら全額返金' },
     { icon: 'ri-lock-line', title: 'アカウント保護', desc: '暗号化で厳重管理' },
   ];
 

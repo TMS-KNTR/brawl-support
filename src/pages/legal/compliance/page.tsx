@@ -54,16 +54,18 @@ export default function CompliancePage() {
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">サービス提供時期</td>
-                  <td className="px-6 py-4 text-gray-900">決済完了後、代行者が受注次第開始（目安：受注から1〜7日で完了。注文内容により変動します）</td>
+                  <td className="px-6 py-4 text-gray-900">決済完了後、代行者が受注次第開始（目安：受注から1〜7日で完了。注文内容により変動します）。役務期間は注文確定日から最大30日間です。</td>
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">返品・キャンセル</td>
                   <td className="px-6 py-4 text-gray-900">
                     <p>・作業開始前：全額返金</p>
                     <p>・代行者都合による中止：全額返金</p>
+                    <p>・目標未達成（購入後30日以内）：全額返金</p>
                     <p>・作業開始後のお客様都合：返金不可</p>
                     <p>・アカウントBAN等のゲーム側措置による中止：返金不可</p>
-                    <p className="text-gray-500 text-xs mt-1">※返金処理に係る手数料は当サービスが負担します</p>
+                    <p className="text-gray-500 text-xs mt-1">※返金保証期間は購入後30日以内です</p>
+                    <p className="text-gray-500 text-xs">※返金処理に係る手数料は当サービスが負担します</p>
                   </td>
                 </tr>
                 <tr>

@@ -33,8 +33,8 @@ export default function GameFeatures() {
     },
     {
       icon: 'ri-money-dollar-circle-line',
-      title: '完全返金保証',
-      description: '目標未達成の場合は全額返金。リスクゼロでご利用いただけます。',
+      title: '30日間返金保証',
+      description: '購入後30日以内に目標未達成の場合は全額返金。リスクゼロでご利用いただけます。',
       color: 'from-red-500 to-pink-600'
     }
   ];

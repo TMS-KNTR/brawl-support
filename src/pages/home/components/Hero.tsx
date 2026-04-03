@@ -212,7 +212,7 @@ export default function Hero() {
           <p className="hero-subtitle text-[13px] sm:text-[15px] text-[#9090B0] leading-relaxed max-w-lg mx-auto mb-12 font-medium">
             面倒なランク上げは、プロに任せて待つだけ。
             <br />
-            安全決済・匿名チャット・返金保証つき。
+            安全決済・匿名チャット・30日間返金保証つき。
           </p>
 
           {/* CTA buttons */}

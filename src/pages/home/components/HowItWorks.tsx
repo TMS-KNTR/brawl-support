@@ -81,7 +81,7 @@ export default function HowItWorks() {
     {
       num: '06',
       title: '完了',
-      desc: '目標達成を確認して完了。未達成の場合は全額返金いたします。',
+      desc: '目標達成を確認して完了。購入後30日以内に未達成の場合は全額返金いたします。',
       icon: 'ri-checkbox-circle-line',
     },
   ];
