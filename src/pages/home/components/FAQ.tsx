@@ -162,12 +162,12 @@ export default function FAQ() {
     {
       icon: 'ri-refund-line',
       q: '目標が達成できなかった場合、返金はできますか？',
-      a: '30日間の返金保証があります。購入後30日以内に依頼した目標が達成されなかった場合、お支払い金額を全額返金いたします。エスクロー方式を採用しているため、代行完了が確認されるまで代金は安全に保全されます。',
+      a: '30日間の返金保証があります。購入後30日以内に依頼した目標が達成されなかった場合、お支払い金額を全額返金いたします。代行完了が確認されるまで代金は安全に保管されます。',
     },
     {
       icon: 'ri-bank-card-line',
       q: 'どのような支払い方法に対応していますか？',
-      a: 'クレジットカード（Visa / Mastercard / JCB / AMEX）およびPayPayに対応しています。すべての決済はStripeを通じて安全に処理されます。',
+      a: 'クレジットカード（Visa / Mastercard / JCB / AMEX）、コンビニ決済、銀行振込に対応しています。すべての決済はUnivaPayを通じて安全に処理されます。',
     },
     {
       icon: 'ri-time-line',
@@ -190,16 +190,16 @@ export default function FAQ() {
     <section id="faq" className="py-24 bg-[#F8F6FF] overflow-hidden">
       <style>{`
         @keyframes faq-fadeUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
+          to   { opacity: 1; transform: translateY(0) rotateX(0); }
         }
         @keyframes faq-headerIn {
-          from { opacity: 0; transform: translateY(16px) rotateX(30deg); }
-          to   { opacity: 1; transform: translateY(0) rotateX(0deg); }
+          from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
+          to   { opacity: 1; transform: translateY(0) rotateX(0); }
         }
         @keyframes faq-slideIn {
-          from { opacity: 0; transform: translateX(-20px) translateY(12px); }
-          to   { opacity: 1; transform: translateX(0) translateY(0); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         .faq-item {
           position: relative;
@@ -239,7 +239,7 @@ export default function FAQ() {
             className="text-[13px] text-[#7C6F99] max-w-md mx-auto leading-relaxed font-medium"
             style={{
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'faq-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s forwards' : 'none',
+              animation: header.visible ? 'faq-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s forwards' : 'none',
               animationFillMode: 'both',
             }}
           >

@@ -45,16 +45,16 @@ export default function GamesPage() {
 
       <style>{`
         @keyframes games-fadeUp {
-          from { opacity: 0; transform: translateY(28px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         @keyframes games-headerIn {
-          from { opacity: 0; transform: translateY(18px) rotateX(35deg); }
-          to   { opacity: 1; transform: translateY(0) rotateX(0deg); }
+          from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
+          to   { opacity: 1; transform: translateY(0) rotateX(0); }
         }
         @keyframes games-scaleIn {
-          from { opacity: 0; transform: scale(0.94) translateY(20px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         @keyframes games-shimmer {
           0%   { background-position: -200% center; }
@@ -172,29 +172,30 @@ export default function GamesPage() {
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-20 lg:pt-32 lg:pb-28">
-          <div className="max-w-3xl mx-auto text-center">
+          <div className="max-w-3xl mx-auto text-center" style={{ perspective: '800px' }}>
             <p
-              className="text-[11px] font-bold tracking-[0.3em] uppercase text-[#8B7AFF] mb-6 opacity-0"
+              className="text-[11px] font-bold tracking-[0.3em] uppercase text-[#8B7AFF] mb-6"
               style={{
                 fontFamily: '"Orbitron", sans-serif',
-                animation: 'games-fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) 0.1s forwards',
+                animation: 'games-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) both',
               }}
             >
               Games
             </p>
             <h1
-              className="text-[clamp(1.8rem,5vw,3.5rem)] font-extrabold leading-[1.1] text-white mb-5 opacity-0"
+              className="text-[clamp(1.8rem,5vw,3.5rem)] font-extrabold leading-[1.1] text-white mb-5"
               style={{
                 fontFamily: '"Orbitron", sans-serif',
-                animation: 'games-fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.2s forwards',
+                perspective: '800px',
+                animation: 'games-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.12s both',
               }}
             >
               対応ゲーム
             </h1>
             <p
-              className="text-[15px] text-[#9090B0] leading-relaxed max-w-md mx-auto font-medium opacity-0"
+              className="text-[15px] text-[#9090B0] leading-relaxed max-w-md mx-auto font-medium"
               style={{
-                animation: 'games-fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.35s forwards',
+                animation: 'games-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s both',
               }}
             >
               プロの代行者が対応可能なゲームタイトル一覧です。
@@ -241,7 +242,7 @@ export default function GamesPage() {
               className="text-[13px] text-[#7C6F99] max-w-md mx-auto leading-relaxed font-medium"
               style={{
                 opacity: header.visible ? 1 : 0,
-                animation: header.visible ? 'games-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s forwards' : 'none',
+                animation: header.visible ? 'games-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s forwards' : 'none',
                 animationFillMode: 'both',
               }}
             >
@@ -443,7 +444,7 @@ export default function GamesPage() {
         <div className="games-dot" style={{ top: '65%', left: '40%', animation: 'games-drift3 6s ease-in-out infinite 2s' }} />
         <div className="games-dot" style={{ top: '40%', right: '30%', animation: 'games-drift1 10s ease-in-out infinite 5s' }} />
 
-        <div ref={cta.ref} className="relative z-10 py-24 sm:py-28 text-center max-w-2xl mx-auto px-6 lg:px-8">
+        <div ref={cta.ref} className="relative z-10 py-24 sm:py-28 text-center max-w-2xl mx-auto px-6 lg:px-8" style={{ perspective: '800px' }}>
           <h2
             className="text-2xl sm:text-3xl font-extrabold text-white tracking-wider mb-5"
             style={{
@@ -460,7 +461,7 @@ export default function GamesPage() {
             className="text-[14px] text-[#9890B8] mb-10 max-w-md mx-auto leading-relaxed font-medium"
             style={{
               opacity: cta.visible ? 1 : 0,
-              animation: cta.visible ? 'games-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s forwards' : 'none',
+              animation: cta.visible ? 'games-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s forwards' : 'none',
               animationFillMode: 'both',
             }}
           >
@@ -468,9 +469,6 @@ export default function GamesPage() {
           </p>
           <div
             style={{
-              opacity: cta.visible ? 1 : 0,
-              animation: cta.visible ? 'games-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s forwards' : 'none',
-              animationFillMode: 'both',
             }}
           >
             <button

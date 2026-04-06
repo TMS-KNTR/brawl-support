@@ -23,7 +23,7 @@ type EmployeeProfile = {
   username: string | null;
   full_name: string | null;
   balance: number;
-  stripe_account_id: string | null;
+  bank_account_info: any | null;
   role: string;
 };
 
@@ -119,7 +119,7 @@ export default function AdminWithdrawalsPage() {
 
   /* ── 承認 ── */
   async function handleApprove(w: Withdrawal) {
-    if (!confirm(`¥${w.amount.toLocaleString()} の出金を承認してStripe送金を実行しますか？`)) return;
+    if (!confirm(`¥${w.amount.toLocaleString()} の出金を承認して振込完了として処理しますか？`)) return;
     setProcessingId(w.id);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -462,7 +462,7 @@ export default function AdminWithdrawalsPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {emp.stripe_account_id ? (
+                            {emp.bank_account_info ? (
                               <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded">登録済</span>
                             ) : (
                               <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded">未登録</span>

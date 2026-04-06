@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
 // ============================================================
@@ -71,7 +70,7 @@ async function handleListWithdrawals(sb: SupabaseClient) {
       .limit(500),
     sb
       .from("profiles")
-      .select("id,username,full_name,balance,role,stripe_account_id")
+      .select("id,username,full_name,balance,role,bank_account_info")
       .in("role", ["employee", "worker", "admin"]),
   ]);
   if (withdrawalsRes.error) throw new Error(withdrawalsRes.error.message);
@@ -684,69 +683,51 @@ async function handleGetStripeFees(
   if (!params.from_date || !params.to_date)
     throw new Error("from_date と to_date が必要です");
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-  if (!stripeKey) throw new Error("STRIPE_SECRET_KEY が設定されていません");
+  // DB上の注文データから決済手数料を概算（UnivaPayの実手数料はUnivaPay管理画面で確認）
+  // platform_fee は自社の手数料。決済手数料は売上 × 決済手数料率（通常3.6%程度）で概算
+  const PAYMENT_FEE_RATE = 0.036; // UnivaPay決済手数料率（契約により異なる）
 
-  const stripe = new Stripe(stripeKey, {
-    apiVersion: "2023-10-16",
-    httpClient: Stripe.createFetchHttpClient(),
-  });
+  const sb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
-  const fromTs = Math.floor(new Date(params.from_date).getTime() / 1000);
-  const toTs = Math.floor(new Date(params.to_date + "T23:59:59Z").getTime() / 1000);
+  const { data: orders, error } = await sb
+    .from("orders")
+    .select("price, created_at")
+    .gte("created_at", params.from_date)
+    .lte("created_at", params.to_date + "T23:59:59Z")
+    .in("status", ["paid", "assigned", "in_progress", "completed", "confirmed"]);
 
-  // Balance transactions から手数料を集計
+  if (error) throw new Error(error.message);
+
   let totalFees = 0;
   let totalGross = 0;
-  let totalNet = 0;
   let transactionCount = 0;
   const monthlyFees: Record<string, { fees: number; gross: number; net: number; count: number }> = {};
 
-  let hasMore = true;
-  let startingAfter: string | undefined;
+  for (const order of orders || []) {
+    const gross = order.price || 0;
+    const fee = Math.round(gross * PAYMENT_FEE_RATE);
+    const net = gross - fee;
 
-  while (hasMore) {
-    const listParams: Record<string, unknown> = {
-      created: { gte: fromTs, lte: toTs },
-      limit: 100,
-      type: "charge",
-    };
-    if (startingAfter) listParams.starting_after = startingAfter;
+    totalFees += fee;
+    totalGross += gross;
+    transactionCount++;
 
-    const txns = await stripe.balanceTransactions.list(listParams as any);
-
-    for (const txn of txns.data) {
-      const fee = txn.fee; // Stripe手数料（円）
-      const gross = txn.amount;
-      const net = txn.net;
-
-      totalFees += fee;
-      totalGross += gross;
-      totalNet += net;
-      transactionCount++;
-
-      // 月別集計
-      const d = new Date(txn.created * 1000);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (!monthlyFees[key]) monthlyFees[key] = { fees: 0, gross: 0, net: 0, count: 0 };
-      monthlyFees[key].fees += fee;
-      monthlyFees[key].gross += gross;
-      monthlyFees[key].net += net;
-      monthlyFees[key].count++;
-    }
-
-    hasMore = txns.has_more;
-    if (txns.data.length > 0) {
-      startingAfter = txns.data[txns.data.length - 1].id;
-    } else {
-      hasMore = false;
-    }
+    const d = new Date(order.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!monthlyFees[key]) monthlyFees[key] = { fees: 0, gross: 0, net: 0, count: 0 };
+    monthlyFees[key].fees += fee;
+    monthlyFees[key].gross += gross;
+    monthlyFees[key].net += net;
+    monthlyFees[key].count++;
   }
 
   return {
     total_fees: totalFees,
     total_gross: totalGross,
-    total_net: totalNet,
+    total_net: totalGross - totalFees,
     transaction_count: transactionCount,
     monthly: monthlyFees,
   };

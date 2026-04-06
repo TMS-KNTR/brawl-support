@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 import { getCorsHeaders, handleCors, requireJsonContentType } from '../_shared/cors.ts'
@@ -13,11 +12,6 @@ serve(async (req: Request) => {
 
   try {
     requireJsonContentType(req)
-
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-      apiVersion: "2023-10-16",
-      httpClient: Stripe.createFetchHttpClient(),
-    });
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -33,7 +27,7 @@ serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, balance, stripe_account_id")
+      .select("role, balance, bank_account_info")
       .eq("id", user.id)
       .single();
 
@@ -61,7 +55,7 @@ serve(async (req: Request) => {
     const currentBalance = profile?.balance || 0;
     if (amount > currentBalance) throw new Error(`残高不足です（残高: ¥${currentBalance.toLocaleString()}）`);
 
-    if (!profile?.stripe_account_id) {
+    if (!profile?.bank_account_info) {
       throw new Error("銀行口座が未登録です。先に口座登録を行ってください。");
     }
 

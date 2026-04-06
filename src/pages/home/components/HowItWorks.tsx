@@ -57,7 +57,7 @@ export default function HowItWorks() {
     {
       num: '02',
       title: '決済',
-      desc: 'Stripeによる安全な決済でクレジットカードまたはPayPayでお支払い。完了まで代金はエスクローで保全されます。',
+      desc: 'UnivaPayによる安全な決済でクレジットカードでお支払い。完了まで代金は安全に保管されます。',
       icon: 'ri-secure-payment-line',
     },
     {
@@ -81,7 +81,7 @@ export default function HowItWorks() {
     {
       num: '06',
       title: '完了',
-      desc: '目標達成を確認して完了。購入後30日以内に未達成の場合は全額返金いたします。',
+      desc: '目標達成を確認して完了。完了確認するまで代金は安全に保管されます。',
       icon: 'ri-checkbox-circle-line',
     },
   ];
@@ -125,21 +125,20 @@ export default function HowItWorks() {
       {/* Keyframe animations */}
       <style>{`
         @keyframes hiw-fadeUp {
-          from { opacity: 0; transform: translateY(28px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         @keyframes hiw-fadeLeft {
-          from { opacity: 0; transform: translateX(40px); }
-          to   { opacity: 1; transform: translateX(0); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         @keyframes hiw-fadeRight {
-          from { opacity: 0; transform: translateX(-40px); }
-          to   { opacity: 1; transform: translateX(0); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         @keyframes hiw-nodeIn {
-          0%   { opacity: 0; transform: scale(0.3); }
-          60%  { opacity: 1; transform: scale(1.15); }
-          100% { opacity: 1; transform: scale(1); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         @keyframes hiw-pulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(91,58,232,0.45); }
@@ -150,8 +149,8 @@ export default function HowItWorks() {
           100% { opacity: 0; transform: scale(2.2); }
         }
         @keyframes hiw-headerWord {
-          from { opacity: 0; transform: translateY(16px) rotateX(40deg); }
-          to   { opacity: 1; transform: translateY(0) rotateX(0deg); }
+          from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
+          to   { opacity: 1; transform: translateY(0) rotateX(0); }
         }
         @keyframes hiw-shimmer {
           0%   { background-position: -200% center; }
@@ -241,7 +240,7 @@ export default function HowItWorks() {
             className="text-[13px] text-[#6B7280] max-w-md mx-auto leading-relaxed font-medium"
             style={{
               opacity: header.visible ? 1 : 0,
-              animation: header.visible ? 'hiw-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s forwards' : 'none',
+              animation: header.visible ? 'hiw-headerWord 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s forwards' : 'none',
               animationFillMode: 'both',
             }}
           >

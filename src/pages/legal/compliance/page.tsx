@@ -46,7 +46,7 @@ export default function CompliancePage() {
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">支払方法</td>
-                  <td className="px-6 py-4 text-gray-900">クレジットカード、PayPay（Stripe決済）</td>
+                  <td className="px-6 py-4 text-gray-900">クレジットカード（UnivaPay決済）</td>
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">支払時期</td>

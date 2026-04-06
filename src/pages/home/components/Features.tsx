@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /* ── Scroll-reveal ── */
 function useReveal(threshold = 0.2) {
@@ -17,63 +17,6 @@ function useReveal(threshold = 0.2) {
   return { ref, visible };
 }
 
-/* ── 3D tilt with dynamic shadow ── */
-function useTilt() {
-  const ref = useRef<HTMLDivElement>(null);
-  const glowRef = useRef<HTMLDivElement>(null);
-  const handleMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = ref.current;
-    const glow = glowRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    const rx = (y - 0.5) * -14;
-    const ry = (x - 0.5) * 14;
-    el.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(20px)`;
-    el.style.boxShadow = `${(x - 0.5) * -30}px ${(y - 0.5) * -30}px 60px rgba(91,58,232,0.2), 0 0 50px rgba(91,58,232,0.08)`;
-    if (glow) {
-      glow.style.opacity = '1';
-      glow.style.background = `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(139,122,255,0.25) 0%, transparent 60%)`;
-    }
-  }, []);
-  const handleLeave = useCallback(() => {
-    const el = ref.current;
-    const glow = glowRef.current;
-    if (el) { el.style.transform = ''; el.style.boxShadow = ''; }
-    if (glow) glow.style.opacity = '0';
-  }, []);
-  return { ref, glowRef, handleMove, handleLeave };
-}
-
-/* ── Glitch slot number ── */
-function GlitchNumber({ value, visible, delay }: { value: string; visible: boolean; delay: number }) {
-  const [display, setDisplay] = useState(value);
-  const [glitch, setGlitch] = useState(false);
-  const isNum = /^\d+$/.test(value);
-
-  useEffect(() => {
-    if (!visible) return;
-    const t = setTimeout(() => {
-      if (!isNum) { setGlitch(true); setTimeout(() => setGlitch(false), 400); return; }
-      const target = parseInt(value);
-      let f = 0;
-      setGlitch(true);
-      const iv = setInterval(() => {
-        f++;
-        if (f > 20) { setDisplay(value); setGlitch(false); clearInterval(iv); }
-        else setDisplay(String(Math.floor(Math.random() * (target + 80))));
-      }, 35);
-      return () => clearInterval(iv);
-    }, delay);
-    return () => clearTimeout(t);
-  }, [visible, value, isNum, delay]);
-
-  return (
-    <span className={glitch ? 'feat-glitch-active' : ''}>{display}</span>
-  );
-}
-
 /* ── Star field ── */
 const STARS = Array.from({ length: 40 }, (_, i) => ({
   id: i, x: Math.random() * 100, y: Math.random() * 100,
@@ -86,14 +29,12 @@ const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
   dur: 7 + Math.random() * 10, del: Math.random() * 6, hue: Math.random() > 0.5,
 }));
 
-const TIERS = ['SSR', 'UR', 'LR'];
-const TIER_COLORS = ['#C4B5FD', '#8B7AFF', '#FFD700'];
 
 export default function Features() {
-  const cards = [
-    { icon: 'ri-shield-check-line', highlight: 'PayPay', suffix: '', title: 'PayPay対応の安全決済', desc: 'クレジットカード・PayPayに対応。エスクロー方式で代行完了まで代金を安全に保全。', fx: 'shield' },
-    { icon: 'ri-chat-private-line', highlight: '0', suffix: '件', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。アカウント共有も専用チャットで安全に。', fx: 'rings' },
-    { icon: 'ri-star-line', highlight: '99', suffix: '%', title: 'プロの技術', desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。', fx: 'stars' },
+  const features = [
+    { icon: 'ri-bank-card-line', title: '選べる決済方法', desc: 'クレカ・コンビニ・銀行振込に対応。代行完了まで代金を安全に保管。', accent: '#8B7AFF', svgColor: '#10B981' },
+    { icon: 'ri-chat-private-line', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。アカウント共有も専用チャットで安全に。', accent: '#5B3AE8', svgColor: '#3B82F6' },
+    { icon: 'ri-star-line', title: 'プロの技術', desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。', accent: '#C4B5FD', svgColor: '#F59E0B' },
   ];
 
   const secondary = [
@@ -105,8 +46,7 @@ export default function Features() {
   const header = useReveal(0.3);
   const grid = useReveal(0.08);
   const sub = useReveal(0.15);
-  const t0 = useTilt(), t1 = useTilt(), t2 = useTilt();
-  const tilts = [t0, t1, t2];
+
 
   return (
     <section className="relative py-32 overflow-hidden">
@@ -117,10 +57,6 @@ export default function Features() {
           25% { background-position: 50% 0%; }
           50% { background-position: 100% 50%; }
           75% { background-position: 50% 100%; }
-        }
-        @keyframes feat-scanline {
-          0% { top: -5%; }
-          100% { top: 105%; }
         }
         @keyframes feat-twinkle {
           0%,100% { opacity: 0.1; }
@@ -140,60 +76,135 @@ export default function Features() {
           from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
           to { opacity: 1; transform: translateY(0) rotateX(0); }
         }
-        @keyframes feat-materialize {
-          0% { opacity: 0; transform: scale(0.85) translateY(40px); filter: blur(8px) brightness(2); }
-          40% { filter: blur(0) brightness(1.5); }
-          70% { transform: scale(1.02) translateY(-4px); }
-          100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0) brightness(1); }
-        }
-        @keyframes feat-flash {
-          0% { opacity: 0.8; }
-          100% { opacity: 0; }
-        }
-        @keyframes feat-numberIn {
-          0% { opacity: 0; transform: scale(0.5) translateY(20px); filter: blur(10px); }
-          50% { opacity: 1; transform: scale(1.08) translateY(-6px); filter: blur(0); }
-          75% { transform: scale(0.97) translateY(2px); }
-          100% { opacity: 1; transform: scale(1) translateY(0); }
+
+        @keyframes feat-cardReveal {
+          0% {
+            opacity: 0;
+            transform: translateY(40px) scale(0.95);
+            filter: blur(12px) brightness(1.5);
+          }
+          40% {
+            opacity: 1;
+            filter: blur(4px) brightness(1.2);
+          }
+          70% {
+            transform: translateY(-4px) scale(1.01);
+            filter: blur(0) brightness(1.05);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0) brightness(1);
+          }
         }
 
-        /* ══ CARD FX ══ */
-        @keyframes feat-float {
-          0%,100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
+        /* ══ ACCENT LINE — left to right sweep ══ */
+        @keyframes feat-lineSweep {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
         }
-        @keyframes feat-holoShift {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 300% 50%; }
+
+        /* ══ ACCENT DOT — breathing pulse ══ */
+        @keyframes feat-dotBreathe {
+          0%, 100% { box-shadow: 0 0 0 0 var(--dot-color, #8B7AFF); }
+          50% { box-shadow: 0 0 0 6px transparent; }
         }
-        @keyframes feat-meshMorph {
-          0%,100% { background-position: 0% 0%; }
-          33% { background-position: 100% 50%; }
-          66% { background-position: 50% 100%; }
+        @keyframes feat-dotRingPulse {
+          0% { transform: scale(1); opacity: 0.5; }
+          100% { transform: scale(3); opacity: 0; }
         }
-        @keyframes feat-shimmerSweep {
+
+        /* ══ TITLE CHARS ══ */
+        @keyframes feat-charIn {
+          from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        /* ══ SVG FLOAT ══ */
+        @keyframes feat-svgFloat {
+          0%,100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-6px) rotate(2deg); }
+        }
+
+        /* ══ CARD CLASS ══ */
+        .feat-card {
+          transition: transform 0.5s cubic-bezier(0.22,1,0.36,1),
+                      box-shadow 0.5s cubic-bezier(0.22,1,0.36,1),
+                      border-color 0.4s ease;
+        }
+        .feat-card:hover {
+          transform: translateY(-8px);
+          box-shadow:
+            0 24px 60px rgba(91,58,232,0.10),
+            0 8px 24px rgba(0,0,0,0.04),
+            0 0 0 1px rgba(139,122,255,0.15);
+          border-color: rgba(139,122,255,0.35);
+        }
+
+        /* Hover: border glow pulse */
+        .feat-card:hover .feat-border-glow {
+          opacity: 1;
+        }
+
+        /* Hover: dot glow + scale + ring explode */
+        .feat-dot-inner {
+          transition: transform 0.3s cubic-bezier(0.22,1,0.36,1),
+                      background 0.3s ease,
+                      box-shadow 0.3s ease;
+        }
+        .feat-card:hover .feat-dot-inner {
+          transform: scale(1.6);
+          background: #5B3AE8 !important;
+          box-shadow: 0 0 10px rgba(139,122,255,0.5), 0 0 20px rgba(91,58,232,0.2);
+        }
+        .feat-card:hover .feat-dot-ring {
+          animation: feat-dotRingPulse 0.8s ease-out;
+        }
+
+        /* Hover: SVG visual lifts and glows */
+        .feat-card .feat-visual {
+          transition: transform 0.6s cubic-bezier(0.22,1,0.36,1),
+                      filter 0.6s ease;
+          animation: feat-svgFloat 5s ease-in-out infinite;
+        }
+        .feat-card:nth-child(2) .feat-visual { animation-delay: -1.7s; }
+        .feat-card:nth-child(3) .feat-visual { animation-delay: -3.3s; }
+        .feat-card:hover .feat-visual {
+          animation-play-state: paused;
+          transform: rotate(6deg) scale(1.12);
+          filter: drop-shadow(0 4px 12px var(--accent-glow, rgba(139,122,255,0.3)));
+        }
+
+        /* Hover: shimmer sweep */
+        @keyframes feat-shimmer {
           0% { transform: translateX(-100%) skewX(-15deg); }
           100% { transform: translateX(250%) skewX(-15deg); }
         }
-        @keyframes feat-chargeVibrate {
-          0%,100% { transform: translateX(0); }
-          25% { transform: translateX(-1px); }
-          75% { transform: translateX(1px); }
+        .feat-card:hover .feat-shimmer {
+          animation: feat-shimmer 1.2s ease-in-out;
         }
 
-        /* Unique FX */
-        @keyframes feat-shieldAura {
-          0%,100% { box-shadow: 0 0 0 0 rgba(91,58,232,0.4), 0 0 0 0 rgba(139,122,255,0.2); }
-          50% { box-shadow: 0 0 24px 8px rgba(91,58,232,0.12), 0 0 40px 16px rgba(139,122,255,0.06); }
+        /* ══ SECONDARY ══ */
+        @keyframes feat-hexReveal {
+          0% { opacity: 0; transform: scale(0.4) rotate(-30deg); }
+          60% { transform: scale(1.15) rotate(5deg); }
+          100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
-        @keyframes feat-ringPulse {
-          0% { transform: scale(0.5); opacity: 0.7; border-color: rgba(139,122,255,0.3); }
-          100% { transform: scale(2.2); opacity: 0; border-color: rgba(139,122,255,0); }
+        .feat-hex {
+          clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
         }
-        @keyframes feat-starBurst {
-          0%,100% { opacity: 0; transform: scale(0) rotate(0deg); }
-          30% { opacity: 1; transform: scale(1.2) rotate(90deg); }
-          60% { opacity: 0.6; transform: scale(0.8) rotate(180deg); }
+        .feat-hex-cell {
+          transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+        }
+        .feat-hex-cell:hover {
+          transform: translateY(-4px);
+        }
+        .feat-hex-cell:hover .feat-hex {
+          box-shadow: 0 0 16px rgba(91,58,232,0.15);
+        }
+        .feat-hex-cell:hover .feat-hex-icon {
+          transform: scale(1.15) rotate(8deg);
+          transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
         }
 
         /* Particles */
@@ -202,68 +213,6 @@ export default function Features() {
           10% { opacity: var(--po,0.3); }
           80% { opacity: var(--po,0.3); }
           100% { transform: translateY(-220px) translateX(30px) scale(0.5); opacity: 0; }
-        }
-
-        /* Secondary */
-        @keyframes feat-hexReveal {
-          0% { opacity: 0; transform: scale(0.4) rotate(-30deg); }
-          60% { transform: scale(1.15) rotate(5deg); }
-          100% { opacity: 1; transform: scale(1) rotate(0deg); }
-        }
-        @keyframes feat-energyPulse {
-          0% { left: 0%; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { left: 100%; opacity: 0; }
-        }
-
-        /* Glitch */
-        .feat-glitch-active {
-          animation: feat-glitchText 0.1s steps(2) infinite;
-        }
-        @keyframes feat-glitchText {
-          0% { text-shadow: 2px 0 #8B7AFF, -2px 0 #C4B5FD; }
-          50% { text-shadow: -1px 0 #5B3AE8, 1px 0 #FFD700; }
-          100% { text-shadow: 1px 0 #C4B5FD, -1px 0 #8B7AFF; }
-        }
-
-        /* ══ CARD CLASS ══ */
-        .feat-loot-card {
-          transition: transform 0.6s cubic-bezier(0.22,1,0.36,1), box-shadow 0.6s ease;
-          animation: feat-float 6s ease-in-out infinite;
-          will-change: transform, box-shadow;
-          transform-style: preserve-3d;
-        }
-        .feat-loot-card:nth-child(2) { animation-delay: -2s; }
-        .feat-loot-card:nth-child(3) { animation-delay: -4s; }
-        .feat-loot-card:hover {
-          animation: feat-chargeVibrate 0.05s steps(2) 3;
-        }
-
-        /* Holo border */
-        .feat-holo {
-          position: absolute; inset: -1.5px; border-radius: 1.125rem; padding: 1.5px; pointer-events: none;
-          background: linear-gradient(135deg, #5B3AE8, #8B7AFF, #C4B5FD, #FFD700, #8B7AFF, #5B3AE8, #C4B5FD);
-          background-size: 400% 400%;
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor; mask-composite: exclude;
-          opacity: 0; transition: opacity 0.5s ease;
-        }
-        .feat-loot-card:hover .feat-holo {
-          opacity: 1;
-          animation: feat-holoShift 3s linear infinite;
-        }
-
-        /* Noise texture overlay */
-        .feat-noise {
-          position: absolute; inset: 0; border-radius: inherit; pointer-events: none; mix-blend-mode: overlay; opacity: 0.06;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-          background-size: 128px 128px;
-        }
-
-        /* Hexagon clip */
-        .feat-hex {
-          clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
         }
       `}</style>
 
@@ -330,7 +279,6 @@ export default function Features() {
         />
       ))}
 
-
       {/* Vignette */}
       <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 120px rgba(26,26,46,0.06)' }} />
 
@@ -373,190 +321,145 @@ export default function Features() {
           </p>
         </div>
 
-        {/* ══ LOOT CARDS ══ */}
-        <div ref={grid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          {cards.map((c, i) => {
-            const t = tilts[i];
-            return (
+        {/* ══ FEATURE CARDS ══ */}
+        <div ref={grid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-16 items-start">
+          {features.map((f, i) => (
+            <div
+              key={i}
+              className="feat-card relative rounded-2xl overflow-hidden cursor-default"
+              style={{
+                '--accent-glow': 'rgba(91,58,232,0.3)',
+                '--dot-color': 'rgba(91,58,232,0.25)',
+                background: '#fff',
+                border: '1px solid rgba(91,58,232,0.15)',
+                opacity: grid.visible ? 1 : 0,
+                animation: grid.visible
+                  ? `feat-cardReveal 0.9s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.18}s both`
+                  : 'none',
+              } as React.CSSProperties}
+            >
+              {/* Border glow on hover */}
               <div
-                key={i}
-                ref={t.ref}
-                onMouseMove={t.handleMove}
-                onMouseLeave={t.handleLeave}
-                className="feat-loot-card group relative rounded-2xl cursor-default"
+                className="feat-border-glow absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-500 z-[3]"
                 style={{
-                  opacity: grid.visible ? 1 : 0,
-                  animation: grid.visible
-                    ? `feat-materialize 0.9s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.2}s both`
-                    : 'none',
+                  opacity: 0,
+                  boxShadow: 'inset 0 0 24px rgba(91,58,232,0.09), 0 0 20px rgba(91,58,232,0.07)',
                 }}
-              >
-                {/* Holo border */}
-                <div className="feat-holo" />
+              />
 
-                {/* Card surface */}
+              {/* Shimmer sweep on hover */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-[4]">
                 <div
-                  className="relative p-8 rounded-2xl overflow-hidden h-full"
+                  className="feat-shimmer absolute top-0 bottom-0 w-[35%] opacity-0 group-hover:opacity-100"
                   style={{
-                    background: `
-                      radial-gradient(ellipse 120% 80% at ${20 + i * 30}% 110%, rgba(91,58,232,0.18) 0%, transparent 50%),
-                      radial-gradient(ellipse 80% 60% at ${70 - i * 20}% -10%, rgba(139,122,255,0.08) 0%, transparent 50%),
-                      linear-gradient(155deg, #151025 0%, #0C0618 35%, #110A28 65%, #0E071E 100%)
-                    `,
-                    backgroundSize: '100% 100%, 100% 100%, 100% 100%',
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)',
                   }}
+                />
+              </div>
+
+              {/* Left accent line */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl z-[2]"
+                style={{ background: 'linear-gradient(180deg, #5B3AE8, rgba(91,58,232,0.1))' }}
+              />
+
+
+
+              <div className="relative px-7 pt-8 pb-9">
+                {/* SVG Visual — floating */}
+                <div
+                  className="feat-visual absolute top-4 right-4 pointer-events-none z-[1]"
+                  style={{ width: 110, height: 110 }}
                 >
-                  {/* Animated mesh */}
+                  {i === 0 && (
+                    <svg viewBox="0 0 64 64" fill="none" className="w-full h-full">
+                      <rect x="8" y="16" width="40" height="28" rx="4" fill={f.svgColor} fillOpacity="0.15" stroke={f.svgColor} strokeOpacity="0.4" strokeWidth="1.5" />
+                      <rect x="8" y="22" width="40" height="5" fill={f.svgColor} fillOpacity="0.2" />
+                      <rect x="12" y="34" width="14" height="3" rx="1.5" fill={f.svgColor} fillOpacity="0.25" />
+                      <circle cx="52" cy="14" r="9" fill={f.svgColor} fillOpacity="0.2" stroke={f.svgColor} strokeOpacity="0.45" strokeWidth="1.5" />
+                      <text x="52" y="18" textAnchor="middle" fontSize="10" fontWeight="bold" fill={f.svgColor} fillOpacity="0.5">¥</text>
+                    </svg>
+                  )}
+                  {i === 1 && (
+                    <svg viewBox="0 0 64 64" fill="none" className="w-full h-full">
+                      <path d="M32 6L52 16V30C52 42 43 51 32 56C21 51 12 42 12 30V16L32 6Z" fill={f.svgColor} fillOpacity="0.12" stroke={f.svgColor} strokeOpacity="0.4" strokeWidth="1.5" strokeLinejoin="round" />
+                      <rect x="26" y="28" width="12" height="10" rx="2" fill={f.svgColor} fillOpacity="0.2" />
+                      <path d="M29 28V24C29 22.3 30.3 21 32 21C33.7 21 35 22.3 35 24V28" stroke={f.svgColor} strokeOpacity="0.45" strokeWidth="1.5" strokeLinecap="round" />
+                      <circle cx="32" cy="33" r="1.5" fill={f.svgColor} fillOpacity="0.5" />
+                    </svg>
+                  )}
+                  {i === 2 && (
+                    <svg viewBox="0 0 64 64" fill="none" className="w-full h-full">
+                      <path d="M22 14H42V28C42 34 38 40 32 42C26 40 22 34 22 28V14Z" fill={f.svgColor} fillOpacity="0.12" stroke={f.svgColor} strokeOpacity="0.3" strokeWidth="1.5" />
+                      <path d="M22 18H16C16 24 18 26 22 26" stroke={f.svgColor} strokeOpacity="0.3" strokeWidth="1.5" strokeLinecap="round" />
+                      <path d="M42 18H48C48 24 46 26 42 26" stroke={f.svgColor} strokeOpacity="0.3" strokeWidth="1.5" strokeLinecap="round" />
+                      <path d="M32 20L34 26L40 26L35 30L37 36L32 32L27 36L29 30L24 26L30 26Z" fill={f.svgColor} fillOpacity="0.25" stroke={f.svgColor} strokeOpacity="0.5" strokeWidth="1" strokeLinejoin="round" />
+                      <rect x="27" y="44" width="10" height="3" rx="1.5" fill={f.svgColor} fillOpacity="0.2" />
+                      <rect x="24" y="48" width="16" height="2" rx="1" fill={f.svgColor} fillOpacity="0.15" />
+                    </svg>
+                  )}
+                </div>
+
+                {/* Accent dot with pulse ring */}
+                <div className="relative w-3 h-3 mb-6">
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-30"
+                    className="feat-dot-inner absolute inset-0 rounded-full"
                     style={{
-                      background: `
-                        radial-gradient(circle at ${30 + i * 20}% 80%, rgba(91,58,232,0.2) 0%, transparent 40%),
-                        radial-gradient(circle at ${70 - i * 15}% 20%, rgba(139,122,255,0.15) 0%, transparent 40%)
-                      `,
-                      backgroundSize: '200% 200%',
-                      animation: 'feat-meshMorph 12s ease infinite',
+                      background: '#5B3AE8',
+                      animation: `feat-dotBreathe 2.5s ease-in-out ${i * 0.8}s infinite`,
                     }}
                   />
-
-                  {/* Noise texture */}
-                  <div className="feat-noise" />
-
-                  {/* Hover shimmer */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-[6]">
-                    <div
-                      className="absolute top-0 bottom-0 w-[40%]"
-                      style={{
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-                        animation: 'feat-shimmerSweep 2s ease-in-out infinite',
-                      }}
-                    />
-                  </div>
-
-                  {/* Mouse glow */}
                   <div
-                    ref={t.glowRef}
-                    className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300 z-[5]"
-                    style={{ opacity: 0 }}
+                    className="feat-dot-ring absolute inset-0 rounded-full"
+                    style={{ border: '1.5px solid rgba(91,58,232,0.3)' }}
                   />
-
-
-
-                  {/* ── Unique FX ── */}
-                  {c.fx === 'shield' && (
-                    <div className="absolute top-12 right-8 pointer-events-none z-[2]">
-                      <div className="relative w-14 h-14 flex items-center justify-center" style={{ animation: 'feat-shieldAura 3s ease-in-out infinite' }}>
-                        <i className="ri-shield-check-fill text-[28px] text-[#5B3AE8]/15"></i>
-                      </div>
-                    </div>
-                  )}
-                  {c.fx === 'rings' && (
-                    <div className="absolute top-14 right-10 pointer-events-none z-[2]">
-                      {[0,1,2,3].map(r => (
-                        <div
-                          key={r}
-                          className="absolute rounded-full border"
-                          style={{
-                            width: 24, height: 24, top: -12, left: -12,
-                            borderColor: `rgba(139,122,255,${0.2 - r * 0.04})`,
-                            animation: `feat-ringPulse ${1.8 + r * 0.4}s ease-out ${r * 0.5}s infinite`,
-                          }}
-                        />
-                      ))}
-                      <i className="ri-lock-2-fill text-[14px] text-[#8B7AFF]/20 relative z-10"></i>
-                    </div>
-                  )}
-                  {c.fx === 'stars' && (
-                    <div className="absolute top-10 right-6 pointer-events-none z-[2]">
-                      {[0,1,2,3,4].map(s => (
-                        <div
-                          key={s}
-                          className="absolute"
-                          style={{
-                            width: 3 + (s % 2) * 2, height: 3 + (s % 2) * 2,
-                            top: s * 10 - 5, left: (s % 3) * 14 - 8,
-                            borderRadius: '50%',
-                            background: s % 2 === 0 ? '#FFD700' : '#C4B5FD',
-                            animation: `feat-starBurst ${1.5 + s * 0.3}s ease-in-out ${s * 0.5}s infinite`,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Flash overlay on reveal */}
-                  {grid.visible && (
-                    <div
-                      className="absolute inset-0 bg-white pointer-events-none rounded-2xl z-30"
-                      style={{
-                        animation: `feat-flash 0.5s ease ${0.15 + i * 0.2}s both`,
-                        opacity: 0,
-                      }}
-                    />
-                  )}
-
-                  {/* ── Content ── */}
-                  <div className="relative z-10">
-                    {/* Ghost number (depth layer) */}
-                    <div className="absolute -top-4 -left-2 pointer-events-none select-none" aria-hidden="true">
-                      <span
-                        className="text-[100px] font-black leading-none text-white/[0.02]"
-                        style={{ fontFamily: '"Orbitron", sans-serif' }}
-                      >
-                        {c.highlight}
-                      </span>
-                    </div>
-
-                    {/* Big number */}
-                    <div className="flex items-baseline gap-1.5 mb-5">
-                      <p
-                        className="text-[52px] font-black leading-none"
-                        style={{
-                          fontFamily: '"Orbitron", sans-serif',
-                          background: 'linear-gradient(135deg, #fff 0%, #E0D4FF 30%, #8B7AFF 60%, #5B3AE8 100%)',
-                          backgroundSize: '300% 300%',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          animation: grid.visible
-                            ? `feat-numberIn 0.9s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.2}s both`
-                            : 'none',
-                          opacity: 0,
-                        }}
-                      >
-                        <GlitchNumber value={c.highlight} visible={grid.visible} delay={400 + i * 200} />
-                      </p>
-                      {c.suffix && (
-                        <span className="text-[22px] font-bold text-white/25" style={{ fontFamily: '"Rajdhani", sans-serif' }}>
-                          {c.suffix}
-                        </span>
-                      )}
-                    </div>
-
-                    <h3
-                      className="text-[16px] font-bold text-white mb-2.5 tracking-wide"
-                      style={{ fontFamily: '"Rajdhani", sans-serif' }}
-                    >
-                      {c.title}
-                    </h3>
-                    <p className="text-[12px] text-[#9890B8] leading-[1.7] font-medium">
-                      {c.desc}
-                    </p>
-                  </div>
-
                 </div>
+
+                {/* Title — staggered char reveal */}
+                <h3
+                  className="text-[22px] font-extrabold text-[#1A1A2E] leading-[1.2] mb-3.5 tracking-wide"
+                  style={{ fontFamily: '"Rajdhani", sans-serif' }}
+                >
+                  {f.title.split('').map((char, ci) => (
+                    <span
+                      key={ci}
+                      className="inline-block"
+                      style={{
+                        opacity: grid.visible ? 1 : 0,
+                        animation: grid.visible
+                          ? `feat-charIn 0.35s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.18 + ci * 0.03}s both`
+                          : 'none',
+                      }}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </h3>
+
+                {/* Description */}
+                <p
+                  className="text-[13px] text-[#6B5F85] leading-[1.9] font-medium"
+                  style={{
+                    opacity: grid.visible ? 1 : 0,
+                    animation: grid.visible
+                      ? `feat-fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) ${0.8 + i * 0.18}s both`
+                      : 'none',
+                  }}
+                >
+                  {f.desc}
+                </p>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
 
-        {/* ══ SECONDARY — CIRCUIT HEXAGONS ══ */}
+        {/* ══ SECONDARY — HEXAGONS ══ */}
         <div ref={sub.ref} className="relative">
-
           <div className="grid grid-cols-3 gap-6">
             {secondary.map((s, i) => (
               <div
                 key={i}
-                className="flex flex-col items-center py-5"
+                className="feat-hex-cell flex flex-col items-center py-5 cursor-default"
                 style={{
                   opacity: sub.visible ? 1 : 0,
                   animation: sub.visible
@@ -565,10 +468,10 @@ export default function Features() {
                 }}
               >
                 <div
-                  className="feat-hex w-14 h-14 flex items-center justify-center mb-3.5 relative z-10"
+                  className="feat-hex w-14 h-14 flex items-center justify-center mb-3.5 relative z-10 transition-shadow duration-300"
                   style={{ background: 'linear-gradient(135deg, #EDE9FE, #F3F0FF)' }}
                 >
-                  <i className={`${s.icon} text-[20px] text-[#5B3AE8]`}></i>
+                  <i className={`${s.icon} text-[20px] text-[#5B3AE8] feat-hex-icon`} />
                 </div>
                 <span
                   className="text-[13px] font-bold text-[#1A1A2E] tracking-wide mb-1"

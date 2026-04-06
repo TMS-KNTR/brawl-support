@@ -25,7 +25,7 @@ export function getCorsHeaders(req?: Request): Record<string, string> {
   return {
     ...(origin ? { 'Access-Control-Allow-Origin': origin } : {}),
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature, x-internal-secret, x-requested-with',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret, x-requested-with',
     'Vary': 'Origin',
   }
 }

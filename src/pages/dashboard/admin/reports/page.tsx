@@ -45,7 +45,7 @@ interface Expense {
   created_at: string;
 }
 
-interface StripeFees {
+interface PaymentFees {
   total_fees: number;
   total_gross: number;
   total_net: number;
@@ -67,7 +67,7 @@ interface MonthlySummary {
 }
 
 const EXPENSE_CATEGORIES: { value: string; label: string }[] = [
-  { value: 'stripe_fee', label: 'Stripe決済手数料' },
+  { value: 'payment_fee', label: '決済手数料' },
   { value: 'server', label: 'サーバー・インフラ費' },
   { value: 'domain', label: 'ドメイン費' },
   { value: 'advertising', label: '広告宣伝費' },
@@ -131,9 +131,9 @@ export default function AdminReportsPage() {
   const [feeRate, setFeeRate] = useState(0.2);
   const [loading, setLoading] = useState(true);
 
-  // Stripe fees
-  const [stripeFees, setStripeFees] = useState<StripeFees | null>(null);
-  const [stripeFeesLoading, setStripeFeesLoading] = useState(false);
+  // UnivaPayfees
+  const [paymentFees, setPaymentFees] = useState<PaymentFees | null>(null);
+  const [paymentFeesLoading, setPaymentFeesLoading] = useState(false);
 
   // Expenses
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -188,26 +188,26 @@ export default function AdminReportsPage() {
     setLoading(false);
   }
 
-  // --- Stripe fees fetch ---
-  async function loadStripeFees() {
-    setStripeFeesLoading(true);
+  // --- UnivaPayfees fetch ---
+  async function loadPaymentFees() {
+    setPaymentFeesLoading(true);
     const range = getRange();
     try {
-      const result = await invokeEdgeFunction<{ success: boolean; data?: StripeFees; error?: string }>('admin-api', {
+      const result = await invokeEdgeFunction<{ success: boolean; data?: PaymentFees; error?: string }>('admin-api', {
         action: 'get-stripe-fees',
         from_date: range.from,
         to_date: range.to,
       });
       if (result.success && result.data) {
-        setStripeFees(result.data);
+        setPaymentFees(result.data);
       } else {
-        alert(result.error || 'Stripe手数料の取得に失敗しました');
+        alert(result.error || '決済手数料の取得に失敗しました');
       }
     } catch (e: any) {
-      console.error('Stripe手数料取得エラー:', e);
-      alert('Stripe手数料の取得に失敗しました');
+      console.error('決済手数料取得エラー:', e);
+      alert('決済手数料の取得に失敗しました');
     }
-    setStripeFeesLoading(false);
+    setPaymentFeesLoading(false);
   }
 
   // --- Expense CRUD ---
@@ -404,21 +404,21 @@ export default function AdminReportsPage() {
   }
 
   function exportTaxSummaryCSV() {
-    const stripeFeeTotal = stripeFees?.total_fees ?? 0;
+    const paymentFeeTotal = paymentFees?.total_fees ?? 0;
     const header = '項目,金額';
     const rows = [
       `売上高（総取引額）,${totals.grossSales}`,
       `プラットフォーム手数料収入,${totals.platformFee}`,
       `返金・キャンセル額,-${totals.refunds}`,
       `従業員への支払額（外注費）,-${totals.employeePayouts}`,
-      `Stripe決済手数料,-${stripeFeeTotal}`,
+      `決済手数料,-${paymentFeeTotal}`,
       `その他経費,-${expenseTotals.total}`,
       ``,
       `【経費内訳】,`,
       ...Object.entries(expenseTotals.byCategory).map(([cat, amt]) => `  ${categoryLabel(cat)},${amt}`),
-      ...(stripeFeeTotal > 0 ? [`  Stripe決済手数料（API取得）,${stripeFeeTotal}`] : []),
+      ...(paymentFeeTotal > 0 ? [`  決済手数料（API取得）,${paymentFeeTotal}`] : []),
       ``,
-      `差引利益（課税所得）,${totals.platformFee - totals.refunds - totals.employeePayouts - stripeFeeTotal - expenseTotals.total}`,
+      `差引利益（課税所得）,${totals.platformFee - totals.refunds - totals.employeePayouts - paymentFeeTotal - expenseTotals.total}`,
     ];
     const csv = [header, ...rows].join('\n');
     const label = useCustomRange ? `${customFrom}_${customTo}` : `${selectedYear}`;
@@ -449,9 +449,9 @@ export default function AdminReportsPage() {
     </div>
   );
 
-  const stripeFeeTotal = stripeFees?.total_fees ?? 0;
-  const totalExpensesWithStripe = expenseTotals.total + stripeFeeTotal;
-  const taxableIncome = totals.platformFee - totals.refunds - totals.employeePayouts - totalExpensesWithStripe;
+  const paymentFeeTotal = paymentFees?.total_fees ?? 0;
+  const totalExpensesWithFees = expenseTotals.total + paymentFeeTotal;
+  const taxableIncome = totals.platformFee - totals.refunds - totals.employeePayouts - totalExpensesWithFees;
 
   return (
     <ProtectedRoute allowedRoles={['admin']}>
@@ -525,45 +525,45 @@ export default function AdminReportsPage() {
                 <StatCard label="手数料収入" value={formatCurrency(totals.platformFee)} color="text-green-600" sub={`手数料率 ${(feeRate * 100).toFixed(0)}%`} />
                 <StatCard label="返金額" value={formatCurrency(totals.refunds)} color="text-red-600" />
                 <StatCard label="従業員支払" value={formatCurrency(totals.employeePayouts)} color="text-orange-600" sub={`出金済 ${formatCurrency(totals.withdrawalTotal)}`} />
-                <StatCard label="経費合計" value={formatCurrency(totalExpensesWithStripe)} color="text-purple-600" sub={stripeFeeTotal > 0 ? `うちStripe ${formatCurrency(stripeFeeTotal)}` : '経費を登録してください'} />
+                <StatCard label="経費合計" value={formatCurrency(totalExpensesWithFees)} color="text-purple-600" sub={paymentFeeTotal > 0 ? `うちUnivaPay${formatCurrency(paymentFeeTotal)}` : '経費を登録してください'} />
                 <StatCard label="注文数" value={`${totals.completedCount} / ${totals.orderCount}`} sub={`完了 / 全体 (取消 ${totals.cancelledCount})`} />
               </div>
 
-              {/* ---- Stripe決済手数料 ---- */}
+              {/* ---- 決済手数料 ---- */}
               <div className="bg-white rounded-lg shadow-sm p-5 mb-8 border-l-4 border-indigo-500">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-semibold text-gray-800">Stripe 決済手数料</h2>
+                  <h2 className="text-lg font-semibold text-gray-800">UnivaPay決済手数料</h2>
                   <button
-                    onClick={loadStripeFees}
-                    disabled={stripeFeesLoading}
+                    onClick={loadPaymentFees}
+                    disabled={paymentFeesLoading}
                     className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition disabled:opacity-50"
                   >
-                    {stripeFeesLoading ? '取得中...' : stripeFees ? '再取得' : 'Stripeから取得'}
+                    {paymentFeesLoading ? '取得中...' : paymentFees ? '再取得' : '取得'}
                   </button>
                 </div>
-                {stripeFees ? (
+                {paymentFees ? (
                   <>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div>
                         <p className="text-xs text-gray-500">決済手数料合計</p>
-                        <p className="text-xl font-bold text-indigo-600 font-mono">{formatCurrency(stripeFees.total_fees)}</p>
+                        <p className="text-xl font-bold text-indigo-600 font-mono">{formatCurrency(paymentFees.total_fees)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">総決済額</p>
-                        <p className="text-lg font-semibold font-mono">{formatCurrency(stripeFees.total_gross)}</p>
+                        <p className="text-lg font-semibold font-mono">{formatCurrency(paymentFees.total_gross)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Stripe入金額</p>
-                        <p className="text-lg font-semibold font-mono">{formatCurrency(stripeFees.total_net)}</p>
+                        <p className="text-xs text-gray-500">入金額</p>
+                        <p className="text-lg font-semibold font-mono">{formatCurrency(paymentFees.total_net)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">取引件数</p>
-                        <p className="text-lg font-semibold">{stripeFees.transaction_count}件</p>
+                        <p className="text-lg font-semibold">{paymentFees.transaction_count}件</p>
                       </div>
                     </div>
-                    {Object.keys(stripeFees.monthly).length > 0 && (
+                    {Object.keys(paymentFees.monthly).length > 0 && (
                       <details className="mt-2">
-                        <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">月別Stripe手数料を表示</summary>
+                        <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">月別決済手数料を表示</summary>
                         <table className="w-full text-sm mt-2">
                           <thead>
                             <tr className="border-b text-left text-gray-500">
@@ -575,7 +575,7 @@ export default function AdminReportsPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {Object.entries(stripeFees.monthly).sort(([a], [b]) => a.localeCompare(b)).map(([month, data]) => (
+                            {Object.entries(paymentFees.monthly).sort(([a], [b]) => a.localeCompare(b)).map(([month, data]) => (
                               <tr key={month} className="border-b">
                                 <td className="py-1">{toJPLabel(month)}</td>
                                 <td className="py-1 text-right font-mono">{formatCurrency(data.gross)}</td>
@@ -591,7 +591,7 @@ export default function AdminReportsPage() {
                   </>
                 ) : (
                   <p className="text-sm text-gray-400">
-                    「Stripeから取得」ボタンを押すと、Stripe APIから決済手数料を自動取得します。確定申告の経費として計上できます。
+                    「取得」ボタンを押すと、UnivaPayAPIから決済手数料を自動取得します。確定申告の経費として計上できます。
                   </p>
                 )}
               </div>
@@ -622,10 +622,10 @@ export default function AdminReportsPage() {
                       <td className="py-2 text-gray-600">従業員への支払額 (外注費)</td>
                       <td className="py-2 text-right font-mono font-semibold text-orange-600">-{formatCurrency(totals.employeePayouts)}</td>
                     </tr>
-                    {stripeFeeTotal > 0 && (
+                    {paymentFeeTotal > 0 && (
                       <tr className="border-b">
-                        <td className="py-2 text-gray-600">Stripe決済手数料</td>
-                        <td className="py-2 text-right font-mono font-semibold text-indigo-600">-{formatCurrency(stripeFeeTotal)}</td>
+                        <td className="py-2 text-gray-600">決済手数料</td>
+                        <td className="py-2 text-right font-mono font-semibold text-indigo-600">-{formatCurrency(paymentFeeTotal)}</td>
                       </tr>
                     )}
                     {expenseTotals.total > 0 && (
@@ -649,8 +649,8 @@ export default function AdminReportsPage() {
                     </tr>
                   </tbody>
                 </table>
-                {!stripeFees && (
-                  <p className="text-xs text-amber-600 mt-3">Stripe決済手数料が未取得です。上の「Stripeから取得」ボタンで取得すると、より正確な課税所得が計算されます。</p>
+                {!paymentFees && (
+                  <p className="text-xs text-amber-600 mt-3">決済手数料が未取得です。上の「取得」ボタンで取得すると、より正確な課税所得が計算されます。</p>
                 )}
               </div>
 

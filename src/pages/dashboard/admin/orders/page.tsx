@@ -85,9 +85,9 @@ export default function AdminOrdersPage() {
     } catch { /* 通知失敗は無視 */ }
   }
 
-  /** 強制キャンセル + Stripe自動返金 */
+  /** 強制キャンセル + 自動返金 */
   async function forceCancel(order: any) {
-    const msg = `⚠ 強制キャンセル + 全額返金\n\n注文: ${order.id.slice(0, 8)}...\n金額: ¥${(order.price || order.total_price || 0).toLocaleString()}\n\nStripeで自動返金されます。続行しますか？`;
+    const msg = `⚠ 強制キャンセル + 全額返金\n\n注文: ${order.id.slice(0, 8)}...\n金額: ¥${(order.price || order.total_price || 0).toLocaleString()}\n\n自動返金されます。続行しますか？`;
     if (!window.confirm(msg)) return;
 
     setProcessing(order.id);
@@ -105,7 +105,7 @@ export default function AdminOrdersPage() {
       }
       alert(`✅ 返金完了\n\n返金ID: ${result.refund_id || '-'}\n金額: ¥${(result.amount || 0).toLocaleString()}`);
     } catch (err: any) {
-      alert(`❌ エラー: ${err.message}\n\nStripeダッシュボード(dashboard.stripe.com)から手動で返金してください。`);
+      alert(`❌ エラー: ${err.message}\n\nUnivaPay管理画面から手動で返金してください。`);
       await invokeEdgeFunction('admin-api', { action: 'change-order-status', order_id: order.id, new_status: 'cancelled' }).catch(() => {});
       await logAdminAction({ action: 'order_force_cancelled_fallback', targetType: 'order', targetId: order.id, details: `返金エラー、ステータスのみキャンセルに変更`, meta: { error: err.message } });
     }

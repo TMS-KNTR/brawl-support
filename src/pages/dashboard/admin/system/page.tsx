@@ -111,7 +111,7 @@ export default function AdminSystemPage() {
     await saveSetting('platform_fee_rate', rateDecimal, 'プラットフォーム手数料率');
   }
 
-  const stripeMode = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '').startsWith('pk_live') ? '本番' : 'テスト';
+  const paymentProvider = 'UnivaPay';
 
   return (
     <ProtectedRoute allowedRoles={['admin']}>
@@ -340,8 +340,8 @@ export default function AdminSystemPage() {
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-gray-600">決済</span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${stripeMode === '本番' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                      Stripe（{stripeMode}モード）
+                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      {paymentProvider}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">

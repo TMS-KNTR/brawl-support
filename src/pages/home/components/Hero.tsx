@@ -18,8 +18,8 @@ export default function Hero() {
     <section className="relative pt-[72px] overflow-hidden">
       <style>{`
         @keyframes hero-fadeUp {
-          from { opacity: 0; transform: translateY(28px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
+          to { opacity: 1; transform: translateY(0) rotateX(0); }
         }
         @keyframes hero-fadeIn {
           from { opacity: 0; }
@@ -64,7 +64,7 @@ export default function Hero() {
           opacity: 0;
         }
         .hero-label {
-          animation: hero-fadeIn 0.8s ease 0.1s forwards;
+          animation: hero-fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards;
           opacity: 0;
         }
         .hero-btn-primary {
@@ -173,7 +173,7 @@ export default function Hero() {
 
       {/* ===== Content ===== */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 pt-28 pb-36 lg:pt-36 lg:pb-44">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-4xl mx-auto text-center" style={{ perspective: '800px' }}>
           {/* Label */}
           <p
             className="hero-label text-[11px] font-bold tracking-[0.3em] uppercase text-[#8B7AFF] mb-8"
@@ -183,7 +183,7 @@ export default function Hero() {
           </p>
 
           {/* Main heading */}
-          <h1 className="mb-7">
+          <h1 className="mb-7" style={{ perspective: '800px' }}>
             <span
               className="hero-heading-line block text-[clamp(1.75rem,8vw,4.5rem)] font-extrabold leading-[1.1] text-white"
               style={{ fontFamily: '"Orbitron", sans-serif', animationDelay: '0.15s' }}

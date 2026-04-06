@@ -75,7 +75,7 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-2 text-[11px] text-[#666]">
             <i className="ri-shield-check-line text-[#444]"></i>
-            <span className="font-medium">Powered by Stripe</span>
+            <span className="font-medium">Powered by UnivaPay</span>
           </div>
         </div>
       </div>

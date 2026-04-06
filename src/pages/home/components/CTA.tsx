@@ -27,12 +27,12 @@ export default function CTA() {
     <section className="relative overflow-hidden">
       <style>{`
         @keyframes cta-fadeUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 1; }
+          to   { opacity: 1; }
         }
         @keyframes cta-headerIn {
-          from { opacity: 0; transform: translateY(18px) scale(0.95); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translateY(24px) rotateX(40deg); }
+          to   { opacity: 1; transform: translateY(0) rotateX(0); }
         }
         @keyframes cta-orbPulse {
           0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
@@ -185,13 +185,13 @@ export default function CTA() {
       <div className="cta-dot" style={{ top: '40%', right: '30%', animation: 'cta-drift1 10s ease-in-out infinite 5s' }} />
 
       {/* ── Content ── */}
-      <div ref={section.ref} className="relative z-10 py-28 sm:py-36 text-center max-w-3xl mx-auto px-6 lg:px-8">
+      <div ref={section.ref} className="relative z-10 py-28 sm:py-36 text-center max-w-3xl mx-auto px-6 lg:px-8" style={{ perspective: '800px' }}>
         <p
           className="text-[10px] font-bold tracking-[0.25em] uppercase text-[#8B7AFF]/60 mb-6"
           style={{
             fontFamily: '"Orbitron", sans-serif',
             opacity: section.visible ? 1 : 0,
-            animation: section.visible ? 'cta-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
+            animation: section.visible ? 'cta-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
             animationFillMode: 'both',
           }}
         >
@@ -215,7 +215,7 @@ export default function CTA() {
           className="text-[14px] text-[#9890B8] mb-12 max-w-md mx-auto leading-relaxed font-medium"
           style={{
             opacity: section.visible ? 1 : 0,
-            animation: section.visible ? 'cta-fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s forwards' : 'none',
+            animation: section.visible ? 'cta-headerIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s forwards' : 'none',
             animationFillMode: 'both',
           }}
         >
@@ -259,7 +259,6 @@ export default function CTA() {
         >
           {[
             { icon: 'ri-price-tag-3-line', text: '登録無料' },
-            { icon: 'ri-refund-line', text: '30日間返金保証' },
             { icon: 'ri-time-line', text: '24時間対応' },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-2">

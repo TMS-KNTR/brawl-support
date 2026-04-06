@@ -5,14 +5,14 @@ import { supabase } from '../../lib/supabase'
 
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
-  const sessionId = searchParams.get('session_id')
+  const orderId = searchParams.get('order_id')
   const navigate = useNavigate()
   const { user } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [chatThreadId, setChatThreadId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!orderId) {
       setStatus('error')
       return
     }
@@ -23,11 +23,11 @@ export default function PaymentSuccessPage() {
     const maxAttempts = 15
     const checkPayment = async () => {
       try {
-        // session_id で直接検索（より正確）
         const { data } = await supabase
           .from('orders')
           .select('id, status')
-          .eq('stripe_checkout_session_id', sessionId)
+          .eq('id', orderId)
+          .in('status', ['paid', 'assigned', 'in_progress', 'completed', 'confirmed'])
           .maybeSingle()
 
         if (data) {
@@ -39,7 +39,7 @@ export default function PaymentSuccessPage() {
         if (attempts < maxAttempts) {
           setTimeout(checkPayment, 2000)
         } else {
-          // Webhookが遅延しても一応成功表示（session_idがあるため）
+          // Webhookが遅延しても一応成功表示（order_idがあるため）
           setStatus('success')
         }
       } catch {
@@ -52,16 +52,16 @@ export default function PaymentSuccessPage() {
       }
     }
     checkPayment()
-  }, [sessionId, user])
+  }, [orderId, user])
 
-  // session_id に対応する注文の chat_thread_id を取得
+  // order_id に対応する chat_thread_id を取得
   useEffect(() => {
-    if (!user || status !== 'success' || !sessionId) return
+    if (!user || status !== 'success' || !orderId) return
     const fetchChatThread = async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('id, chat_threads:chat_threads(id)')
-        .eq('stripe_checkout_session_id', sessionId)
+        .eq('id', orderId)
         .maybeSingle()
       if (!error && data) {
         const thread = Array.isArray(data.chat_threads) ? data.chat_threads[0] : data.chat_threads

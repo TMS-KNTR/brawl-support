@@ -337,7 +337,7 @@ export default function OrderPage() {
 
   const totalPrice = mode === 'rank' ? (priceResult?.total ?? 0) : (trophyPriceResult?.total ?? 0)
 
-  /** Stripe Checkout で決済 */
+  /** UnivaPay ウィジェットで決済 */
   const handlePayment = async () => {
     if (!user) {
       navigate('/login')
@@ -358,6 +358,7 @@ export default function OrderPage() {
     setError(null)
 
     try {
+      // 1. サーバー側で料金検証＋仮注文作成
       const result = await invokeEdgeFunction('create-order-payment', {
         currentRank: mode === 'rank' ? String(current) : String(currentTrophy),
         targetRank: mode === 'rank' ? String(target) : String(targetTrophy),
@@ -372,22 +373,39 @@ export default function OrderPage() {
         brawlerStrength: mode === 'trophy' ? selectedBrawler?.strength : undefined,
       })
 
-      if (result.success && result.data?.checkoutUrl) {
-        const checkoutUrl = result.data.checkoutUrl
-        if (
-          !checkoutUrl.startsWith('https://checkout.stripe.com') &&
-          !checkoutUrl.startsWith(window.location.origin)
-        ) {
-          throw new Error('不正なリダイレクト先が検出されました。')
-        }
-        window.location.href = checkoutUrl
-      } else {
+      if (!result.success || !result.data) {
         throw new Error(result.error || '注文の作成に失敗しました')
       }
+
+      const { orderId, amount, currency, appId, metadata } = result.data
+
+      // 2. UnivaPay ウィジェットを開く
+      if (typeof (window as any).UnivapayCheckout === 'undefined') {
+        throw new Error('決済システムの読み込みに失敗しました。ページを再読み込みしてください。')
+      }
+
+      const checkout = (window as any).UnivapayCheckout.create({
+        appId,
+        checkout: 'payment',
+        amount,
+        currency,
+        metadata,
+        onSuccess: () => {
+          navigate(`/payment-success?order_id=${orderId}`)
+        },
+        onError: () => {
+          setError('決済に失敗しました。もう一度お試しください。')
+          setIsSubmitting(false)
+        },
+        onClose: () => {
+          setIsSubmitting(false)
+        },
+      })
+
+      checkout.open()
     } catch (err: any) {
       console.error('決済エラー:', err)
       setError(err.message || '決済処理に失敗しました。もう一度お試しください。')
-    } finally {
       setIsSubmitting(false)
     }
   }

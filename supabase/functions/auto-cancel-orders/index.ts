@@ -1,24 +1,28 @@
-import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
-/** Stripe API呼び出しをリトライ */
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      const isRetryable = err.type === "StripeConnectionError" || err.type === "StripeAPIError" || err.code === "ECONNRESET";
-      if (i < maxRetries && isRetryable) {
-        console.warn(`[retry] Stripe API failed, retrying (${i + 1}/${maxRetries})...`);
-        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-        continue;
-      }
-      throw err;
-    }
+/** UnivaPay APIリクエスト */
+async function univapayRequest(path: string, options: RequestInit = {}): Promise<any> {
+  const secret = Deno.env.get("UNIVAPAY_SECRET");
+  if (!secret) return null; // シークレット未設定の場合はAPI返金をスキップ
+
+  const baseUrl = "https://api.univapay.com";
+  const res = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      "Authorization": `Bearer ${secret}`,
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  const body = await res.json();
+  if (!res.ok) {
+    console.error("UnivaPay API error:", res.status, body);
+    throw new Error(body?.error?.message || `UnivaPay API error: ${res.status}`);
   }
-  throw new Error("Unreachable");
+  return body;
 }
 
 Deno.serve(async (req: Request) => {
@@ -28,10 +32,6 @@ Deno.serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-      apiVersion: "2023-10-16",
-    });
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -93,6 +93,30 @@ Deno.serve(async (req: Request) => {
       Date.now() - autoCancelHours * 60 * 60 * 1000
     ).toISOString();
 
+    // pending_payment（決済未完了の仮注文）は30分で自動削除
+    const pendingPaymentCutoff = new Date(
+      Date.now() - 30 * 60 * 1000
+    ).toISOString();
+
+    // 1. 決済未完了の仮注文をクリーンアップ
+    const { data: abandonedOrders } = await supabase
+      .from("orders")
+      .select("id, user_id")
+      .eq("status", "pending_payment")
+      .lt("created_at", pendingPaymentCutoff);
+
+    if (abandonedOrders && abandonedOrders.length > 0) {
+      console.log(`[auto-cancel] ${abandonedOrders.length}件の決済未完了注文を削除`);
+      for (const order of abandonedOrders) {
+        await supabase
+          .from("orders")
+          .update({ status: "cancelled" })
+          .eq("id", order.id)
+          .eq("status", "pending_payment");
+      }
+    }
+
+    // 2. 決済済みだが未受注の期限切れ注文を自動キャンセル+返金
     const { data: expiredOrders, error: fetchError } = await supabase
       .from("orders")
       .select("*")
@@ -104,7 +128,12 @@ Deno.serve(async (req: Request) => {
     if (fetchError) throw new Error("注文取得エラー: " + fetchError.message);
     if (!expiredOrders || expiredOrders.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, message: "対象注文なし", cancelled: 0 }),
+        JSON.stringify({
+          success: true,
+          message: "対象注文なし",
+          cancelled: 0,
+          abandoned_cleaned: abandonedOrders?.length || 0,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -113,31 +142,33 @@ Deno.serve(async (req: Request) => {
       `[auto-cancel] ${expiredOrders.length}件の期限切れ注文を検出 (閾値: ${autoCancelHours}時間)`
     );
 
+    const storeId = Deno.env.get("UNIVAPAY_STORE_ID");
     const results: { order_id: string; success: boolean; error?: string; refund_id?: string }[] = [];
 
     for (const order of expiredOrders) {
       try {
         const isPaid = order.status === "paid";
 
-        // --- Stripe 返金 (決済済みの場合のみ) ---
+        // --- UnivaPay 返金 (決済済みの場合のみ) ---
         let refundResult = null;
-        if (isPaid) {
-          const paymentIntentId = order.payment_intent_id;
-          const sessionId = order.stripe_checkout_session_id || order.stripe_session_id;
-
-          if (paymentIntentId) {
-            refundResult = await withRetry(() => stripe.refunds.create({ payment_intent: paymentIntentId }, {
-              idempotencyKey: `auto-cancel-refund-${order.id}`,
-            }));
-          } else if (sessionId) {
-            const session = await withRetry(() => stripe.checkout.sessions.retrieve(sessionId));
-            if (session.payment_intent) {
-              refundResult = await withRetry(() => stripe.refunds.create({
-                payment_intent: session.payment_intent as string,
-              }, {
-                idempotencyKey: `auto-cancel-refund-${order.id}`,
-              }));
-            }
+        if (isPaid && order.univapay_charge_id && storeId) {
+          try {
+            refundResult = await univapayRequest(
+              `/stores/${storeId}/charges/${order.univapay_charge_id}/refunds`,
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  amount: order.price,
+                  currency: "jpy",
+                  reason: "customer_request",
+                  message: `自動キャンセル返金 (order: ${order.id})`,
+                  metadata: { order_id: order.id },
+                }),
+              }
+            );
+          } catch (refundErr: any) {
+            console.error(`[auto-cancel] 返金失敗 ${order.id}:`, refundErr.message);
+            // 返金失敗でもキャンセルは続行（管理者が手動対応）
           }
         }
 
@@ -146,9 +177,9 @@ Deno.serve(async (req: Request) => {
           .from("orders")
           .update({
             status: "cancelled",
-            is_refunded: isPaid,
+            is_refunded: isPaid && !!refundResult,
             refund_id: refundResult?.id || null,
-            refunded_at: isPaid ? new Date().toISOString() : null,
+            refunded_at: refundResult ? new Date().toISOString() : null,
           })
           .eq("id", order.id);
 
@@ -163,9 +194,11 @@ Deno.serve(async (req: Request) => {
             user_id: customerId,
             type: "order_cancelled",
             title: "注文が自動キャンセルされました",
-            body: isPaid
+            body: isPaid && refundResult
               ? `注文が${autoCancelHours}時間以内に受注されなかったため、自動キャンセルされました。全額返金されます。`
-              : `注文が${autoCancelHours}時間以内に決済・受注されなかったため、自動キャンセルされました。`,
+              : isPaid
+                ? `注文が${autoCancelHours}時間以内に受注されなかったため、自動キャンセルされました。返金処理中です。`
+                : `注文が${autoCancelHours}時間以内に決済・受注されなかったため、自動キャンセルされました。`,
             link_url: "/dashboard/customer",
           });
           if (notifError) console.error(`[auto-cancel] 通知失敗 ${order.id}:`, notifError);
@@ -176,11 +209,11 @@ Deno.serve(async (req: Request) => {
           action: "order_auto_cancelled",
           target_type: "order",
           target_id: order.id,
-          details: `${autoCancelHours}時間未受注のため自動キャンセル${isPaid ? "+返金" : ""}`,
+          details: `${autoCancelHours}時間未受注のため自動キャンセル${isPaid && refundResult ? "+返金" : ""}`,
           meta_json: {
             auto_cancel_hours: autoCancelHours,
             refund_id: refundResult?.id || null,
-            amount: refundResult?.amount || order.price || 0,
+            amount: order.price || 0,
             original_status: order.status,
           },
         });
@@ -203,6 +236,7 @@ Deno.serve(async (req: Request) => {
         message: `自動キャンセル完了: 成功${successCount}件, 失敗${failCount}件`,
         cancelled: successCount,
         failed: failCount,
+        abandoned_cleaned: abandonedOrders?.length || 0,
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

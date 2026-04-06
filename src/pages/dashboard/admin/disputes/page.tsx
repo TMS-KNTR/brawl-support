@@ -308,7 +308,7 @@ export default function AdminDisputesPage() {
                     <input type="radio" name="action" value="refund" checked={resolveAction === 'refund'} onChange={() => setResolveAction('refund')} className="mr-3" disabled={resolveTarget.order?.is_refunded} />
                     <div>
                       <p className="font-medium text-gray-900">🔄 依頼者に全額返金</p>
-                      <p className="text-xs text-gray-500">Stripeから依頼者に返金します{resolveTarget.order?.is_refunded ? '（返金済み）' : ''}</p>
+                      <p className="text-xs text-gray-500">決済システムから依頼者に返金します{resolveTarget.order?.is_refunded ? '（返金済み）' : ''}</p>
                     </div>
                   </label>
 

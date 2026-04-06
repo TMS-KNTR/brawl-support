@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14.21.0'
 import { getCorsHeaders, handleCors, requireJsonContentType } from '../_shared/cors.ts'
 import { calcRankedPrice, calcTrophyPrice } from '../_shared/pricing.ts'
 import type { BrawlerStrength } from '../_shared/pricing.ts'
@@ -18,10 +17,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
-
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-      apiVersion: '2023-10-16',
-    })
 
     // JWTトークンから認証情報を取得
     const authHeader = req.headers.get('Authorization')
@@ -80,7 +75,6 @@ serve(async (req) => {
       currentRank,
       targetRank,
       serviceType,
-      region,
       notes,
       totalPrice,
       // 料金検証に必要な追加パラメータ
@@ -126,47 +120,45 @@ serve(async (req) => {
     const serverPlatformFee = Math.round(serverPrice * feeRate)
     const serverSubtotal = serverPrice - serverPlatformFee
 
-    const siteUrl = Deno.env.get('SITE_URL') || ''
-
-    // Stripe Checkoutセッションを作成（注文はWebhookで決済完了後に作成）
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'], // PayPayはStripeプレビュー段階のため未対応
-      line_items: [
-        {
-          price_data: {
-            currency: 'jpy',
-            product_data: {
-              name: `Brawl Stars代行 ${currentRank} → ${targetRank}`,
-              description: `${serviceType === 'rank' ? 'ガチバトル上げ' : 'トロフィー上げ'}`,
-            },
-            unit_amount: serverPrice,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: `${siteUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/dashboard/customer`,
-      metadata: {
-        customer_id: user.id,
-        current_rank: currentRank,
-        target_rank: targetRank,
+    // --- 仮注文をDBに作成（pending_payment） ---
+    // Webhook で課金完了時に paid に更新する
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.id,
+        current_rank: currentRank || null,
+        target_rank: targetRank || null,
+        game_title: 'Brawl Stars',
         service_type: serviceType || 'trophy',
-        notes: notes || '',
-        total_price: String(serverPrice),
-        payout_amount: String(serverSubtotal),
-        platform_fee: String(serverPlatformFee),
-      },
-    }, {
-      // 冪等性キー（同一秒内の重複送信を防止しつつ、再注文は許可）
-      idempotencyKey: `checkout-${user.id}-${serviceType}-${currentRank}-${targetRank}-${serverPrice}-${Math.floor(Date.now() / 10000)}`,
-    })
+        price: serverPrice,
+        payout_amount: serverSubtotal,
+        platform_fee: serverPlatformFee,
+        status: 'pending_payment',
+        payment_provider: 'univapay',
+        notes: notes || null,
+      })
+      .select('id')
+      .single()
+
+    if (orderError || !order) {
+      console.error('Failed to create pending order:', orderError)
+      throw new Error('注文の作成に失敗しました')
+    }
+
+    const appId = Deno.env.get('UNIVAPAY_APP_TOKEN') ?? ''
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          checkoutUrl: session.url
+          orderId: order.id,
+          amount: serverPrice,
+          currency: 'jpy',
+          appId,
+          metadata: {
+            order_id: order.id,
+            customer_id: user.id,
+          },
         }
       }),
       {

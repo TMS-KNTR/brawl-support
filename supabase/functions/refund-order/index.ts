@@ -1,18 +1,16 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
-/** Stripe API呼び出しをリトライ（一時的なネットワークエラー対策） */
+/** API呼び出しをリトライ（一時的なネットワークエラー対策） */
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
   for (let i = 0; i <= maxRetries; i++) {
     try {
       return await fn();
     } catch (err: any) {
-      const isRetryable = err.type === "StripeConnectionError" || err.type === "StripeAPIError" || err.code === "ECONNRESET";
-      if (i < maxRetries && isRetryable) {
-        console.warn(`[retry] Stripe API failed, retrying (${i + 1}/${maxRetries})...`);
+      if (i < maxRetries) {
+        console.warn(`[retry] API call failed, retrying (${i + 1}/${maxRetries})...`);
         await new Promise(r => setTimeout(r, 1000 * (i + 1)));
         continue;
       }
@@ -22,6 +20,29 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
   throw new Error("Unreachable");
 }
 
+/** UnivaPay APIリクエスト */
+async function univapayRequest(path: string, options: RequestInit = {}): Promise<any> {
+  const secret = Deno.env.get("UNIVAPAY_SECRET");
+  if (!secret) throw new Error("UNIVAPAY_SECRET is not configured");
+
+  const baseUrl = "https://api.univapay.com";
+  const res = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      "Authorization": `Bearer ${secret}`,
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  const body = await res.json();
+  if (!res.ok) {
+    console.error("UnivaPay API error:", res.status, body);
+    throw new Error(body?.error?.message || `UnivaPay API error: ${res.status}`);
+  }
+  return body;
+}
+
 serve(async (req: Request) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -29,11 +50,6 @@ serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-      apiVersion: "2023-10-16",
-      httpClient: Stripe.createFetchHttpClient(),
-    });
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -72,31 +88,33 @@ serve(async (req: Request) => {
     if (order.status === "cancelled") throw new Error("既にキャンセル済みです");
     if (order.is_refunded) throw new Error("既に返金済みです");
 
-    // payment_intent_idがある場合 → Stripeで返金
+    // UnivaPay で返金
     let refundResult = null;
-    if (order.payment_intent_id) {
-      refundResult = await withRetry(() => stripe.refunds.create({
-        payment_intent: order.payment_intent_id,
-      }, {
-        idempotencyKey: `refund-${order.id}`,
-      }));
-      console.log("Stripe refund created:", refundResult.id);
-    } else if (order.stripe_checkout_session_id || order.stripe_session_id) {
-      const sessionId = order.stripe_checkout_session_id || order.stripe_session_id;
-      const session = await withRetry(() => stripe.checkout.sessions.retrieve(sessionId));
-      if (session.payment_intent) {
-        refundResult = await withRetry(() => stripe.refunds.create({
-          payment_intent: session.payment_intent as string,
-        }, {
-          idempotencyKey: `refund-${order.id}`,
-        }));
-        console.log("Stripe refund created via session:", refundResult.id);
-      } else {
-        throw new Error("payment_intentが見つかりません。Stripeダッシュボードから手動で返金してください。");
-      }
-    } else {
-      throw new Error("決済情報が見つかりません。Stripeダッシュボードから手動で返金してください。");
+    const storeId = Deno.env.get("UNIVAPAY_STORE_ID");
+    const chargeId = order.univapay_charge_id;
+
+    if (!chargeId) {
+      throw new Error("決済情報が見つかりません。UnivaPay管理画面から手動で返金してください。");
     }
+    if (!storeId) {
+      throw new Error("UNIVAPAY_STORE_IDが設定されていません");
+    }
+
+    refundResult = await withRetry(() => univapayRequest(
+      `/stores/${storeId}/charges/${chargeId}/refunds`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          amount: order.price,
+          currency: "jpy",
+          reason: "customer_request",
+          message: `管理者による返金 (order: ${order_id})`,
+          metadata: { order_id },
+        }),
+      }
+    ));
+
+    console.log("UnivaPay refund created:", refundResult.id);
 
     // 注文ステータスを更新（楽観的ロックで二重返金を防止）
     const { data: updatedOrder, error: updateError } = await supabase
@@ -126,7 +144,7 @@ serve(async (req: Request) => {
         success: true,
         message: "返金が完了しました",
         refund_id: refundResult?.id,
-        amount: refundResult?.amount,
+        amount: order.price,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
@@ -135,7 +153,7 @@ serve(async (req: Request) => {
     const safeMessages = [
       "認証が必要です", "アカウントが停止されています", "管理者権限が必要です",
       "order_idが必要です", "注文が見つかりません", "既にキャンセル済みです",
-      "既に返金済みです", "payment_intentが見つかりません", "決済情報が見つかりません",
+      "既に返金済みです", "決済情報が見つかりません", "UNIVAPAY_STORE_IDが設定されていません",
       "返金は成功しましたが、DB更新に失敗しました",
     ];
     const isSafe = safeMessages.some(m => err.message?.includes(m));

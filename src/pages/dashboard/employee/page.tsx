@@ -86,66 +86,45 @@ function EmployeeDashboardContent() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
-  // Stripe Connect状態
-  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
-  const [stripeStatus, setStripeStatus] = useState<'not_created' | 'incomplete' | 'pending' | 'active'>('not_created');
-  const [connectLoading, setConnectLoading] = useState(false);
+  // 銀行口座状態
+  const [bankAccountInfo, setBankAccountInfo] = useState<any>(null);
+  const [showBankAccountModal, setShowBankAccountModal] = useState(false);
+  const [bankForm, setBankForm] = useState({ bank_name: '', branch_name: '', account_type: '普通', account_number: '', account_holder: '' });
+  const [bankSaving, setBankSaving] = useState(false);
   const [ratingStats, setRatingStats] = useState<{ avg: number; count: number }>({ avg: 0, count: 0 });
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingDetails, setRatingDetails] = useState<any[]>([]);
   const [ratingDetailsLoading, setRatingDetailsLoading] = useState(false);
 
   useEffect(() => {
-    if (userProfile?.stripe_account_id) {
-      setStripeAccountId(userProfile.stripe_account_id);
+    if (userProfile?.bank_account_info) {
+      setBankAccountInfo(userProfile.bank_account_info);
     }
-    // Stripeオンボーディングから戻ってきた場合もあるので常にチェック
-    checkStripeStatus();
   }, [userProfile]);
 
-  /** Stripe口座の実際の状態を確認 */
-  async function checkStripeStatus() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke('check-stripe-status', {
-        body: {},
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      if (res.data?.success) {
-        setStripeStatus(res.data.status);
-      }
-    } catch (err) {
-      console.error('Stripe status check failed:', err);
+  const hasBankAccount = !!bankAccountInfo;
+
+  /** 銀行口座を保存 */
+  async function saveBankAccount() {
+    if (!bankForm.bank_name || !bankForm.branch_name || !bankForm.account_number || !bankForm.account_holder) {
+      alert('全ての項目を入力してください');
+      return;
     }
-  }
-
-  /** Stripe Connect口座登録を開始 */
-  async function startStripeOnboarding() {
-    setConnectLoading(true);
+    setBankSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke('stripe-connect-onboarding', {
-        body: { return_url: window.location.origin + '/dashboard/employee' },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-
-      if (res.error) throw new Error(res.error.message);
-      const result = res.data;
-      if (result?.success && result?.url) {
-        if (!result.url.startsWith('https://connect.stripe.com')) {
-          throw new Error('不正なリダイレクト先が検出されました。');
-        }
-        // 戻ってきた時に最新のprofileを取得するためキャッシュをクリア
-        try { localStorage.removeItem('brawl_support_profile'); } catch {}
-        window.location.href = result.url; // Stripeの登録画面に移動
-      } else {
-        throw new Error(result?.error || '口座登録に失敗しました');
-      }
+      const { error } = await supabase
+        .from('profiles')
+        .update({ bank_account_info: bankForm })
+        .eq('id', user!.id);
+      if (error) throw error;
+      setBankAccountInfo(bankForm);
+      setShowBankAccountModal(false);
+      alert('銀行口座を登録しました');
     } catch (err: any) {
-      console.error('[stripe-connect]', err);
-      alert('口座登録に失敗しました。もう一度お試しください。');
+      console.error('[bank-account]', err);
+      alert('銀行口座の登録に失敗しました。もう一度お試しください。');
     }
-    setConnectLoading(false);
+    setBankSaving(false);
   }
 
   useEffect(() => {
@@ -428,7 +407,7 @@ function EmployeeDashboardContent() {
     if (!amount || amount <= 0) { alert('出金額を入力してください'); return; }
     if (amount < MIN_WITHDRAW_AMOUNT) { alert(`最低出金額は¥${MIN_WITHDRAW_AMOUNT.toLocaleString()}です`); return; }
     if (amount > balance) { alert('残高が不足しています'); return; }
-    if (stripeStatus !== 'active') { alert('先に銀行口座の登録を完了してください'); return; }
+    if (!hasBankAccount) { alert('先に銀行口座の登録を完了してください'); return; }
     if (!window.confirm(`¥${amount.toLocaleString()} を出金しますか？\n\n登録済みの銀行口座に振り込まれます。`)) return;
 
     setWithdrawLoading(true);
@@ -568,39 +547,21 @@ function EmployeeDashboardContent() {
               </div>
             </div>
 
-            {/* Stripe alerts (inline) */}
-            {stripeStatus === 'not_created' && (
+            {/* 銀行口座アラート (inline) */}
+            {!hasBankAccount ? (
               <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-[#FCD34D]/40 bg-[#FFFBEB]">
                 <div>
                   <p className="text-[12px] font-semibold text-[#92400E]">報酬受取口座が未登録です</p>
-                  <p className="text-[11px] text-[#A16207]">Stripeで口座登録が必要です</p>
+                  <p className="text-[11px] text-[#A16207]">出金するには銀行口座の登録が必要です</p>
                 </div>
-                <button onClick={startStripeOnboarding} disabled={connectLoading}
-                  className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer whitespace-nowrap">
-                  {connectLoading ? '処理中...' : '口座を登録'}
+                <button onClick={() => { setBankForm({ bank_name: '', branch_name: '', account_type: '普通', account_number: '', account_holder: '' }); setShowBankAccountModal(true); }}
+                  className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors cursor-pointer whitespace-nowrap">
+                  口座を登録
                 </button>
               </div>
-            )}
-            {stripeStatus === 'incomplete' && (
-              <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-[#FDBA74]/40 bg-[#FFF7ED]">
-                <div>
-                  <p className="text-[12px] font-semibold text-[#9A3412]">口座登録が未完了です</p>
-                  <p className="text-[11px] text-[#C2410C]">情報入力を完了してください</p>
-                </div>
-                <button onClick={startStripeOnboarding} disabled={connectLoading}
-                  className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer whitespace-nowrap">
-                  {connectLoading ? '処理中...' : '登録を続ける'}
-                </button>
-              </div>
-            )}
-            {stripeStatus === 'pending' && (
-              <div className="mt-4 px-3.5 py-2.5 rounded-lg border border-[#93C5FD]/40 bg-[#EFF6FF]">
-                <p className="text-[11px] text-[#1D4ED8]">口座情報を確認中です（Stripeの審査待ち）</p>
-              </div>
-            )}
-            {stripeStatus === 'active' && (
+            ) : (
               <div className="mt-4 px-3.5 py-2.5 rounded-lg border border-[#6EE7B7]/40 bg-[#F0FDF4]">
-                <p className="text-[11px] text-[#059669]">報酬受取口座: 登録済み（出金可能）</p>
+                <p className="text-[11px] text-[#059669]">報酬受取口座: {bankAccountInfo.bank_name} {bankAccountInfo.branch_name}（出金可能）</p>
               </div>
             )}
 
@@ -841,22 +802,14 @@ function EmployeeDashboardContent() {
                       <p className="text-[11px] text-[#888] mb-1">現在の残高</p>
                       <p className="text-[28px] font-bold text-[#111] mb-4">¥{balance.toLocaleString()}</p>
 
-                      {stripeStatus !== 'active' ? (
+                      {!hasBankAccount ? (
                         <div className="px-3.5 py-2.5 rounded-lg border border-[#FCD34D]/40 bg-[#FFFBEB] mb-4">
-                          <p className="text-[12px] font-semibold text-[#92400E] mb-0.5">
-                            {stripeStatus === 'not_created' ? '銀行口座が未登録です' :
-                             stripeStatus === 'incomplete' ? '口座登録が未完了です' :
-                             '口座審査中です'}
-                          </p>
-                          <p className="text-[11px] text-[#A16207] mb-2.5">
-                            {stripeStatus === 'pending' ? 'Stripeの審査が完了するまでお待ちください' : '出金するには口座登録を完了してください'}
-                          </p>
-                          {stripeStatus !== 'pending' && (
-                            <button onClick={startStripeOnboarding} disabled={connectLoading}
-                              className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer">
-                              {connectLoading ? '処理中...' : stripeStatus === 'incomplete' ? '登録を続ける' : '口座を登録する'}
-                            </button>
-                          )}
+                          <p className="text-[12px] font-semibold text-[#92400E] mb-0.5">銀行口座が未登録です</p>
+                          <p className="text-[11px] text-[#A16207] mb-2.5">出金するには口座登録を完了してください</p>
+                          <button onClick={() => { setBankForm({ bank_name: '', branch_name: '', account_type: '普通', account_number: '', account_holder: '' }); setShowBankAccountModal(true); }}
+                            className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors cursor-pointer">
+                            口座を登録する
+                          </button>
                         </div>
                       ) : (
                         <button onClick={() => setShowWithdrawModal(true)} disabled={balance <= 0}
@@ -870,22 +823,21 @@ function EmployeeDashboardContent() {
                     <div className="rounded-lg bg-white border border-[#E5E5E5] p-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{
-                          background: stripeStatus === 'active' ? '#059669' :
-                            stripeStatus === 'pending' ? '#2563EB' :
-                            stripeStatus === 'incomplete' ? '#D97706' : '#D97706'
+                          background: hasBankAccount ? '#059669' : '#D97706'
                         }} />
                         <span className="text-[12px] text-[#666]">銀行口座: {
-                          stripeStatus === 'active' ? '登録済み（出金可能）' :
-                          stripeStatus === 'pending' ? '審査中' :
-                          stripeStatus === 'incomplete' ? '登録未完了' : '未登録'
+                          hasBankAccount
+                            ? `${bankAccountInfo.bank_name} ${bankAccountInfo.branch_name}（出金可能）`
+                            : '未登録'
                         }</span>
                       </div>
-                      {stripeStatus !== 'not_created' && (
-                        <button onClick={startStripeOnboarding}
-                          className="text-[11px] text-[#888] hover:text-[#111] transition-colors cursor-pointer">
-                          口座情報を更新
-                        </button>
-                      )}
+                      <button onClick={() => {
+                        setBankForm(hasBankAccount ? { ...bankAccountInfo } : { bank_name: '', branch_name: '', account_type: '普通', account_number: '', account_holder: '' });
+                        setShowBankAccountModal(true);
+                      }}
+                        className="text-[11px] text-[#888] hover:text-[#111] transition-colors cursor-pointer">
+                        {hasBankAccount ? '口座情報を更新' : '口座を登録'}
+                      </button>
                     </div>
 
                     {/* 取引履歴 */}
@@ -973,6 +925,60 @@ function EmployeeDashboardContent() {
                     disabled={withdrawLoading || !withdrawAmount || parseInt(withdrawAmount) < MIN_WITHDRAW_AMOUNT || parseInt(withdrawAmount) > balance}
                     className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
                     {withdrawLoading ? '処理中...' : '出金する'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ 銀行口座登録モーダル ═══ */}
+        {showBankAccountModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowBankAccountModal(false)}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-xl w-full max-w-md overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[#F0F0F0]">
+                <h2 className="text-[15px] font-bold text-[#111]">銀行口座の登録</h2>
+                <p className="text-[11px] text-[#999] mt-0.5">出金時の振込先口座を登録してください</p>
+              </div>
+              <div className="p-6 space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1">銀行名</label>
+                  <input type="text" className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111]"
+                    placeholder="例: 三菱UFJ銀行" value={bankForm.bank_name} onChange={(e) => setBankForm({ ...bankForm, bank_name: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1">支店名</label>
+                  <input type="text" className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111]"
+                    placeholder="例: 渋谷支店" value={bankForm.branch_name} onChange={(e) => setBankForm({ ...bankForm, branch_name: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1">口座種別</label>
+                  <select className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111]"
+                    value={bankForm.account_type} onChange={(e) => setBankForm({ ...bankForm, account_type: e.target.value })}>
+                    <option value="普通">普通</option>
+                    <option value="当座">当座</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1">口座番号</label>
+                  <input type="text" className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111]"
+                    placeholder="例: 1234567" value={bankForm.account_number} onChange={(e) => setBankForm({ ...bankForm, account_number: e.target.value.replace(/[^0-9]/g, '') })}
+                    maxLength={7} inputMode="numeric" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#666] mb-1">口座名義（カタカナ）</label>
+                  <input type="text" className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-[13px] text-[#111] bg-white focus:outline-none focus:ring-2 focus:ring-[#111]/10 focus:border-[#111]"
+                    placeholder="例: ヤマダ タロウ" value={bankForm.account_holder} onChange={(e) => setBankForm({ ...bankForm, account_holder: e.target.value })} />
+                </div>
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <button onClick={() => setShowBankAccountModal(false)}
+                    className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">
+                    キャンセル
+                  </button>
+                  <button onClick={saveBankAccount} disabled={bankSaving}
+                    className="px-4 py-2 text-[12px] font-semibold bg-[#111] text-white rounded-lg hover:bg-[#333] transition-colors disabled:opacity-40 cursor-pointer">
+                    {bankSaving ? '保存中...' : '保存する'}
                   </button>
                 </div>
               </div>
