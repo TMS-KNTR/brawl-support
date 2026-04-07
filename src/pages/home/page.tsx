@@ -30,7 +30,7 @@ export default function Home() {
           "alternateName": "GEMUSUKE",
           "url": "https://gemsuke.com",
           "description": "ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行サービス。クレカ・コンビニ・銀行振込対応・30日間返金保証。",
-          "sameAs": ["https://x.com/nxpyzo"]
+          "sameAs": []
         })}</script>
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",

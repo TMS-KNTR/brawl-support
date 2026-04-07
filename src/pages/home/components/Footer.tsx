@@ -20,6 +20,7 @@ export default function Footer() {
               プロの代行者による安全・確実なゲーム代行サービス。
             </p>
             <div className="flex gap-3">
+              {/* TODO: Xリンク復活時に戻す
               <a
                 href="https://x.com/nxpyzo"
                 target="_blank"
@@ -28,6 +29,7 @@ export default function Footer() {
               >
                 <i className="ri-twitter-x-fill text-sm"></i>
               </a>
+              */}
             </div>
           </div>
 
