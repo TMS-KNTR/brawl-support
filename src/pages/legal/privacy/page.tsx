@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import Header from '../../home/components/Header';
 import Footer from '../../home/components/Footer';
 
@@ -7,6 +8,16 @@ export default function PrivacyPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Helmet>
+        <title>プライバシーポリシー | げむ助 - ブロスタ代行サービス</title>
+        <meta name="description" content="げむ助のプライバシーポリシー。個人情報の取扱い、収集する情報の種類、利用目的、第三者提供について定めています。" />
+        <meta property="og:title" content="プライバシーポリシー | げむ助" />
+        <meta property="og:description" content="げむ助のプライバシーポリシー。個人情報の取扱い・利用目的・第三者提供について。" />
+        <meta property="og:url" content="https://gemsuke.com/legal/privacy" />
+        <meta property="og:locale" content="ja_JP" />
+        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
+        <link rel="canonical" href="https://gemsuke.com/legal/privacy" />
+      </Helmet>
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 py-16">

@@ -152,8 +152,13 @@ export default function LoginPage() {
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
       style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
       <Helmet>
-        <title>ログイン | げむ助</title>
+        <title>ログイン | げむ助 - ブロスタ代行サービス</title>
         <meta name="description" content="げむ助にログインして、ブロスタの代行依頼を管理しましょう。" />
+        <meta property="og:title" content="ログイン | げむ助" />
+        <meta property="og:description" content="げむ助にログインして、ブロスタの代行依頼を管理しましょう。" />
+        <meta property="og:url" content="https://gemsuke.com/login" />
+        <meta property="og:locale" content="ja_JP" />
+        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
         <link rel="canonical" href="https://gemsuke.com/login" />
       </Helmet>
       <AuthBackground />

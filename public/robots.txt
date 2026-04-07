@@ -5,5 +5,7 @@ Disallow: /chat/
 Disallow: /account/
 Disallow: /notifications/
 Disallow: /payment-success/
+Disallow: /auth/callback
+Disallow: /order/new
 
 Sitemap: https://gemsuke.com/sitemap.xml

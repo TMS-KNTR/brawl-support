@@ -86,8 +86,13 @@ export default function RegisterPage() {
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10"
       style={{ background: 'linear-gradient(160deg, #EEF2FF 0%, #FAFAFA 60%, #EEF2FF 100%)' }}>
       <Helmet>
-        <title>新規登録 | げむ助 - ゲーム代行サービス</title>
+        <title>新規登録 | げむ助 - ブロスタ代行サービス</title>
         <meta name="description" content="げむ助に無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
+        <meta property="og:title" content="新規登録 | げむ助 - ブロスタ代行サービス" />
+        <meta property="og:description" content="げむ助に無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
+        <meta property="og:url" content="https://gemsuke.com/register" />
+        <meta property="og:locale" content="ja_JP" />
+        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
         <link rel="canonical" href="https://gemsuke.com/register" />
       </Helmet>
       <RegisterBackground />

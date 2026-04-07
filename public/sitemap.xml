@@ -2,27 +2,44 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://gemsuke.com/</loc>
+    <lastmod>2026-04-07</lastmod>
     <priority>1.0</priority>
     <changefreq>weekly</changefreq>
   </url>
   <url>
     <loc>https://gemsuke.com/games</loc>
+    <lastmod>2026-04-07</lastmod>
     <priority>0.8</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/order/new</loc>
-    <priority>0.9</priority>
-    <changefreq>weekly</changefreq>
+    <loc>https://gemsuke.com/register</loc>
+    <lastmod>2026-04-07</lastmod>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
   </url>
   <url>
     <loc>https://gemsuke.com/login</loc>
+    <lastmod>2026-04-07</lastmod>
     <priority>0.5</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/register</loc>
-    <priority>0.6</priority>
+    <loc>https://gemsuke.com/legal/terms</loc>
+    <lastmod>2026-03-27</lastmod>
+    <priority>0.4</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://gemsuke.com/legal/privacy</loc>
+    <lastmod>2026-03-27</lastmod>
+    <priority>0.4</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://gemsuke.com/legal/compliance</loc>
+    <lastmod>2026-02-18</lastmod>
+    <priority>0.4</priority>
     <changefreq>monthly</changefreq>
   </url>
 </urlset>

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import Header from '../../home/components/Header';
 import Footer from '../../home/components/Footer';
 
@@ -7,6 +8,16 @@ export default function TermsPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Helmet>
+        <title>利用規約 | げむ助 - ブロスタ代行サービス</title>
+        <meta name="description" content="げむ助の利用規約。ブロスタ代行サービスの利用条件、返金ポリシー、禁止事項等を定めています。" />
+        <meta property="og:title" content="利用規約 | げむ助" />
+        <meta property="og:description" content="げむ助の利用規約。ブロスタ代行サービスの利用条件、返金ポリシー、禁止事項等。" />
+        <meta property="og:url" content="https://gemsuke.com/legal/terms" />
+        <meta property="og:locale" content="ja_JP" />
+        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
+        <link rel="canonical" href="https://gemsuke.com/legal/terms" />
+      </Helmet>
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 py-16">

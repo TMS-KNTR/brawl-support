@@ -20,6 +20,8 @@ export default function Home() {
         <meta property="og:title" content="げむ助 | ブロスタ代行サービス - ランク上げ・トロフィー上げ" />
         <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならげむ助。クレカ・コンビニ・銀行振込対応・30日間返金保証・匿名チャットで安心。" />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://gemsuke.com" />
+        <meta property="og:locale" content="ja_JP" />
         <meta property="og:site_name" content="げむ助 - ブロスタ代行サービス" />
         <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
         <link rel="canonical" href="https://gemsuke.com" />
