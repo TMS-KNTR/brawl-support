@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
       <Helmet>
         <title>パスワードリセット | げむ助</title>
         <meta name="description" content="げむ助のパスワードをリセットします。登録済みのメールアドレスにリセットリンクを送信します。" />
-        <link rel="canonical" href="https://gemsuke.com/forgot-password" />
+        <link rel="canonical" href="https://gemusuke.com/forgot-password" />
       </Helmet>
       <AuthBackground />
 

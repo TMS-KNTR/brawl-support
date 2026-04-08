@@ -90,10 +90,10 @@ export default function RegisterPage() {
         <meta name="description" content="げむ助に無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
         <meta property="og:title" content="新規登録 | げむ助 - ブロスタ代行サービス" />
         <meta property="og:description" content="げむ助に無料登録。ブロスタのランク上げ・トロフィー上げ代行をすぐに依頼できます。" />
-        <meta property="og:url" content="https://gemsuke.com/register" />
+        <meta property="og:url" content="https://gemusuke.com/register" />
         <meta property="og:locale" content="ja_JP" />
-        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
-        <link rel="canonical" href="https://gemsuke.com/register" />
+        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
+        <link rel="canonical" href="https://gemusuke.com/register" />
       </Helmet>
       <RegisterBackground />
 

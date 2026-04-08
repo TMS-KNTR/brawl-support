@@ -420,8 +420,8 @@ export default function OrderPage() {
         <meta name="description" content="ブロスタのランク上げ・トロフィー上げの依頼注文ページ。条件を入力するだけで料金が自動計算。安全な決済でそのまま依頼できます。" />
         <meta property="og:title" content="依頼注文 | げむ助" />
         <meta property="og:description" content="ブロスタの代行依頼をかんたん注文。料金自動計算で安心。" />
-        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
-        <link rel="canonical" href="https://gemsuke.com/order/new" />
+        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
+        <link rel="canonical" href="https://gemusuke.com/order/new" />
       </Helmet>
       <Header />
 

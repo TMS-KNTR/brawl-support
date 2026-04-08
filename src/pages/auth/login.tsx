@@ -156,10 +156,10 @@ export default function LoginPage() {
         <meta name="description" content="げむ助にログインして、ブロスタの代行依頼を管理しましょう。" />
         <meta property="og:title" content="ログイン | げむ助" />
         <meta property="og:description" content="げむ助にログインして、ブロスタの代行依頼を管理しましょう。" />
-        <meta property="og:url" content="https://gemsuke.com/login" />
+        <meta property="og:url" content="https://gemusuke.com/login" />
         <meta property="og:locale" content="ja_JP" />
-        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
-        <link rel="canonical" href="https://gemsuke.com/login" />
+        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
+        <link rel="canonical" href="https://gemusuke.com/login" />
       </Helmet>
       <AuthBackground />
 

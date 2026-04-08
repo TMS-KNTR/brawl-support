@@ -13,10 +13,10 @@ export default function CompliancePage() {
         <meta name="description" content="げむ助の特定商取引法に基づく表記。販売業者情報、支払方法、返品・キャンセルポリシー等を掲載しています。" />
         <meta property="og:title" content="特定商取引法に基づく表記 | げむ助" />
         <meta property="og:description" content="げむ助の特定商取引法に基づく表記。販売業者情報、支払方法、返品・キャンセルポリシー。" />
-        <meta property="og:url" content="https://gemsuke.com/legal/compliance" />
+        <meta property="og:url" content="https://gemusuke.com/legal/compliance" />
         <meta property="og:locale" content="ja_JP" />
-        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
-        <link rel="canonical" href="https://gemsuke.com/legal/compliance" />
+        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
+        <link rel="canonical" href="https://gemusuke.com/legal/compliance" />
       </Helmet>
       <Header />
 

@@ -20,17 +20,17 @@ export default function Home() {
         <meta property="og:title" content="げむ助 | ブロスタ代行サービス - ランク上げ・トロフィー上げ" />
         <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならげむ助。クレカ・コンビニ・銀行振込対応・30日間返金保証・匿名チャットで安心。" />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://gemsuke.com" />
+        <meta property="og:url" content="https://gemusuke.com" />
         <meta property="og:locale" content="ja_JP" />
         <meta property="og:site_name" content="げむ助 - ブロスタ代行サービス" />
-        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
-        <link rel="canonical" href="https://gemsuke.com" />
+        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
+        <link rel="canonical" href="https://gemusuke.com" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
           "name": "げむ助",
           "alternateName": "GEMUSUKE",
-          "url": "https://gemsuke.com",
+          "url": "https://gemusuke.com",
           "description": "ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行サービス。クレカ・コンビニ・銀行振込対応・30日間返金保証。",
           "sameAs": []
         })}</script>
@@ -40,7 +40,7 @@ export default function Home() {
           "name": "ブロスタ代行サービス",
           "alternateName": "Brawl Stars Boosting Service",
           "description": "ブロスタのランク上げ・トロフィー上げ・ガチバトル代行。プロプレイヤーが安全・確実に目標を達成。",
-          "provider": { "@type": "Organization", "name": "げむ助", "url": "https://gemsuke.com" },
+          "provider": { "@type": "Organization", "name": "げむ助", "url": "https://gemusuke.com" },
           "serviceType": "ゲーム代行",
           "areaServed": "JP"
         })}</script>

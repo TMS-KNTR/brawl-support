@@ -15,8 +15,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const distDir = join(__dirname, '..', 'dist');
 
-const BASE_URL = 'https://gemsuke.com';
-const OG_IMAGE = 'https://gemsuke.vercel.app/og-image.png';
+const BASE_URL = 'https://gemusuke.com';
+const OG_IMAGE = 'https://gemusuke.com/og-image.png';
 
 /** @type {Array<{path: string, title: string, description: string, ogTitle?: string, ogDescription?: string, jsonLd?: object[]}>} */
 const routes = [

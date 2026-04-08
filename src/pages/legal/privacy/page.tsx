@@ -13,10 +13,10 @@ export default function PrivacyPage() {
         <meta name="description" content="げむ助のプライバシーポリシー。個人情報の取扱い、収集する情報の種類、利用目的、第三者提供について定めています。" />
         <meta property="og:title" content="プライバシーポリシー | げむ助" />
         <meta property="og:description" content="げむ助のプライバシーポリシー。個人情報の取扱い・利用目的・第三者提供について。" />
-        <meta property="og:url" content="https://gemsuke.com/legal/privacy" />
+        <meta property="og:url" content="https://gemusuke.com/legal/privacy" />
         <meta property="og:locale" content="ja_JP" />
-        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
-        <link rel="canonical" href="https://gemsuke.com/legal/privacy" />
+        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
+        <link rel="canonical" href="https://gemusuke.com/legal/privacy" />
       </Helmet>
       <Header />
 

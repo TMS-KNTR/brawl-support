@@ -1,43 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://gemsuke.com/</loc>
+    <loc>https://gemusuke.com/</loc>
     <lastmod>2026-04-07</lastmod>
     <priority>1.0</priority>
     <changefreq>weekly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/games</loc>
+    <loc>https://gemusuke.com/games</loc>
     <lastmod>2026-04-07</lastmod>
     <priority>0.8</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/register</loc>
+    <loc>https://gemusuke.com/register</loc>
     <lastmod>2026-04-07</lastmod>
     <priority>0.7</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/login</loc>
+    <loc>https://gemusuke.com/login</loc>
     <lastmod>2026-04-07</lastmod>
     <priority>0.5</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/legal/terms</loc>
+    <loc>https://gemusuke.com/legal/terms</loc>
     <lastmod>2026-03-27</lastmod>
     <priority>0.4</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/legal/privacy</loc>
+    <loc>https://gemusuke.com/legal/privacy</loc>
     <lastmod>2026-03-27</lastmod>
     <priority>0.4</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://gemsuke.com/legal/compliance</loc>
+    <loc>https://gemusuke.com/legal/compliance</loc>
     <lastmod>2026-02-18</lastmod>
     <priority>0.4</priority>
     <changefreq>monthly</changefreq>

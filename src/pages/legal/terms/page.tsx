@@ -13,10 +13,10 @@ export default function TermsPage() {
         <meta name="description" content="げむ助の利用規約。ブロスタ代行サービスの利用条件、返金ポリシー、禁止事項等を定めています。" />
         <meta property="og:title" content="利用規約 | げむ助" />
         <meta property="og:description" content="げむ助の利用規約。ブロスタ代行サービスの利用条件、返金ポリシー、禁止事項等。" />
-        <meta property="og:url" content="https://gemsuke.com/legal/terms" />
+        <meta property="og:url" content="https://gemusuke.com/legal/terms" />
         <meta property="og:locale" content="ja_JP" />
-        <meta property="og:image" content="https://gemsuke.vercel.app/og-image.png" />
-        <link rel="canonical" href="https://gemsuke.com/legal/terms" />
+        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
+        <link rel="canonical" href="https://gemusuke.com/legal/terms" />
       </Helmet>
       <Header />
 
