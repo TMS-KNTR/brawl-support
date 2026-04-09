@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.(?:js|css|woff2?|ttf|eot|ico|png|jpg|jpeg|webp|avif|svg|gif)$",
+      "source": "/:path*.:ext(js|css|woff|woff2|ttf|eot|ico|png|jpg|jpeg|webp|avif|svg|gif)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
       ]

@@ -32,9 +32,9 @@ const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
 
 export default function Features() {
   const features = [
-    { icon: 'ri-bank-card-line', title: '選べる決済方法', desc: 'クレカ・コンビニ・銀行振込に対応。代行完了まで代金を安全に保管。', accent: '#8B7AFF', svgColor: '#10B981' },
-    { icon: 'ri-chat-private-line', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を一切公開せずにやり取り可能。アカウント共有も専用チャットで安全に。', accent: '#5B3AE8', svgColor: '#3B82F6' },
-    { icon: 'ri-star-line', title: 'プロの技術', desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。', accent: '#C4B5FD', svgColor: '#F59E0B' },
+    { num: '01', tag: 'PAYMENT', title: '選べる決済方法', desc: 'クレカ・コンビニ・銀行振込に対応。代行完了まで代金を安全に保管。', color: '#10B981', colorRgb: '16,185,129', image: '/feature-payment.png', imgFilter: 'hue-rotate(70deg) saturate(1.0) brightness(0.96)' },
+    { num: '02', tag: 'SECURITY', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を公開せずにやり取り可能。アカウント共有も専用チャットで安全に。', color: '#3B82F6', colorRgb: '59,130,246', image: '/feature-security.png', imgFilter: 'hue-rotate(130deg) saturate(1.3)' },
+    { num: '03', tag: 'QUALITY', title: 'プロの技術', desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。', color: '#F59E0B', colorRgb: '245,158,11', image: '/feature-quality.png', imgFilter: 'none' },
   ];
 
   const secondary = [
@@ -77,111 +77,100 @@ export default function Features() {
           to { opacity: 1; transform: translateY(0) rotateX(0); }
         }
 
-        @keyframes feat-cardReveal {
-          0% {
-            opacity: 0;
-            transform: translateY(40px) scale(0.95);
-            filter: blur(12px) brightness(1.5);
-          }
-          40% {
-            opacity: 1;
-            filter: blur(4px) brightness(1.2);
-          }
-          70% {
-            transform: translateY(-4px) scale(1.01);
-            filter: blur(0) brightness(1.05);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            filter: blur(0) brightness(1);
-          }
-        }
+        /* ══ SCROLLBAR ══ */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
 
-        /* ══ ACCENT LINE — left to right sweep ══ */
-        @keyframes feat-lineSweep {
+        /* ══ CARD ANIMATIONS ══ */
+        @keyframes fc-cardIn {
+          0% { opacity: 0; transform: translateY(48px) scale(0.94); filter: blur(8px); }
+          60% { opacity: 1; filter: blur(0); }
+          80% { transform: translateY(-5px) scale(1.01); }
+          100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        @keyframes fc-numIn {
+          from { opacity: 0; transform: translateY(16px) scale(1.2); filter: blur(8px); }
+          to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        @keyframes fc-imgIn {
+          0% { opacity: 0; transform: scale(0.6) translateX(-20px); }
+          60% { opacity: 1; }
+          80% { transform: scale(1.04) translateX(2px); }
+          100% { opacity: 1; transform: scale(1) translateX(0); }
+        }
+        @keyframes fc-imgBob {
+          0%,100% { transform: translateY(0) rotate(0deg); }
+          30% { transform: translateY(-8px) rotate(1deg); }
+          70% { transform: translateY(3px) rotate(-0.5deg); }
+        }
+        @keyframes fc-contentUp {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fc-lineGrow {
           from { transform: scaleX(0); }
           to { transform: scaleX(1); }
         }
 
-        /* ══ ACCENT DOT — breathing pulse ══ */
-        @keyframes feat-dotBreathe {
-          0%, 100% { box-shadow: 0 0 0 0 var(--dot-color, #8B7AFF); }
-          50% { box-shadow: 0 0 0 6px transparent; }
-        }
-        @keyframes feat-dotRingPulse {
-          0% { transform: scale(1); opacity: 0.5; }
-          100% { transform: scale(3); opacity: 0; }
-        }
-
-        /* ══ TITLE CHARS ══ */
-        @keyframes feat-charIn {
-          from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
-          to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-
-        /* ══ SVG FLOAT ══ */
-        @keyframes feat-svgFloat {
-          0%,100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-6px) rotate(2deg); }
-        }
-
-        /* ══ CARD CLASS ══ */
-        .feat-card {
-          transition: transform 0.5s cubic-bezier(0.22,1,0.36,1),
-                      box-shadow 0.5s cubic-bezier(0.22,1,0.36,1),
-                      border-color 0.4s ease;
-        }
-        .feat-card:hover {
-          transform: translateY(-8px);
+        /* ══ GLASS CARD ══ */
+        .fc-card {
+          position: relative;
+          border-radius: 24px;
+          overflow: visible;
+          background: rgba(255,255,255,0.55);
+          backdrop-filter: blur(20px) saturate(1.4);
+          -webkit-backdrop-filter: blur(20px) saturate(1.4);
+          border: 1px solid rgba(255,255,255,0.5);
           box-shadow:
-            0 24px 60px rgba(91,58,232,0.10),
-            0 8px 24px rgba(0,0,0,0.04),
-            0 0 0 1px rgba(139,122,255,0.15);
-          border-color: rgba(139,122,255,0.35);
+            0 8px 32px rgba(0,0,0,0.04),
+            0 2px 8px rgba(0,0,0,0.02),
+            inset 0 1px 0 rgba(255,255,255,0.7);
+          transition: transform 0.7s cubic-bezier(0.22,1,0.36,1),
+                      box-shadow 0.7s cubic-bezier(0.22,1,0.36,1),
+                      border-color 0.5s ease,
+                      background 0.5s ease;
         }
-
-        /* Hover: border glow pulse */
-        .feat-card:hover .feat-border-glow {
-          opacity: 1;
+        .fc-card:hover {
+          transform: translateY(-14px) scale(1.015);
+          background: rgba(255,255,255,0.58);
+          border-color: rgba(var(--c-rgb),0.25);
+          box-shadow:
+            0 32px 64px rgba(var(--c-rgb),0.12),
+            0 0 40px rgba(var(--c-rgb),0.06),
+            0 12px 24px rgba(0,0,0,0.06),
+            inset 0 1px 0 rgba(255,255,255,0.8);
         }
-
-        /* Hover: dot glow + scale + ring explode */
-        .feat-dot-inner {
-          transition: transform 0.3s cubic-bezier(0.22,1,0.36,1),
-                      background 0.3s ease,
-                      box-shadow 0.3s ease;
+        .fc-card:hover .fc-img {
+          transform: scale(1.1) rotate(3deg);
+          filter: var(--img-filter) drop-shadow(0 10px 28px rgba(var(--c-rgb),0.3));
         }
-        .feat-card:hover .feat-dot-inner {
-          transform: scale(1.6);
-          background: #5B3AE8 !important;
-          box-shadow: 0 0 10px rgba(139,122,255,0.5), 0 0 20px rgba(91,58,232,0.2);
+        .fc-card .fc-img {
+          transition: transform 0.7s cubic-bezier(0.22,1,0.36,1),
+                      filter 0.7s ease;
         }
-        .feat-card:hover .feat-dot-ring {
-          animation: feat-dotRingPulse 0.8s ease-out;
+        .fc-card:hover .fc-num {
+          opacity: 1 !important;
+          color: rgba(var(--c-rgb),0.12);
         }
-
-        /* Hover: SVG visual lifts and glows */
-        .feat-card .feat-visual {
-          transition: transform 0.6s cubic-bezier(0.22,1,0.36,1),
-                      filter 0.6s ease;
-          animation: feat-svgFloat 5s ease-in-out infinite;
+        .fc-card .fc-num {
+          transition: opacity 0.5s ease;
         }
-        .feat-card:nth-child(2) .feat-visual { animation-delay: -1.7s; }
-        .feat-card:nth-child(3) .feat-visual { animation-delay: -3.3s; }
-        .feat-card:hover .feat-visual {
-          animation-play-state: paused;
-          transform: rotate(6deg) scale(1.12);
-          filter: drop-shadow(0 4px 12px var(--accent-glow, rgba(139,122,255,0.3)));
+        .fc-card:hover .fc-bar {
+          width: 40px;
         }
-
-        /* Hover: shimmer sweep */
-        @keyframes feat-shimmer {
-          0% { transform: translateX(-100%) skewX(-15deg); }
-          100% { transform: translateX(250%) skewX(-15deg); }
+        .fc-card .fc-bar {
+          transition: width 0.5s cubic-bezier(0.22,1,0.36,1);
         }
-        .feat-card:hover .feat-shimmer {
-          animation: feat-shimmer 1.2s ease-in-out;
+        .fc-card:hover .fc-glow {
+          opacity: 0.12;
+        }
+        .fc-card .fc-glow {
+          transition: opacity 0.6s ease;
+        }
+        .fc-card:hover .fc-bottom-line {
+          opacity: 0.5;
+        }
+        .fc-card .fc-bottom-line {
+          transition: opacity 0.5s ease;
         }
 
         /* ══ SECONDARY ══ */
@@ -217,7 +206,7 @@ export default function Features() {
       `}</style>
 
       {/* ══ DEEP SPACE BACKGROUND ══ */}
-      <div className="absolute inset-0 bg-[#FAFBFF]" />
+      <div className="absolute inset-0 bg-[#EEEDF5]" />
 
       {/* Aurora nebula */}
       <div
@@ -322,132 +311,138 @@ export default function Features() {
         </div>
 
         {/* ══ FEATURE CARDS ══ */}
-        <div ref={grid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-16 items-start">
+        <div ref={grid.ref} className="flex md:grid md:grid-cols-3 gap-7 mb-16 items-stretch overflow-x-auto md:overflow-visible snap-x snap-mandatory py-8 -my-8 pb-12 md:py-0 md:my-0 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {features.map((f, i) => (
             <div
               key={i}
-              className="feat-card relative rounded-2xl overflow-hidden cursor-default"
+              className="fc-card cursor-default min-w-[85vw] md:min-w-0 snap-center"
               style={{
-                '--accent-glow': 'rgba(91,58,232,0.3)',
-                '--dot-color': 'rgba(91,58,232,0.25)',
-                background: '#fff',
-                border: '1px solid rgba(91,58,232,0.15)',
+                '--c': f.color,
+                '--c-rgb': f.colorRgb,
+                '--img-filter': f.imgFilter,
                 opacity: grid.visible ? 1 : 0,
                 animation: grid.visible
-                  ? `feat-cardReveal 0.9s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.18}s both`
+                  ? `fc-cardIn 1s cubic-bezier(0.22,1,0.36,1) ${0.05 + i * 0.2}s both`
                   : 'none',
               } as React.CSSProperties}
             >
-              {/* Border glow on hover */}
+              {/* Corner glow */}
               <div
-                className="feat-border-glow absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-500 z-[3]"
+                className="fc-glow absolute -top-12 -left-12 w-40 h-40 rounded-full pointer-events-none z-[0]"
                 style={{
-                  opacity: 0,
-                  boxShadow: 'inset 0 0 24px rgba(91,58,232,0.09), 0 0 20px rgba(91,58,232,0.07)',
+                  background: `radial-gradient(circle, rgba(${f.colorRgb},0.2), transparent 65%)`,
+                  opacity: 0.06,
                 }}
               />
 
-              {/* Shimmer sweep on hover */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden z-[4]">
-                <div
-                  className="feat-shimmer absolute top-0 bottom-0 w-[35%] opacity-0 group-hover:opacity-100"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)',
-                  }}
-                />
+              {/* Ghost number — top left */}
+              <div
+                className="fc-num absolute top-4 left-7 select-none pointer-events-none z-[0]"
+                style={{
+                  fontFamily: '"Orbitron", sans-serif',
+                  fontSize: 'clamp(72px,10vw,96px)',
+                  fontWeight: 900,
+                  lineHeight: 0.85,
+                  color: `rgba(${f.colorRgb},0.06)`,
+                  opacity: grid.visible ? 1 : 0,
+                  animation: grid.visible
+                    ? `fc-numIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.2}s both`
+                    : 'none',
+                }}
+              >
+                {f.num}
               </div>
 
-              {/* Left accent line */}
-              <div
-                className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl z-[2]"
-                style={{ background: 'linear-gradient(180deg, #5B3AE8, rgba(91,58,232,0.1))' }}
-              />
+              {/* Two-column layout: image left, content right on md+ */}
+              <div className="relative z-[1] flex flex-col items-center md:flex-row md:items-start gap-2 p-8 md:p-10">
 
-
-
-              <div className="relative px-7 pt-8 pb-9">
-                {/* SVG Visual — floating */}
+                {/* Image — left, large */}
                 <div
-                  className="feat-visual absolute top-4 right-4 pointer-events-none z-[1]"
-                  style={{ width: 110, height: 110 }}
-                >
-                  {i === 0 && (
-                    <svg viewBox="0 0 64 64" fill="none" className="w-full h-full">
-                      <rect x="8" y="16" width="40" height="28" rx="4" fill={f.svgColor} fillOpacity="0.15" stroke={f.svgColor} strokeOpacity="0.4" strokeWidth="1.5" />
-                      <rect x="8" y="22" width="40" height="5" fill={f.svgColor} fillOpacity="0.2" />
-                      <rect x="12" y="34" width="14" height="3" rx="1.5" fill={f.svgColor} fillOpacity="0.25" />
-                      <circle cx="52" cy="14" r="9" fill={f.svgColor} fillOpacity="0.2" stroke={f.svgColor} strokeOpacity="0.45" strokeWidth="1.5" />
-                      <text x="52" y="18" textAnchor="middle" fontSize="10" fontWeight="bold" fill={f.svgColor} fillOpacity="0.5">¥</text>
-                    </svg>
-                  )}
-                  {i === 1 && (
-                    <svg viewBox="0 0 64 64" fill="none" className="w-full h-full">
-                      <path d="M32 6L52 16V30C52 42 43 51 32 56C21 51 12 42 12 30V16L32 6Z" fill={f.svgColor} fillOpacity="0.12" stroke={f.svgColor} strokeOpacity="0.4" strokeWidth="1.5" strokeLinejoin="round" />
-                      <rect x="26" y="28" width="12" height="10" rx="2" fill={f.svgColor} fillOpacity="0.2" />
-                      <path d="M29 28V24C29 22.3 30.3 21 32 21C33.7 21 35 22.3 35 24V28" stroke={f.svgColor} strokeOpacity="0.45" strokeWidth="1.5" strokeLinecap="round" />
-                      <circle cx="32" cy="33" r="1.5" fill={f.svgColor} fillOpacity="0.5" />
-                    </svg>
-                  )}
-                  {i === 2 && (
-                    <svg viewBox="0 0 64 64" fill="none" className="w-full h-full">
-                      <path d="M22 14H42V28C42 34 38 40 32 42C26 40 22 34 22 28V14Z" fill={f.svgColor} fillOpacity="0.12" stroke={f.svgColor} strokeOpacity="0.3" strokeWidth="1.5" />
-                      <path d="M22 18H16C16 24 18 26 22 26" stroke={f.svgColor} strokeOpacity="0.3" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M42 18H48C48 24 46 26 42 26" stroke={f.svgColor} strokeOpacity="0.3" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M32 20L34 26L40 26L35 30L37 36L32 32L27 36L29 30L24 26L30 26Z" fill={f.svgColor} fillOpacity="0.25" stroke={f.svgColor} strokeOpacity="0.5" strokeWidth="1" strokeLinejoin="round" />
-                      <rect x="27" y="44" width="10" height="3" rx="1.5" fill={f.svgColor} fillOpacity="0.2" />
-                      <rect x="24" y="48" width="16" height="2" rx="1" fill={f.svgColor} fillOpacity="0.15" />
-                    </svg>
-                  )}
-                </div>
-
-                {/* Accent dot with pulse ring */}
-                <div className="relative w-3 h-3 mb-6">
-                  <div
-                    className="feat-dot-inner absolute inset-0 rounded-full"
-                    style={{
-                      background: '#5B3AE8',
-                      animation: `feat-dotBreathe 2.5s ease-in-out ${i * 0.8}s infinite`,
-                    }}
-                  />
-                  <div
-                    className="feat-dot-ring absolute inset-0 rounded-full"
-                    style={{ border: '1.5px solid rgba(91,58,232,0.3)' }}
-                  />
-                </div>
-
-                {/* Title — staggered char reveal */}
-                <h3
-                  className="text-[22px] font-extrabold text-[#1A1A2E] leading-[1.2] mb-3.5 tracking-wide"
-                  style={{ fontFamily: '"Rajdhani", sans-serif' }}
-                >
-                  {f.title.split('').map((char, ci) => (
-                    <span
-                      key={ci}
-                      className="inline-block"
-                      style={{
-                        opacity: grid.visible ? 1 : 0,
-                        animation: grid.visible
-                          ? `feat-charIn 0.35s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.18 + ci * 0.03}s both`
-                          : 'none',
-                      }}
-                    >
-                      {char}
-                    </span>
-                  ))}
-                </h3>
-
-                {/* Description */}
-                <p
-                  className="text-[13px] text-[#6B5F85] leading-[1.9] font-medium"
+                  className="flex-shrink-0"
                   style={{
+                    width: 150, height: 150,
                     opacity: grid.visible ? 1 : 0,
                     animation: grid.visible
-                      ? `feat-fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) ${0.8 + i * 0.18}s both`
+                      ? `fc-imgIn 0.9s cubic-bezier(0.22,1,0.36,1) ${0.2 + i * 0.2}s both`
                       : 'none',
                   }}
                 >
-                  {f.desc}
-                </p>
+                  <div style={{ animation: `fc-imgBob 7s ease-in-out infinite`, animationDelay: `${-i * 2.3}s` }}>
+                    <img
+                      src={f.image}
+                      alt={f.title}
+                      className="fc-img w-full h-full object-contain"
+                      style={{
+                        filter: `${f.imgFilter} drop-shadow(0 6px 20px rgba(${f.colorRgb},0.18))`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Content — right */}
+                <div className="flex-1 min-w-0 text-center md:text-left md:pt-2">
+                  {/* Tag */}
+                  <div
+                    className="flex items-center justify-center md:justify-start gap-2.5 mb-4"
+                    style={{
+                      opacity: grid.visible ? 1 : 0,
+                      animation: grid.visible
+                        ? `fc-contentUp 0.5s cubic-bezier(0.22,1,0.36,1) ${0.35 + i * 0.2}s both`
+                        : 'none',
+                    }}
+                  >
+                    <div
+                      className="fc-bar h-[2px] w-5 rounded-full origin-left"
+                      style={{ background: f.color }}
+                    />
+                    <span
+                      className="text-[8px] font-bold tracking-[0.25em] uppercase"
+                      style={{ fontFamily: '"Orbitron", sans-serif', color: f.color }}
+                    >
+                      {f.tag}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h3
+                    className="text-[24px] font-extrabold leading-[1.15] mb-3 tracking-wide text-[#1A1A2E]"
+                    style={{
+                      fontFamily: '"Rajdhani", sans-serif',
+                      opacity: grid.visible ? 1 : 0,
+                      animation: grid.visible
+                        ? `fc-contentUp 0.6s cubic-bezier(0.22,1,0.36,1) ${0.42 + i * 0.2}s both`
+                        : 'none',
+                    }}
+                  >
+                    {f.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p
+                    className="text-[12.5px] leading-[2] font-medium text-[#6B7280]"
+                    style={{
+                      opacity: grid.visible ? 1 : 0,
+                      animation: grid.visible
+                        ? `fc-contentUp 0.6s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.2}s both`
+                        : 'none',
+                    }}
+                  >
+                    {f.desc}
+                  </p>
+
+                  {/* Bottom accent */}
+                  <div
+                    className="fc-bottom-line mt-5 h-[1.5px] origin-left md:origin-left mx-auto md:mx-0"
+                    style={{
+                      width: '60%',
+                      background: `linear-gradient(90deg, rgba(${f.colorRgb},0.3), transparent)`,
+                      opacity: grid.visible ? 0.35 : 0,
+                      animation: grid.visible
+                        ? `fc-lineGrow 0.7s cubic-bezier(0.22,1,0.36,1) ${0.6 + i * 0.2}s both`
+                        : 'none',
+                    }}
+                  />
+                </div>
               </div>
             </div>
           ))}
