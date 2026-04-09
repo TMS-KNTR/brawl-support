@@ -23,72 +23,111 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
     const el = containerRef.current;
     if (!el) return;
 
-    const init = () => {
-      if (el.scrollWidth <= el.clientWidth + 10) return;
-
+    let listening = false;
+    let prevCenter = -1;
+    const update = () => {
       const cards = el.querySelectorAll<HTMLElement>('.fc-card');
       if (!cards.length) return;
 
-      // Remove entrance animation so JS styles can take over
-      cards.forEach((card) => {
-        card.style.animation = 'none';
-        card.style.opacity = '1';
+      const scrollLeft = el.scrollLeft;
+      const viewCenter = scrollLeft + el.clientWidth / 2;
+      let closestIdx = 0;
+      let closestDist = Infinity;
+
+      cards.forEach((card, idx) => {
+        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+        const dist = (cardCenter - viewCenter) / card.offsetWidth;
+        const clamped = Math.max(-1, Math.min(1, dist));
+        const absD = Math.abs(clamped);
+
+        card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
+        card.style.opacity = `${1 - absD * 0.45}`;
+        card.style.filter = `blur(${absD * 2.5}px)`;
+
+        if (Math.abs(dist) < closestDist) {
+          closestDist = Math.abs(dist);
+          closestIdx = idx;
+        }
       });
 
-      let prevCenter = -1;
+      if (closestIdx !== prevCenter && prevCenter !== -1) {
+        const card = cards[closestIdx];
 
-      const update = () => {
-        const scrollLeft = el.scrollLeft;
-        const viewCenter = scrollLeft + el.clientWidth / 2;
-        let closestIdx = 0;
-        let closestDist = Infinity;
+        // Border flash
+        card.style.borderColor = `rgba(var(--c-rgb),0.45)`;
+        card.style.boxShadow = `0 0 24px rgba(var(--c-rgb),0.15), 0 12px 40px rgba(0,0,0,0.06)`;
+        setTimeout(() => {
+          card.style.borderColor = '';
+          card.style.boxShadow = '';
+        }, 450);
+      }
 
-        cards.forEach((card, idx) => {
-          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-          const dist = (cardCenter - viewCenter) / card.offsetWidth;
-          const clamped = Math.max(-1, Math.min(1, dist));
-          const absD = Math.abs(clamped);
+      prevCenter = closestIdx;
+    };
 
-          card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
-          card.style.opacity = `${1 - absD * 0.45}`;
-          card.style.filter = `blur(${absD * 2.5}px)`;
+    let rafId = 0;
+    let lastScroll = -1;
+    let settleCount = 0;
 
-          if (Math.abs(dist) < closestDist) {
-            closestDist = Math.abs(dist);
-            closestIdx = idx;
-          }
-        });
+    const pollUntilSettled = () => {
+      update();
+      if (el.scrollLeft === lastScroll) {
+        settleCount++;
+        if (settleCount >= 5) return;
+      } else {
+        settleCount = 0;
+      }
+      lastScroll = el.scrollLeft;
+      rafId = requestAnimationFrame(pollUntilSettled);
+    };
+    const onTouchEnd = () => {
+      settleCount = 0;
+      lastScroll = -1;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(pollUntilSettled);
+    };
 
-        if (closestIdx !== prevCenter && prevCenter !== -1) {
-          const card = cards[closestIdx];
+    const activate = () => {
+      if (listening) return;
+      if (el.scrollWidth <= el.clientWidth + 10) return;
+      listening = true;
 
-          // Bounce
-          card.style.transform = `perspective(800px) rotateY(0deg) scale(1.06)`;
-          setTimeout(() => {
-            card.style.transition = 'transform 0.45s cubic-bezier(0.22,1,0.36,1)';
-            card.style.transform = `perspective(800px) rotateY(0deg) scale(1)`;
-            setTimeout(() => { card.style.transition = ''; }, 500);
-          }, 16);
-
-          // Border flash
-          card.style.borderColor = `rgba(var(--c-rgb),0.45)`;
-          card.style.boxShadow = `0 0 24px rgba(var(--c-rgb),0.15), 0 12px 40px rgba(0,0,0,0.06)`;
-          setTimeout(() => {
-            card.style.borderColor = '';
-            card.style.boxShadow = '';
-          }, 450);
-        }
-
-        prevCenter = closestIdx;
-      };
-
+      el.classList.add('fc-3d-active');
       el.addEventListener('scroll', update, { passive: true });
+      el.addEventListener('touchend', onTouchEnd, { passive: true });
       update();
     };
 
-    // Wait for card entrance animation to finish, then take over
-    const timer = setTimeout(init, 1500);
-    return () => clearTimeout(timer);
+    // Wait for last card's entrance animation to finish, then take over
+    const onAnimEnd = (e: AnimationEvent) => {
+      if (e.animationName === 'fc-cardIn') {
+        el.removeEventListener('animationend', onAnimEnd);
+        activate();
+      }
+    };
+    el.addEventListener('animationend', onAnimEnd);
+
+    // Fallback: if section was already visible (no animation fires), retry periodically
+    let attempts = 0;
+    const maxAttempts = 30;
+    const timer = setInterval(() => {
+      attempts++;
+      // Only activate if no entrance animation is running on any card
+      const cards = el.querySelectorAll<HTMLElement>('.fc-card');
+      const hasRunningAnim = Array.from(cards).some(
+        (c) => c.getAnimations().some((a) => a instanceof CSSAnimation && a.animationName === 'fc-cardIn')
+      );
+      if (!hasRunningAnim) activate();
+      if (listening || attempts >= maxAttempts) clearInterval(timer);
+    }, 300);
+
+    return () => {
+      clearInterval(timer);
+      el.removeEventListener('animationend', onAnimEnd);
+      el.removeEventListener('scroll', update);
+      el.removeEventListener('touchend', onTouchEnd);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return null;
@@ -168,6 +207,13 @@ export default function Features() {
                         border-color 0.5s ease,
                         background 0.5s ease;
             will-change: transform, opacity, filter;
+          }
+          /* Once JS 3D takes over, kill entrance animation and transition so JS has full control */
+          .fc-3d-active .fc-card {
+            animation: none !important;
+            transition: box-shadow 0.7s cubic-bezier(0.22,1,0.36,1),
+                        border-color 0.5s ease,
+                        background 0.5s ease !important;
           }
         }
 
