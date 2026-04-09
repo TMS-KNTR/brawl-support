@@ -38,9 +38,11 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
         const cardCenter = card.offsetLeft + card.offsetWidth / 2;
         const dist = (cardCenter - viewCenter) / card.offsetWidth;
         const clamped = Math.max(-1, Math.min(1, dist));
-        const absD = Math.abs(clamped);
+        // Dead zone near center to prevent jitter from snap overshoot
+        const snapped = Math.abs(clamped) < 0.08 ? 0 : clamped;
+        const absD = Math.abs(snapped);
 
-        card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
+        card.style.transform = `perspective(800px) rotateY(${snapped * -10}deg) scale(${1 - absD * 0.1})`;
         card.style.opacity = `${1 - absD * 0.45}`;
         card.style.filter = `blur(${absD * 2.5}px)`;
 
