@@ -92,10 +92,11 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
       if (el.scrollWidth <= el.clientWidth + 10) return;
       listening = true;
 
+      // Set JS transforms BEFORE killing animation to avoid 1-frame jump
+      update();
       el.classList.add('fc-3d-active');
       el.addEventListener('scroll', update, { passive: true });
       el.addEventListener('touchend', onTouchEnd, { passive: true });
-      update();
     };
 
     // Wait for last card's entrance animation to finish, then take over
