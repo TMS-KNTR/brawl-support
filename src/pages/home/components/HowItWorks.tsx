@@ -68,8 +68,8 @@ export default function HowItWorks() {
     },
     {
       num: '04',
-      title: 'チャットでアカウント共有',
-      desc: '匿名チャットでアカウント情報を安全に共有。個人情報は一切不要。',
+      title: 'チャットで情報連携',
+      desc: '暗号化された匿名チャットで安全に情報をやり取り。個人情報は一切不要。',
       icon: 'ri-chat-private-line',
     },
     {

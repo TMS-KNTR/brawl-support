@@ -4,7 +4,7 @@ export default function GameFeatures() {
     {
       icon: 'ri-shield-check-line',
       title: 'アカウント安全保証',
-      description: 'VPN・プロキシ使用でアカウントを完全保護。BANリスク0%を実現。',
+      description: 'VPN・プロキシ使用でアカウントを完全保護。安全性を最大限に確保。',
       color: 'from-green-500 to-emerald-600'
     },
     {

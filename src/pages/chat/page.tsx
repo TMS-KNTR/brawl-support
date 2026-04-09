@@ -530,7 +530,7 @@ function AccountGuide() {
         className="w-full my-3 px-4 py-2.5 rounded-xl bg-[#F7F9F9] border border-[#EFF3F4] flex items-center justify-between cursor-pointer hover:bg-[#EFF3F4] transition-colors">
         <span className="flex items-center gap-2 text-[13px] font-semibold text-[#536471]">
           <i className="ri-shield-keyhole-line text-[14px]"></i>
-          ブロスタアカウント共有手順を表示
+          ブロスタ連携手順を表示
         </span>
         <i className="ri-arrow-down-s-line text-[16px] text-[#536471]"></i>
       </button>
@@ -543,7 +543,7 @@ function AccountGuide() {
         <div className="px-4 py-3 flex items-center justify-between">
           <span className="flex items-center gap-2 text-[13px] font-bold text-[#0F1419]">
             <i className="ri-shield-keyhole-line text-[14px] text-[#536471]"></i>
-            ブロスタアカウント共有手順
+            ブロスタ連携手順
           </span>
           <button onClick={() => toggleCollapsed(true)}
             className="px-2.5 py-1 rounded-full border border-[#CFD9DE] flex items-center gap-1 hover:bg-[#E1E8ED] cursor-pointer transition-colors">
@@ -607,9 +607,9 @@ function AccountGuide() {
 function StatusBanner({ status }: { status?: string }) {
   const s = (status || '').toLowerCase();
   const config: Record<string, { icon: string; text: string; bg: string; border: string; color: string }> = {
-    paid:             { icon: 'ri-time-line',       text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
-    paid_unassigned:  { icon: 'ri-time-line',       text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
-    open:             { icon: 'ri-time-line',       text: 'チャットの"アカウント共有手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    paid:             { icon: 'ri-time-line',       text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    paid_unassigned:  { icon: 'ri-time-line',       text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
+    open:             { icon: 'ri-time-line',       text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
     assigned:         { icon: 'ri-user-follow-line', text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
     claimed:          { icon: 'ri-user-follow-line', text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
     in_progress:      { icon: 'ri-loader-4-line',   text: '代行作業中です。完了までお待ちください', bg: 'bg-[#FFFBEB]', border: 'border-[#FDE68A]', color: 'text-[#92400E]' },

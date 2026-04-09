@@ -38,7 +38,7 @@ export default function Home() {
           "@context": "https://schema.org",
           "@type": "Service",
           "name": "ブロスタ代行サービス",
-          "alternateName": "Brawl Stars Boosting Service",
+          "alternateName": "Brawl Stars Gaming Support Service",
           "description": "ブロスタのランク上げ・トロフィー上げ・ガチバトル代行。プロプレイヤーが安全・確実に目標を達成。",
           "provider": { "@type": "Organization", "name": "げむ助", "url": "https://gemusuke.com" },
           "serviceType": "ゲーム代行",
