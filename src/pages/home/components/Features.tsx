@@ -17,6 +17,83 @@ function useReveal(threshold = 0.2) {
   return { ref, visible };
 }
 
+/* ── Mobile scroll 3D effect ── */
+function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const init = () => {
+      if (el.scrollWidth <= el.clientWidth + 10) return;
+
+      const cards = el.querySelectorAll<HTMLElement>('.fc-card');
+      if (!cards.length) return;
+
+      // Remove entrance animation so JS styles can take over
+      cards.forEach((card) => {
+        card.style.animation = 'none';
+        card.style.opacity = '1';
+      });
+
+      let prevCenter = -1;
+
+      const update = () => {
+        const scrollLeft = el.scrollLeft;
+        const viewCenter = scrollLeft + el.clientWidth / 2;
+        let closestIdx = 0;
+        let closestDist = Infinity;
+
+        cards.forEach((card, idx) => {
+          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+          const dist = (cardCenter - viewCenter) / card.offsetWidth;
+          const clamped = Math.max(-1, Math.min(1, dist));
+          const absD = Math.abs(clamped);
+
+          card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
+          card.style.opacity = `${1 - absD * 0.45}`;
+          card.style.filter = `blur(${absD * 2.5}px)`;
+
+          if (Math.abs(dist) < closestDist) {
+            closestDist = Math.abs(dist);
+            closestIdx = idx;
+          }
+        });
+
+        if (closestIdx !== prevCenter && prevCenter !== -1) {
+          const card = cards[closestIdx];
+
+          // Bounce
+          card.style.transform = `perspective(800px) rotateY(0deg) scale(1.06)`;
+          setTimeout(() => {
+            card.style.transition = 'transform 0.45s cubic-bezier(0.22,1,0.36,1)';
+            card.style.transform = `perspective(800px) rotateY(0deg) scale(1)`;
+            setTimeout(() => { card.style.transition = ''; }, 500);
+          }, 16);
+
+          // Border flash
+          card.style.borderColor = `rgba(var(--c-rgb),0.45)`;
+          card.style.boxShadow = `0 0 24px rgba(var(--c-rgb),0.15), 0 12px 40px rgba(0,0,0,0.06)`;
+          setTimeout(() => {
+            card.style.borderColor = '';
+            card.style.boxShadow = '';
+          }, 450);
+        }
+
+        prevCenter = closestIdx;
+      };
+
+      el.addEventListener('scroll', update, { passive: true });
+      update();
+    };
+
+    // Wait for card entrance animation to finish, then take over
+    const timer = setTimeout(init, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return null;
+}
+
 /* ── Star field ── */
 const STARS = Array.from({ length: 40 }, (_, i) => ({
   id: i, x: Math.random() * 100, y: Math.random() * 100,
@@ -46,6 +123,7 @@ export default function Features() {
   const header = useReveal(0.3);
   const grid = useReveal(0.08);
   const sub = useReveal(0.15);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
 
   return (
@@ -79,6 +157,19 @@ export default function Features() {
 
         /* ══ SCROLLBAR ══ */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+        /* ══ MOBILE SCROLL 3D ══ */
+        @media (max-width: 767px) {
+          .fc-card {
+            transition: transform 0.15s ease-out,
+                        opacity 0.15s ease-out,
+                        filter 0.15s ease-out,
+                        box-shadow 0.7s cubic-bezier(0.22,1,0.36,1),
+                        border-color 0.5s ease,
+                        background 0.5s ease;
+            will-change: transform, opacity, filter;
+          }
+        }
 
         /* ══ CARD ANIMATIONS ══ */
         @keyframes fc-cardIn {
@@ -116,14 +207,15 @@ export default function Features() {
           position: relative;
           border-radius: 24px;
           overflow: visible;
-          background: rgba(255,255,255,0.55);
-          backdrop-filter: blur(20px) saturate(1.4);
-          -webkit-backdrop-filter: blur(20px) saturate(1.4);
-          border: 1px solid rgba(255,255,255,0.5);
+          background: rgba(255,255,255,0.65);
+          backdrop-filter: blur(32px) saturate(1.6);
+          -webkit-backdrop-filter: blur(32px) saturate(1.6);
+          border: 1.5px solid rgba(255,255,255,0.7);
           box-shadow:
-            0 8px 32px rgba(0,0,0,0.04),
-            0 2px 8px rgba(0,0,0,0.02),
-            inset 0 1px 0 rgba(255,255,255,0.7);
+            0 12px 40px rgba(0,0,0,0.06),
+            0 4px 12px rgba(0,0,0,0.03),
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            inset 0 -1px 0 rgba(255,255,255,0.3);
           transition: transform 0.7s cubic-bezier(0.22,1,0.36,1),
                       box-shadow 0.7s cubic-bezier(0.22,1,0.36,1),
                       border-color 0.5s ease,
@@ -131,17 +223,18 @@ export default function Features() {
         }
         .fc-card:hover {
           transform: translateY(-14px) scale(1.015);
-          background: rgba(255,255,255,0.58);
-          border-color: rgba(var(--c-rgb),0.25);
+          background: rgba(255,255,255,0.72);
+          border-color: rgba(var(--c-rgb),0.3);
           box-shadow:
-            0 32px 64px rgba(var(--c-rgb),0.12),
-            0 0 40px rgba(var(--c-rgb),0.06),
-            0 12px 24px rgba(0,0,0,0.06),
-            inset 0 1px 0 rgba(255,255,255,0.8);
+            0 36px 72px rgba(var(--c-rgb),0.14),
+            0 0 48px rgba(var(--c-rgb),0.08),
+            0 16px 32px rgba(0,0,0,0.07),
+            inset 0 1px 0 rgba(255,255,255,0.95),
+            inset 0 -1px 0 rgba(255,255,255,0.4);
         }
         .fc-card:hover .fc-img {
           transform: scale(1.1) rotate(3deg);
-          filter: var(--img-filter) drop-shadow(0 10px 28px rgba(var(--c-rgb),0.3));
+          filter: var(--img-filter) drop-shadow(0 14px 36px rgba(var(--c-rgb),0.35));
         }
         .fc-card .fc-img {
           transition: transform 0.7s cubic-bezier(0.22,1,0.36,1),
@@ -149,25 +242,26 @@ export default function Features() {
         }
         .fc-card:hover .fc-num {
           opacity: 1 !important;
-          color: rgba(var(--c-rgb),0.12);
+          color: rgba(var(--c-rgb),0.14);
         }
         .fc-card .fc-num {
-          transition: opacity 0.5s ease;
+          transition: all 0.5s ease;
         }
         .fc-card:hover .fc-bar {
-          width: 40px;
+          width: 44px;
+          box-shadow: 0 0 8px rgba(var(--c-rgb),0.3);
         }
         .fc-card .fc-bar {
-          transition: width 0.5s cubic-bezier(0.22,1,0.36,1);
+          transition: all 0.5s cubic-bezier(0.22,1,0.36,1);
         }
         .fc-card:hover .fc-glow {
-          opacity: 0.12;
+          opacity: 0.15;
         }
         .fc-card .fc-glow {
           transition: opacity 0.6s ease;
         }
         .fc-card:hover .fc-bottom-line {
-          opacity: 0.5;
+          opacity: 0.6;
         }
         .fc-card .fc-bottom-line {
           transition: opacity 0.5s ease;
@@ -311,7 +405,7 @@ export default function Features() {
         </div>
 
         {/* ══ FEATURE CARDS ══ */}
-        <div ref={grid.ref} className="flex md:grid md:grid-cols-3 gap-7 mb-16 items-stretch overflow-x-auto md:overflow-visible snap-x snap-mandatory py-8 -my-8 pb-12 md:py-0 md:my-0 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div ref={(el) => { (grid.ref as React.MutableRefObject<HTMLDivElement | null>).current = el; scrollContainerRef.current = el; }} className="flex md:grid md:grid-cols-3 gap-7 mb-16 items-stretch overflow-x-auto md:overflow-visible snap-x snap-mandatory py-8 -my-8 pb-12 md:py-0 md:my-0 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {features.map((f, i) => (
             <div
               key={i}
@@ -358,7 +452,7 @@ export default function Features() {
 
                 {/* Image — left, large */}
                 <div
-                  className="flex-shrink-0"
+                  className="fc-img-wrap flex-shrink-0"
                   style={{
                     width: 150, height: 150,
                     opacity: grid.visible ? 1 : 0,
@@ -373,7 +467,7 @@ export default function Features() {
                       alt={f.title}
                       className="fc-img w-full h-full object-contain"
                       style={{
-                        filter: `${f.imgFilter} drop-shadow(0 6px 20px rgba(${f.colorRgb},0.18))`,
+                        filter: `${f.imgFilter} drop-shadow(0 8px 28px rgba(${f.colorRgb},0.25))`,
                       }}
                     />
                   </div>
@@ -405,7 +499,7 @@ export default function Features() {
 
                   {/* Title */}
                   <h3
-                    className="text-[24px] font-extrabold leading-[1.15] mb-3 tracking-wide text-[#1A1A2E]"
+                    className="text-[24px] font-extrabold leading-[1.15] mb-3 tracking-wide text-[#0F0E1A]"
                     style={{
                       fontFamily: '"Rajdhani", sans-serif',
                       opacity: grid.visible ? 1 : 0,
@@ -419,7 +513,7 @@ export default function Features() {
 
                   {/* Description */}
                   <p
-                    className="text-[12.5px] leading-[2] font-medium text-[#6B7280]"
+                    className="text-[12.5px] leading-[2] font-semibold text-[#4B5563]"
                     style={{
                       opacity: grid.visible ? 1 : 0,
                       animation: grid.visible
@@ -447,6 +541,7 @@ export default function Features() {
             </div>
           ))}
         </div>
+        <MobileScroll3D containerRef={scrollContainerRef} />
 
         {/* ══ SECONDARY — HEXAGONS ══ */}
         <div ref={sub.ref} className="relative">
