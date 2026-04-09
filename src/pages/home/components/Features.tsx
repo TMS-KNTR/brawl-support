@@ -25,14 +25,10 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
 
     let listening = false;
     let prevCenter = -1;
-    let bounceUntil = 0; // timestamp — skip transform overwrite while bounce is active
-
     const update = () => {
       const cards = el.querySelectorAll<HTMLElement>('.fc-card');
       if (!cards.length) return;
 
-      const now = performance.now();
-      const bouncing = now < bounceUntil;
       const scrollLeft = el.scrollLeft;
       const viewCenter = scrollLeft + el.clientWidth / 2;
       let closestIdx = 0;
@@ -43,9 +39,6 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
         const dist = (cardCenter - viewCenter) / card.offsetWidth;
         const clamped = Math.max(-1, Math.min(1, dist));
         const absD = Math.abs(clamped);
-
-        // Don't overwrite the center card's transform while bounce is playing
-        if (bouncing && idx === prevCenter) return;
 
         card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
         card.style.opacity = `${1 - absD * 0.45}`;
@@ -59,17 +52,6 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
 
       if (closestIdx !== prevCenter && prevCenter !== -1) {
         const card = cards[closestIdx];
-        bounceUntil = now + 500; // protect bounce for 500ms
-
-        // Bounce
-        card.style.transform = `perspective(800px) rotateY(0deg) scale(1.06)`;
-        card.style.opacity = '1';
-        card.style.filter = 'blur(0px)';
-        setTimeout(() => {
-          card.style.transition = 'transform 0.45s cubic-bezier(0.22,1,0.36,1)';
-          card.style.transform = `perspective(800px) rotateY(0deg) scale(1)`;
-          setTimeout(() => { card.style.transition = ''; }, 500);
-        }, 16);
 
         // Border flash
         card.style.borderColor = `rgba(var(--c-rgb),0.45)`;
