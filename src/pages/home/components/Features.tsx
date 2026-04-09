@@ -109,7 +109,7 @@ const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
 
 export default function Features() {
   const features = [
-    { num: '01', tag: 'PAYMENT', title: '選べる決済方法', desc: 'クレジットカード決済・コンビニ決済・銀行振込に対応。完了まで代金を安全に保管。', color: '#10B981', colorRgb: '16,185,129', image: '/feature-payment.png', imgFilter: 'hue-rotate(70deg) saturate(1.0) brightness(0.96)' },
+    { num: '01', tag: 'PAYMENT', title: '選べる決済方法', desc: 'クレジットカード・コンビニ決済・銀行振込に対応。完了まで代金を安全に保管。', color: '#10B981', colorRgb: '16,185,129', image: '/feature-payment.png', imgFilter: 'hue-rotate(70deg) saturate(1.0) brightness(0.96)' },
     { num: '02', tag: 'SECURITY', title: '完全匿名チャット', desc: '情報漏洩ゼロ。個人情報を公開せずにやり取り可能。暗号化された専用チャットで安全に連携。', color: '#3B82F6', colorRgb: '59,130,246', image: '/feature-security.png', imgFilter: 'hue-rotate(130deg) saturate(1.3)' },
     { num: '03', tag: 'QUALITY', title: 'プロの技術', desc: '成功率99%。厳正な審査を通過した実力派プレイヤーのみが在籍。', color: '#F59E0B', colorRgb: '245,158,11', image: '/feature-quality.png', imgFilter: 'none' },
   ];

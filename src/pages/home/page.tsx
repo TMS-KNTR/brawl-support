@@ -15,10 +15,10 @@ export default function Home() {
     >
       <Helmet>
         <title>げむ助 | ブロスタ代行サービス - ランク上げ・トロフィー上げ代行</title>
-        <meta name="description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行ならげむ助。クレジットカード決済・コンビニ決済・銀行振込対応。プロが安全・確実に目標を達成。30日間返金保証付き。" />
+        <meta name="description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行ならげむ助。クレジットカード・コンビニ決済・銀行振込対応。プロが安全・確実に目標を達成。30日間返金保証付き。" />
         <meta name="keywords" content="ブロスタ,代行,Brawl Stars,ランク上げ,トロフィー上げ,ガチバトル,ブロスタ代行,ゲーム代行,GEMUSUKE,げむ助" />
         <meta property="og:title" content="げむ助 | ブロスタ代行サービス - ランク上げ・トロフィー上げ" />
-        <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならげむ助。クレジットカード決済・コンビニ決済・銀行振込対応・30日間返金保証・匿名チャットで安心。" />
+        <meta property="og:description" content="ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ代行ならげむ助。クレジットカード・コンビニ決済・銀行振込対応・30日間返金保証・匿名チャットで安心。" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://gemusuke.com" />
         <meta property="og:locale" content="ja_JP" />
@@ -31,7 +31,7 @@ export default function Home() {
           "name": "げむ助",
           "alternateName": "GEMUSUKE",
           "url": "https://gemusuke.com",
-          "description": "ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行サービス。クレジットカード決済・コンビニ決済・銀行振込対応・30日間返金保証。",
+          "description": "ブロスタ（Brawl Stars）のランク上げ・トロフィー上げ・ガチバトル代行サービス。クレジットカード・コンビニ決済・銀行振込対応・30日間返金保証。",
           "sameAs": []
         })}</script>
         <script type="application/ld+json">{JSON.stringify({
@@ -61,7 +61,7 @@ export default function Home() {
             {
               "@type": "Question",
               "name": "どのような支払い方法に対応していますか？",
-              "acceptedAnswer": { "@type": "Answer", "text": "クレジットカード決済・コンビニ決済・銀行振込に対応しています。すべての決済は安全に処理されます。" }
+              "acceptedAnswer": { "@type": "Answer", "text": "クレジットカード・コンビニ決済・銀行振込に対応しています。すべての決済は安全に処理されます。" }
             },
             {
               "@type": "Question",
