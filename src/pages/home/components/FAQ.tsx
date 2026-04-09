@@ -167,7 +167,7 @@ export default function FAQ() {
     {
       icon: 'ri-bank-card-line',
       q: 'どのような支払い方法に対応していますか？',
-      a: 'クレジットカード（Visa / Mastercard / JCB / AMEX）、コンビニ決済、銀行振込に対応しています。すべての決済はUnivaPayを通じて安全に処理されます。',
+      a: 'クレジットカード決済・コンビニ決済・銀行振込に対応しています。すべての決済は安全に処理されます。',
     },
     {
       icon: 'ri-time-line',
