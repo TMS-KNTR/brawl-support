@@ -65,73 +65,68 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
       prevCenter = closestIdx;
     };
 
-    const tryInit = () => {
+    let rafId = 0;
+    let lastScroll = -1;
+    let settleCount = 0;
+
+    const pollUntilSettled = () => {
+      update();
+      if (el.scrollLeft === lastScroll) {
+        settleCount++;
+        if (settleCount >= 5) return;
+      } else {
+        settleCount = 0;
+      }
+      lastScroll = el.scrollLeft;
+      rafId = requestAnimationFrame(pollUntilSettled);
+    };
+    const onTouchEnd = () => {
+      settleCount = 0;
+      lastScroll = -1;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(pollUntilSettled);
+    };
+
+    const activate = () => {
       if (listening) return;
       if (el.scrollWidth <= el.clientWidth + 10) return;
-
-      const cards = el.querySelectorAll<HTMLElement>('.fc-card');
-      if (!cards.length) return;
-
       listening = true;
 
-      // Remove entrance animation so JS styles can take over
-      cards.forEach((card) => {
-        card.style.animation = 'none';
-        card.style.opacity = '1';
-      });
-
-      // After touch ends, snap animation may not fire enough scroll events.
-      // Poll with rAF until scroll settles so the bounce/flash always triggers.
-      let rafId = 0;
-      let lastScroll = -1;
-      let settleCount = 0;
-      const pollUntilSettled = () => {
-        update();
-        if (el.scrollLeft === lastScroll) {
-          settleCount++;
-          if (settleCount >= 5) return; // settled — stop polling
-        } else {
-          settleCount = 0;
-        }
-        lastScroll = el.scrollLeft;
-        rafId = requestAnimationFrame(pollUntilSettled);
-      };
-      const onTouchEnd = () => {
-        settleCount = 0;
-        lastScroll = -1;
-        cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(pollUntilSettled);
-      };
-
+      el.classList.add('fc-3d-active');
       el.addEventListener('scroll', update, { passive: true });
       el.addEventListener('touchend', onTouchEnd, { passive: true });
       update();
-
-      cleanup = () => {
-        el.removeEventListener('scroll', update);
-        el.removeEventListener('touchend', onTouchEnd);
-        cancelAnimationFrame(rafId);
-      };
     };
 
-    let cleanup: (() => void) | undefined;
+    // Wait for last card's entrance animation to finish, then take over
+    const onAnimEnd = (e: AnimationEvent) => {
+      if (e.animationName === 'fc-cardIn') {
+        el.removeEventListener('animationend', onAnimEnd);
+        activate();
+      }
+    };
+    el.addEventListener('animationend', onAnimEnd);
 
-    // Retry init until cards are laid out (handles late IntersectionObserver visibility)
-    // Stop after 10s to avoid running forever on desktop where scroll is never needed
+    // Fallback: if section was already visible (no animation fires), retry periodically
     let attempts = 0;
-    const maxAttempts = 30; // 300ms * 30 = 9s
+    const maxAttempts = 30;
     const timer = setInterval(() => {
       attempts++;
-      tryInit();
+      // Only activate if no entrance animation is running on any card
+      const cards = el.querySelectorAll<HTMLElement>('.fc-card');
+      const hasRunningAnim = Array.from(cards).some(
+        (c) => c.getAnimations().some((a) => a instanceof CSSAnimation && a.animationName === 'fc-cardIn')
+      );
+      if (!hasRunningAnim) activate();
       if (listening || attempts >= maxAttempts) clearInterval(timer);
     }, 300);
-    // First attempt after entrance animation
-    const startDelay = setTimeout(() => tryInit(), 1500);
 
     return () => {
       clearInterval(timer);
-      clearTimeout(startDelay);
-      cleanup?.();
+      el.removeEventListener('animationend', onAnimEnd);
+      el.removeEventListener('scroll', update);
+      el.removeEventListener('touchend', onTouchEnd);
+      cancelAnimationFrame(rafId);
     };
   }, []);
 
@@ -212,6 +207,10 @@ export default function Features() {
                         border-color 0.5s ease,
                         background 0.5s ease;
             will-change: transform, opacity, filter;
+          }
+          /* Once JS 3D takes over, kill entrance animation so it can't override inline styles */
+          .fc-3d-active .fc-card {
+            animation: none !important;
           }
         }
 
