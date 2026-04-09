@@ -23,11 +23,74 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
     const el = containerRef.current;
     if (!el) return;
 
-    const init = () => {
+    let listening = false;
+    let prevCenter = -1;
+    let bounceUntil = 0; // timestamp — skip transform overwrite while bounce is active
+
+    const update = () => {
+      const cards = el.querySelectorAll<HTMLElement>('.fc-card');
+      if (!cards.length) return;
+
+      const now = performance.now();
+      const bouncing = now < bounceUntil;
+      const scrollLeft = el.scrollLeft;
+      const viewCenter = scrollLeft + el.clientWidth / 2;
+      let closestIdx = 0;
+      let closestDist = Infinity;
+
+      cards.forEach((card, idx) => {
+        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+        const dist = (cardCenter - viewCenter) / card.offsetWidth;
+        const clamped = Math.max(-1, Math.min(1, dist));
+        const absD = Math.abs(clamped);
+
+        // Don't overwrite the center card's transform while bounce is playing
+        if (bouncing && idx === prevCenter) return;
+
+        card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
+        card.style.opacity = `${1 - absD * 0.45}`;
+        card.style.filter = `blur(${absD * 2.5}px)`;
+
+        if (Math.abs(dist) < closestDist) {
+          closestDist = Math.abs(dist);
+          closestIdx = idx;
+        }
+      });
+
+      if (closestIdx !== prevCenter && prevCenter !== -1) {
+        const card = cards[closestIdx];
+        bounceUntil = now + 500; // protect bounce for 500ms
+
+        // Bounce
+        card.style.transform = `perspective(800px) rotateY(0deg) scale(1.06)`;
+        card.style.opacity = '1';
+        card.style.filter = 'blur(0px)';
+        setTimeout(() => {
+          card.style.transition = 'transform 0.45s cubic-bezier(0.22,1,0.36,1)';
+          card.style.transform = `perspective(800px) rotateY(0deg) scale(1)`;
+          setTimeout(() => { card.style.transition = ''; }, 500);
+        }, 16);
+
+        // Border flash
+        card.style.borderColor = `rgba(var(--c-rgb),0.45)`;
+        card.style.boxShadow = `0 0 24px rgba(var(--c-rgb),0.15), 0 12px 40px rgba(0,0,0,0.06)`;
+        setTimeout(() => {
+          card.style.borderColor = '';
+          card.style.boxShadow = '';
+        }, 450);
+      }
+
+      prevCenter = closestIdx;
+    };
+
+    const tryInit = () => {
+      if (listening) return;
       if (el.scrollWidth <= el.clientWidth + 10) return;
 
       const cards = el.querySelectorAll<HTMLElement>('.fc-card');
       if (!cards.length) return;
+
+      listening = true;
 
       // Remove entrance animation so JS styles can take over
       cards.forEach((card) => {
@@ -35,60 +98,59 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
         card.style.opacity = '1';
       });
 
-      let prevCenter = -1;
-
-      const update = () => {
-        const scrollLeft = el.scrollLeft;
-        const viewCenter = scrollLeft + el.clientWidth / 2;
-        let closestIdx = 0;
-        let closestDist = Infinity;
-
-        cards.forEach((card, idx) => {
-          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-          const dist = (cardCenter - viewCenter) / card.offsetWidth;
-          const clamped = Math.max(-1, Math.min(1, dist));
-          const absD = Math.abs(clamped);
-
-          card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
-          card.style.opacity = `${1 - absD * 0.45}`;
-          card.style.filter = `blur(${absD * 2.5}px)`;
-
-          if (Math.abs(dist) < closestDist) {
-            closestDist = Math.abs(dist);
-            closestIdx = idx;
-          }
-        });
-
-        if (closestIdx !== prevCenter && prevCenter !== -1) {
-          const card = cards[closestIdx];
-
-          // Bounce
-          card.style.transform = `perspective(800px) rotateY(0deg) scale(1.06)`;
-          setTimeout(() => {
-            card.style.transition = 'transform 0.45s cubic-bezier(0.22,1,0.36,1)';
-            card.style.transform = `perspective(800px) rotateY(0deg) scale(1)`;
-            setTimeout(() => { card.style.transition = ''; }, 500);
-          }, 16);
-
-          // Border flash
-          card.style.borderColor = `rgba(var(--c-rgb),0.45)`;
-          card.style.boxShadow = `0 0 24px rgba(var(--c-rgb),0.15), 0 12px 40px rgba(0,0,0,0.06)`;
-          setTimeout(() => {
-            card.style.borderColor = '';
-            card.style.boxShadow = '';
-          }, 450);
+      // After touch ends, snap animation may not fire enough scroll events.
+      // Poll with rAF until scroll settles so the bounce/flash always triggers.
+      let rafId = 0;
+      let lastScroll = -1;
+      let settleCount = 0;
+      const pollUntilSettled = () => {
+        update();
+        if (el.scrollLeft === lastScroll) {
+          settleCount++;
+          if (settleCount >= 5) return; // settled — stop polling
+        } else {
+          settleCount = 0;
         }
-
-        prevCenter = closestIdx;
+        lastScroll = el.scrollLeft;
+        rafId = requestAnimationFrame(pollUntilSettled);
+      };
+      const onTouchEnd = () => {
+        settleCount = 0;
+        lastScroll = -1;
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(pollUntilSettled);
       };
 
       el.addEventListener('scroll', update, { passive: true });
+      el.addEventListener('touchend', onTouchEnd, { passive: true });
       update();
+
+      cleanup = () => {
+        el.removeEventListener('scroll', update);
+        el.removeEventListener('touchend', onTouchEnd);
+        cancelAnimationFrame(rafId);
+      };
     };
 
-    // Wait for card entrance animation to finish, then take over
-    const timer = setTimeout(init, 1500);
-    return () => clearTimeout(timer);
+    let cleanup: (() => void) | undefined;
+
+    // Retry init until cards are laid out (handles late IntersectionObserver visibility)
+    // Stop after 10s to avoid running forever on desktop where scroll is never needed
+    let attempts = 0;
+    const maxAttempts = 30; // 300ms * 30 = 9s
+    const timer = setInterval(() => {
+      attempts++;
+      tryInit();
+      if (listening || attempts >= maxAttempts) clearInterval(timer);
+    }, 300);
+    // First attempt after entrance animation
+    const startDelay = setTimeout(() => tryInit(), 1500);
+
+    return () => {
+      clearInterval(timer);
+      clearTimeout(startDelay);
+      cleanup?.();
+    };
   }, []);
 
   return null;
