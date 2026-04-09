@@ -34,22 +34,32 @@ function MobileScroll3D({ containerRef }: { containerRef: React.RefObject<HTMLDi
       let closestIdx = 0;
       let closestDist = Infinity;
 
+      // Pass 1: find the closest card to center
       cards.forEach((card, idx) => {
+        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+        const dist = Math.abs(cardCenter - viewCenter);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestIdx = idx;
+        }
+      });
+
+      // Pass 2: apply transforms — center card is always neutral
+      cards.forEach((card, idx) => {
+        if (idx === closestIdx) {
+          card.style.transform = 'none';
+          card.style.opacity = '1';
+          card.style.filter = 'none';
+          return;
+        }
         const cardCenter = card.offsetLeft + card.offsetWidth / 2;
         const dist = (cardCenter - viewCenter) / card.offsetWidth;
         const clamped = Math.max(-1, Math.min(1, dist));
-        // Dead zone near center to prevent jitter from snap overshoot
-        const snapped = Math.abs(clamped) < 0.08 ? 0 : clamped;
-        const absD = Math.abs(snapped);
+        const absD = Math.abs(clamped);
 
-        card.style.transform = `perspective(800px) rotateY(${snapped * -10}deg) scale(${1 - absD * 0.1})`;
+        card.style.transform = `perspective(800px) rotateY(${clamped * -10}deg) scale(${1 - absD * 0.1})`;
         card.style.opacity = `${1 - absD * 0.45}`;
         card.style.filter = `blur(${absD * 2.5}px)`;
-
-        if (Math.abs(dist) < closestDist) {
-          closestDist = Math.abs(dist);
-          closestIdx = idx;
-        }
       });
 
       if (closestIdx !== prevCenter && prevCenter !== -1) {
