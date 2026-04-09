@@ -464,7 +464,7 @@ export default function Features() {
               >
                 <div
                   className="feat-hex w-14 h-14 flex items-center justify-center mb-3.5 relative z-10 transition-shadow duration-300"
-                  style={{ background: 'linear-gradient(135deg, #EDE9FE, #F3F0FF)' }}
+                  style={{ background: 'linear-gradient(135deg, #fff, #F0EDFF)', boxShadow: '0 2px 8px rgba(91,58,232,0.08)' }}
                 >
                   <i className={`${s.icon} text-[20px] text-[#5B3AE8] feat-hex-icon`} />
                 </div>
