@@ -208,9 +208,12 @@ export default function Features() {
                         background 0.5s ease;
             will-change: transform, opacity, filter;
           }
-          /* Once JS 3D takes over, kill entrance animation so it can't override inline styles */
+          /* Once JS 3D takes over, kill entrance animation and transition so JS has full control */
           .fc-3d-active .fc-card {
             animation: none !important;
+            transition: box-shadow 0.7s cubic-bezier(0.22,1,0.36,1),
+                        border-color 0.5s ease,
+                        background 0.5s ease !important;
           }
         }
 
