@@ -53,27 +53,27 @@ export default function GamesPage() {
             {
               "@type": "Question",
               "name": "ガチバトル代行はどのランク帯まで対応していますか？",
-              "acceptedAnswer": { "@type": "Answer", "text": "ブロンズからマスター3（10,250ポイント）まで対応しています。現在ランクと目標ランクを指定すれば、最短ルートでプロが引き上げます。特にエリートからレジェンド帯への壁、レジェンドからマスター帯への壁で苦戦されている方からのご依頼が多いです。" }
+              "acceptedAnswer": { "@type": "Answer", "text": "ブロンズからマスター3（10,250ポイント）まで対応しています。現在ランクと目標ランクを指定するだけで、プロが最短ルートで引き上げます。" }
             },
             {
               "@type": "Question",
               "name": "パワー11ではないキャラしか持っていなくても代行できますか？",
-              "acceptedAnswer": { "@type": "Answer", "text": "トロフィー上げ代行はパワーレベルを問わず依頼可能です。ガチバトル代行については、エリート帯以上はゲームのシステム上、今月の最大レベルキャラを含めてパワー11キャラを12体以上所持していないとマッチに参加できないため、この条件を満たしている必要があります。条件を満たしている場合、パワー11キャラ数とバフィー数が多いほど料金が安くなります。" }
+              "acceptedAnswer": { "@type": "Answer", "text": "トロフィー上げ代行は999トロフィーまではパワーレベル不問、1,000トロフィー以上はパワー11キャラのみ対応です。ガチバトル代行のエリート帯以上は、今月の最大レベルキャラを含めパワー11キャラを12体以上所持している必要があります。" }
             },
             {
               "@type": "Question",
               "name": "トロフィー上げは複数のキャラをまとめて依頼できますか？",
-              "acceptedAnswer": { "@type": "Answer", "text": "1回の注文につき1キャラが基本で、複数キャラのトロフィー上げが必要な場合は、それぞれ個別にご注文いただく形になります。注文画面でキャラを選択する際に強弱が自動判定され、料金が自動計算されます。" }
+              "acceptedAnswer": { "@type": "Answer", "text": "1回の注文につき1キャラが基本です。複数キャラの場合は個別にご注文ください。キャラ選択時に強弱が自動判定され、料金も自動計算されます。" }
             },
             {
               "@type": "Question",
               "name": "シーズン終了直前でも間に合いますか？",
-              "acceptedAnswer": { "@type": "Answer", "text": "受注可能な代行者がいれば当日中に作業を開始します。ただしシーズン終了間際は受注が集中するため、早めのご依頼をおすすめします。万が一シーズン内に目標を達成できなかった場合は、30日間の返金保証により全額返金いたします。" }
+              "acceptedAnswer": { "@type": "Answer", "text": "受注可能な代行者がいれば当日中に作業を開始します。終了間際は受注が集中するため早めの依頼を推奨します。未達成の場合は30日間の返金保証により全額返金いたします。" }
             },
             {
               "@type": "Question",
               "name": "代行中にアップデートやメンテナンスが入った場合はどうなりますか？",
-              "acceptedAnswer": { "@type": "Answer", "text": "通常のメンテナンスなど一時的な中断であれば、終了後に代行者が作業を再開します。ゲーム運営会社による措置に起因して作業の継続が困難となった場合は、利用規約第11条に基づき、進捗状況に応じて部分返金または再作業の対応を検討します。詳細は紛争解決手続き（利用規約第12条）に従います。" }
+              "acceptedAnswer": { "@type": "Answer", "text": "一時的なメンテナンスであれば終了後に作業を再開します。ゲーム運営会社の措置により継続が困難となった場合は、利用規約第11条に基づき、進捗状況に応じて部分返金または再作業の対応を検討します。" }
             }
           ]
         })}</script>
@@ -518,19 +518,38 @@ export default function GamesPage() {
                   </thead>
                   <tbody className="text-[#3D3560] font-medium">
                     <tr className="border-t border-[#F0ECFA]">
-                      <td className="px-5 py-3">ブロンズ → ゴールド卒業（0 → 3,000）</td>
+                      <td className="px-5 py-3">ダイヤモンド到達（0 → 3,000pt）</td>
                       <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥3,600</td>
                     </tr>
-                    <tr className="border-t border-[#F0ECFA]">
-                      <td className="px-5 py-3">ダイヤモンド → エリート卒業（3,000 → 6,000）</td>
-                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥3,750</td>
+                    <tr className="border-t border-[#F0ECFA] bg-[#FAF8FF]">
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center gap-2 flex-wrap">
+                          ダイヤ → エリート（3,000 → 4,500pt）
+                          <span className="text-[9px] font-bold tracking-wider text-white bg-[#5B3AE8] px-1.5 py-0.5 rounded">人気</span>
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥1,500</td>
                     </tr>
-                    <tr className="border-t border-[#F0ECFA]">
-                      <td className="px-5 py-3">レジェンド完走（6,000 → 8,250）</td>
+                    <tr className="border-t border-[#F0ECFA] bg-[#FAF8FF]">
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center gap-2 flex-wrap">
+                          エリート → レジェンド（4,500 → 6,000pt）
+                          <span className="text-[9px] font-bold tracking-wider text-white bg-[#5B3AE8] px-1.5 py-0.5 rounded">人気</span>
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥2,250</td>
+                    </tr>
+                    <tr className="border-t border-[#F0ECFA] bg-[#FAF8FF]">
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center gap-2 flex-wrap">
+                          レジェンド → マスター（6,000 → 8,250pt）
+                          <span className="text-[9px] font-bold tracking-wider text-white bg-[#5B3AE8] px-1.5 py-0.5 rounded">人気</span>
+                        </span>
+                      </td>
                       <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥5,600〜¥6,600</td>
                     </tr>
                     <tr className="border-t border-[#F0ECFA]">
-                      <td className="px-5 py-3">マスター帯（8,250 → 10,250）</td>
+                      <td className="px-5 py-3">マスター3到達（8,250 → 10,250pt）</td>
                       <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥30,000〜¥38,000</td>
                     </tr>
                   </tbody>
@@ -684,23 +703,23 @@ export default function GamesPage() {
             {[
               {
                 q: 'ガチバトル代行はどのランク帯まで対応していますか？',
-                a: 'ブロンズからマスター3（10,250ポイント）まで対応しています。現在ランクと目標ランクを指定すれば、最短ルートでプロが引き上げます。特にエリートからレジェンド帯への壁、レジェンドからマスター帯への壁で苦戦されている方からのご依頼が多いです。',
+                a: 'ブロンズからマスター3（10,250ポイント）まで対応しています。現在ランクと目標ランクを指定するだけで、プロが最短ルートで引き上げます。',
               },
               {
                 q: 'パワー11ではないキャラしか持っていなくても代行できますか？',
-                a: 'トロフィー上げ代行はパワーレベルを問わず依頼可能です。ガチバトル代行については、エリート帯以上はゲームのシステム上、今月の最大レベルキャラを含めてパワー11キャラを12体以上所持していないとマッチに参加できないため、この条件を満たしている必要があります。条件を満たしている場合、パワー11キャラ数とバフィー数が多いほど料金が安くなります。',
+                a: 'トロフィー上げ代行は999トロフィーまではパワーレベル不問、1,000トロフィー以上はパワー11キャラのみ対応です。ガチバトル代行のエリート帯以上は、今月の最大レベルキャラを含めパワー11キャラを12体以上所持している必要があります。',
               },
               {
                 q: 'トロフィー上げは複数のキャラをまとめて依頼できますか？',
-                a: '1回の注文につき1キャラが基本で、複数キャラのトロフィー上げが必要な場合は、それぞれ個別にご注文いただく形になります。注文画面でキャラを選択する際に強弱が自動判定され、料金が自動計算されます。',
+                a: '1回の注文につき1キャラが基本です。複数キャラの場合は個別にご注文ください。キャラ選択時に強弱が自動判定され、料金も自動計算されます。',
               },
               {
                 q: 'シーズン終了直前でも間に合いますか？',
-                a: '受注可能な代行者がいれば当日中に作業を開始します。ただしシーズン終了間際は受注が集中するため、早めのご依頼をおすすめします。万が一シーズン内に目標を達成できなかった場合は、30日間の返金保証により全額返金いたします。',
+                a: '受注可能な代行者がいれば当日中に作業を開始します。終了間際は受注が集中するため早めの依頼を推奨します。未達成の場合は30日間の返金保証により全額返金いたします。',
               },
               {
                 q: '代行中にアップデートやメンテナンスが入った場合はどうなりますか？',
-                a: '通常のメンテナンスなど一時的な中断であれば、終了後に代行者が作業を再開します。ゲーム運営会社による措置に起因して作業の継続が困難となった場合は、利用規約第11条に基づき、進捗状況に応じて部分返金または再作業の対応を検討します。詳細は紛争解決手続き（利用規約第12条）に従います。',
+                a: '一時的なメンテナンスであれば終了後に作業を再開します。ゲーム運営会社の措置により継続が困難となった場合は、利用規約第11条に基づき、進捗状況に応じて部分返金または再作業の対応を検討します。',
               },
             ].map((item, i) => (
               <div key={i} className="rounded-2xl border border-[#E0DBF5] bg-white p-6 hover:border-[#C4B5FD] transition-colors duration-300">
