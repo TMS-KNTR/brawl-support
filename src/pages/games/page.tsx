@@ -406,7 +406,6 @@ export default function GamesPage() {
             >
               Brawl Stars 代行サービスの内容
             </h2>
-            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
             <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               げむ助では、ブロスタ（Brawl Stars）のトロフィー上げとガチバトル代行の2種類のサービスを提供しています。
               それぞれの特徴と、どんな方に向いているかをご紹介します。
@@ -499,7 +498,6 @@ export default function GamesPage() {
             >
               料金の目安
             </h2>
-            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
             <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               注文画面で現在の状況と目標を入力すると、料金が自動で計算されます。
               ここでは代表的なケースの目安をご紹介します。
@@ -677,7 +675,6 @@ export default function GamesPage() {
             >
               ブロスタ代行の流れ
             </h2>
-            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
             <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               注文から代行完了までの流れをご紹介します。すべての工程はチャット機能を通じて進み、匿名で安全にご利用いただけます。
             </p>
@@ -742,7 +739,6 @@ export default function GamesPage() {
             >
               ブロスタ代行についてのよくある質問
             </h2>
-            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
             <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               ブロスタ代行に特化したご質問をまとめました。共通のご質問はトップページのFAQもご覧ください。
             </p>
