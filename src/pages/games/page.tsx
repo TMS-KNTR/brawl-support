@@ -385,7 +385,7 @@ export default function GamesPage() {
       <section className="py-20 bg-[#F8F6FF]">
         <div ref={services.ref} className="max-w-5xl mx-auto px-6 lg:px-8">
           <div
-            className="text-center mb-14"
+            className="text-center mb-16"
             style={{
               opacity: services.visible ? 1 : 0,
               animation: services.visible ? 'games-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
@@ -393,18 +393,21 @@ export default function GamesPage() {
             }}
           >
             <span
-              className="inline-block text-[10px] font-bold tracking-[0.25em] uppercase text-[#5B3AE8] mb-4"
+              className="inline-flex items-center justify-center gap-3 text-[11px] font-bold tracking-[0.3em] uppercase text-[#5B3AE8] mb-5"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, transparent, #5B3AE8)' }}></span>
               Services
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, #5B3AE8, transparent)' }}></span>
             </span>
             <h2
-              className="text-2xl sm:text-3xl font-extrabold text-[#1A1A2E] tracking-wider mb-4"
+              className="text-[26px] sm:text-[34px] md:text-[42px] font-extrabold text-[#1A1A2E] tracking-wider mb-6 leading-[1.2]"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
               Brawl Stars 代行サービスの内容
             </h2>
-            <p className="text-[13px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
+            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
+            <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               げむ助では、ブロスタ（Brawl Stars）のトロフィー上げとガチバトル代行の2種類のサービスを提供しています。
               それぞれの特徴と、どんな方に向いているかをご紹介します。
             </p>
@@ -475,7 +478,7 @@ export default function GamesPage() {
       <section className="py-20 bg-white">
         <div ref={pricing.ref} className="max-w-5xl mx-auto px-6 lg:px-8">
           <div
-            className="text-center mb-14"
+            className="text-center mb-16"
             style={{
               opacity: pricing.visible ? 1 : 0,
               animation: pricing.visible ? 'games-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
@@ -483,80 +486,120 @@ export default function GamesPage() {
             }}
           >
             <span
-              className="inline-block text-[10px] font-bold tracking-[0.25em] uppercase text-[#5B3AE8] mb-4"
+              className="inline-flex items-center justify-center gap-3 text-[11px] font-bold tracking-[0.3em] uppercase text-[#5B3AE8] mb-5"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, transparent, #5B3AE8)' }}></span>
               Pricing
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, #5B3AE8, transparent)' }}></span>
             </span>
             <h2
-              className="text-2xl sm:text-3xl font-extrabold text-[#1A1A2E] tracking-wider mb-4"
+              className="text-[26px] sm:text-[34px] md:text-[42px] font-extrabold text-[#1A1A2E] tracking-wider mb-6 leading-[1.2]"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
               料金の目安
             </h2>
-            <p className="text-[13px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
+            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
+            <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               注文画面で現在の状況と目標を入力すると、料金が自動で計算されます。
               ここでは代表的なケースの目安をご紹介します。
             </p>
           </div>
 
-          <div className="mb-10">
+          <div className="mb-12">
             <h3
-              className="text-lg font-extrabold text-[#1A1A2E] tracking-wider mb-5"
+              className="text-lg sm:text-xl font-extrabold text-[#1A1A2E] tracking-wider mb-6"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
               ガチバトル代行の目安
             </h3>
-            <div className="rounded-2xl bg-white border border-[#E0DBF5] overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
-                  <thead className="bg-[#F8F6FF]">
-                    <tr>
-                      <th className="px-5 py-3 text-left font-bold text-[#5B3AE8] tracking-wider">区間</th>
-                      <th className="px-5 py-3 text-right font-bold text-[#5B3AE8] tracking-wider">目安価格</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-[#3D3560] font-medium">
-                    <tr className="border-t border-[#F0ECFA]">
-                      <td className="px-5 py-3">ダイヤモンド到達（0 → 3,000pt）</td>
-                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥3,600</td>
-                    </tr>
-                    <tr className="border-t border-[#F0ECFA] bg-[#FAF8FF]">
-                      <td className="px-5 py-3">
-                        <span className="inline-flex items-center gap-2 flex-wrap">
-                          ダイヤ → エリート（3,000 → 4,500pt）
-                          <span className="text-[9px] font-bold tracking-wider text-white bg-[#5B3AE8] px-1.5 py-0.5 rounded">人気</span>
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥1,500</td>
-                    </tr>
-                    <tr className="border-t border-[#F0ECFA] bg-[#FAF8FF]">
-                      <td className="px-5 py-3">
-                        <span className="inline-flex items-center gap-2 flex-wrap">
-                          エリート → レジェンド（4,500 → 6,000pt）
-                          <span className="text-[9px] font-bold tracking-wider text-white bg-[#5B3AE8] px-1.5 py-0.5 rounded">人気</span>
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥2,250</td>
-                    </tr>
-                    <tr className="border-t border-[#F0ECFA] bg-[#FAF8FF]">
-                      <td className="px-5 py-3">
-                        <span className="inline-flex items-center gap-2 flex-wrap">
-                          レジェンド → マスター（6,000 → 8,250pt）
-                          <span className="text-[9px] font-bold tracking-wider text-white bg-[#5B3AE8] px-1.5 py-0.5 rounded">人気</span>
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥5,600〜¥6,600</td>
-                    </tr>
-                    <tr className="border-t border-[#F0ECFA]">
-                      <td className="px-5 py-3">マスター3到達（8,250 → 10,250pt）</td>
-                      <td className="px-5 py-3 text-right font-bold whitespace-nowrap">¥30,000〜¥38,000</td>
-                    </tr>
-                  </tbody>
-                </table>
+
+            <div className="mb-8">
+              <p
+                className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.25em] uppercase text-[#5B3AE8] mb-4"
+                style={{ fontFamily: '"Orbitron", sans-serif' }}
+              >
+                <i className="ri-fire-fill text-[14px]"></i>
+                Most Popular
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { title: 'ダイヤ → エリート', range: '3,000 → 4,500pt', price: '¥1,500' },
+                  { title: 'エリート → レジェンド', range: '4,500 → 6,000pt', price: '¥2,250' },
+                  { title: 'レジェンド → マスター', range: '6,000 → 8,250pt', price: '¥5,600〜¥6,600' },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="relative rounded-2xl p-6 overflow-hidden transition-all duration-300 hover:-translate-y-1"
+                    style={{
+                      background: 'linear-gradient(145deg, #1A1A2E 0%, #12082A 60%, #1A0E3A 100%)',
+                      boxShadow: '0 10px 30px rgba(18,8,42,0.15)',
+                    }}
+                  >
+                    <div
+                      className="absolute inset-x-0 top-0 h-[2px]"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent, #8B7AFF, transparent)',
+                      }}
+                    />
+                    <div
+                      className="absolute -top-12 -right-12 w-32 h-32 rounded-full pointer-events-none"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(91,58,232,0.25) 0%, transparent 70%)',
+                      }}
+                    />
+                    <div className="relative">
+                      <div className="inline-block px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase text-white bg-[#5B3AE8] rounded mb-3">
+                        人気
+                      </div>
+                      <h4
+                        className="text-[16px] font-extrabold text-white tracking-wider mb-1 leading-tight"
+                        style={{ fontFamily: '"Orbitron", sans-serif' }}
+                      >
+                        {item.title}
+                      </h4>
+                      <p className="text-[11px] text-[#8B7AFF] mb-5 font-medium tracking-wide">
+                        {item.range}
+                      </p>
+                      <div className="text-[22px] sm:text-[26px] font-extrabold text-white tracking-wide">
+                        {item.price}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <p className="text-[11px] text-[#9890B8] mt-3 leading-relaxed">
+
+            <div>
+              <p
+                className="text-[10px] font-bold tracking-[0.25em] uppercase text-[#9CA3AF] mb-3"
+                style={{ fontFamily: '"Orbitron", sans-serif' }}
+              >
+                Other Tiers
+              </p>
+              <div className="rounded-xl border border-[#E0DBF5] bg-white overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 gap-3 border-b border-[#F0ECFA]">
+                  <div>
+                    <div className="text-[13px] font-bold text-[#3D3560]">ダイヤモンド到達</div>
+                    <div className="text-[11px] text-[#9890B8]">0 → 3,000pt</div>
+                  </div>
+                  <div className="text-right text-[15px] font-extrabold text-[#1A1A2E] whitespace-nowrap">
+                    ¥3,600
+                  </div>
+                </div>
+                <div className="flex items-center justify-between px-5 py-4 gap-3">
+                  <div>
+                    <div className="text-[13px] font-bold text-[#3D3560]">マスター3到達</div>
+                    <div className="text-[11px] text-[#9890B8]">8,250 → 10,250pt</div>
+                  </div>
+                  <div className="text-right text-[15px] font-extrabold text-[#1A1A2E] whitespace-nowrap">
+                    ¥30,000〜¥38,000
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-[#9890B8] mt-4 leading-relaxed">
               ※レジェンド帯以降は価格に幅があります。所有するパワー11キャラ数とバフィー数が多いほど安くなり、最小値に近づきます。
             </p>
           </div>
@@ -574,9 +617,9 @@ export default function GamesPage() {
                   <thead className="bg-[#F8F6FF]">
                     <tr>
                       <th className="px-5 py-3 text-left font-bold text-[#5B3AE8] tracking-wider">区間</th>
-                      <th className="px-5 py-3 text-right font-bold text-[#5B3AE8] tracking-wider">強キャラ</th>
+                      <th className="px-5 py-3 text-right font-bold text-[#5B3AE8] tracking-wider">強い</th>
                       <th className="px-5 py-3 text-right font-bold text-[#5B3AE8] tracking-wider">普通</th>
-                      <th className="px-5 py-3 text-right font-bold text-[#5B3AE8] tracking-wider">弱キャラ</th>
+                      <th className="px-5 py-3 text-right font-bold text-[#5B3AE8] tracking-wider">弱い</th>
                     </tr>
                   </thead>
                   <tbody className="text-[#3D3560] font-medium">
@@ -613,7 +656,7 @@ export default function GamesPage() {
       <section className="py-20 bg-[#F8F6FF]">
         <div ref={process.ref} className="max-w-4xl mx-auto px-6 lg:px-8">
           <div
-            className="text-center mb-14"
+            className="text-center mb-16"
             style={{
               opacity: process.visible ? 1 : 0,
               animation: process.visible ? 'games-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
@@ -621,18 +664,21 @@ export default function GamesPage() {
             }}
           >
             <span
-              className="inline-block text-[10px] font-bold tracking-[0.25em] uppercase text-[#5B3AE8] mb-4"
+              className="inline-flex items-center justify-center gap-3 text-[11px] font-bold tracking-[0.3em] uppercase text-[#5B3AE8] mb-5"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, transparent, #5B3AE8)' }}></span>
               Process
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, #5B3AE8, transparent)' }}></span>
             </span>
             <h2
-              className="text-2xl sm:text-3xl font-extrabold text-[#1A1A2E] tracking-wider mb-4"
+              className="text-[26px] sm:text-[34px] md:text-[42px] font-extrabold text-[#1A1A2E] tracking-wider mb-6 leading-[1.2]"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
               ブロスタ代行の流れ
             </h2>
-            <p className="text-[13px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
+            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
+            <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               注文から代行完了までの流れをご紹介します。すべての工程はチャット機能を通じて進み、匿名で安全にご利用いただけます。
             </p>
           </div>
@@ -675,7 +721,7 @@ export default function GamesPage() {
       <section className="py-20 bg-white">
         <div ref={faq.ref} className="max-w-4xl mx-auto px-6 lg:px-8">
           <div
-            className="text-center mb-14"
+            className="text-center mb-16"
             style={{
               opacity: faq.visible ? 1 : 0,
               animation: faq.visible ? 'games-headerIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
@@ -683,18 +729,21 @@ export default function GamesPage() {
             }}
           >
             <span
-              className="inline-block text-[10px] font-bold tracking-[0.25em] uppercase text-[#5B3AE8] mb-4"
+              className="inline-flex items-center justify-center gap-3 text-[11px] font-bold tracking-[0.3em] uppercase text-[#5B3AE8] mb-5"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, transparent, #5B3AE8)' }}></span>
               Brawl Stars FAQ
+              <span className="inline-block w-8 h-[1px]" style={{ background: 'linear-gradient(90deg, #5B3AE8, transparent)' }}></span>
             </span>
             <h2
-              className="text-2xl sm:text-3xl font-extrabold text-[#1A1A2E] tracking-wider mb-4"
+              className="text-[26px] sm:text-[34px] md:text-[42px] font-extrabold text-[#1A1A2E] tracking-wider mb-6 leading-[1.2]"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
               ブロスタ代行についてのよくある質問
             </h2>
-            <p className="text-[13px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
+            <div className="h-[3px] w-16 mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #5B3AE8 0%, #C4B5FD 100%)' }}></div>
+            <p className="text-[14px] text-[#7C6F99] max-w-2xl mx-auto leading-relaxed font-medium">
               ブロスタ代行に特化したご質問をまとめました。共通のご質問はトップページのFAQもご覧ください。
             </p>
           </div>
