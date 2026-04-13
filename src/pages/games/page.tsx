@@ -551,15 +551,33 @@ export default function GamesPage() {
                         人気
                       </div>
                       <h4
-                        className="text-[16px] font-extrabold text-white tracking-wider mb-1 leading-tight"
-                        style={{ fontFamily: '"Orbitron", sans-serif' }}
+                        className="text-[20px] sm:text-[22px] font-black tracking-wider mb-1.5 leading-tight"
+                        style={{
+                          fontFamily: '"Orbitron", sans-serif',
+                          background: 'linear-gradient(135deg, #FFFFFF 0%, #C9BEFF 60%, #8B7AFF 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                          textShadow: '0 0 24px rgba(139,122,255,0.35)',
+                        }}
                       >
                         {item.title}
                       </h4>
-                      <p className="text-[11px] text-[#8B7AFF] mb-5 font-medium tracking-wide">
+                      <p className="text-[11px] text-[#8B7AFF]/80 mb-5 font-medium tracking-wide">
                         {item.range}
                       </p>
-                      <div className="text-[22px] sm:text-[26px] font-extrabold text-white tracking-wide">
+                      <div
+                        className="text-[30px] sm:text-[36px] font-black tracking-wide leading-none"
+                        style={{
+                          fontFamily: '"Orbitron", sans-serif',
+                          background: 'linear-gradient(135deg, #FFFFFF 0%, #E8E0FF 50%, #B8A5FF 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                          textShadow: '0 0 30px rgba(139,122,255,0.5)',
+                          filter: 'drop-shadow(0 2px 8px rgba(91,58,232,0.4))',
+                        }}
+                      >
                         {item.price}
                       </div>
                     </div>
