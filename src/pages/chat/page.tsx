@@ -12,6 +12,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [threadInfo, setThreadInfo] = useState<any>(null);
+  const [orderInfo, setOrderInfo] = useState<any>(null);
   const [receiverId, setReceiverId] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export default function ChatPage() {
       const { data: order, error: orderError } = await supabase
         .from('orders').select('id, user_id, employee_id, status').eq('id', thread.order_id).single();
       if (orderError || !order) { setHasAccess(false); setLoading(false); return; }
+      setOrderInfo(order);
       setOrderId(order.id);
 
       const isCustomer = order.user_id === user.id;
@@ -238,7 +240,7 @@ export default function ChatPage() {
   }
 
   // ── Helpers ──
-  const order = threadInfo?.order;
+  const order = orderInfo;
   const orderClosed = order && ['cancelled', 'disputed', 'refunded'].includes(order.status?.toLowerCase());
   const getSenderLabel = (sid: string) => {
     if (sid === order?.user_id) return '依頼者';
@@ -275,7 +277,7 @@ export default function ChatPage() {
       <div className="chat-scroll flex-1 overflow-y-auto bg-[#F5F5F5]">
         <div className="max-w-[600px] mx-auto px-4 py-2 min-h-full bg-white border-x border-[#EFF3F4]">
           {/* アカウント共有ガイド（依頼者のみ） */}
-          {threadInfo?.order?.user_id === user?.id && <AccountGuide />}
+          {orderInfo?.user_id === user?.id && <AccountGuide />}
 
           {messages.length === 0 ? (
             <div className="text-center py-20">
