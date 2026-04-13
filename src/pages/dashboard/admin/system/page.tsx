@@ -17,6 +17,7 @@ export default function AdminSystemPage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [feeRate, setFeeRate] = useState(20);
   const [autoCancelHours, setAutoCancelHours] = useState(48);
+  const [autoCancelEnabled, setAutoCancelEnabled] = useState(true);
   const [autoCancelResult, setAutoCancelResult] = useState<string | null>(null);
   const [runningAutoCancel, setRunningAutoCancel] = useState(false);
   const [ngWords, setNgWords] = useState<string[]>([]);
@@ -55,6 +56,7 @@ export default function AdminSystemPage() {
       if (s.key === 'maintenance_mode') setMaintenanceMode(s.value === true);
       if (s.key === 'platform_fee_rate') setFeeRate(Math.round(Number(s.value) * 100));
       if (s.key === 'auto_cancel_hours') setAutoCancelHours(Number(s.value) || 48);
+      if (s.key === 'auto_cancel_enabled') setAutoCancelEnabled(s.value !== false && s.value !== 'false');
       if (s.key === 'ng_words') {
         try {
           const words = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
@@ -100,6 +102,12 @@ export default function AdminSystemPage() {
     const newValue = !maintenanceMode;
     setMaintenanceMode(newValue);
     await saveSetting('maintenance_mode', newValue, 'メンテナンスモード');
+  }
+
+  async function toggleAutoCancelEnabled() {
+    const newValue = !autoCancelEnabled;
+    setAutoCancelEnabled(newValue);
+    await saveSetting('auto_cancel_enabled', newValue, '自動キャンセル機能');
   }
 
   async function saveFeeRate() {
@@ -195,12 +203,39 @@ export default function AdminSystemPage() {
 
               {/* 自動キャンセル */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">注文の自動キャンセル</h2>
-                <p className="text-sm text-gray-500 mb-4">
-                  支払済みで未受注のまま指定時間が経過した注文を自動でキャンセル・返金します
-                </p>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-1">注文の自動キャンセル</h2>
+                    <p className="text-sm text-gray-500">
+                      支払済みで未受注のまま指定時間が経過した注文を自動でキャンセル・返金します
+                    </p>
+                  </div>
+                  <button
+                    onClick={toggleAutoCancelEnabled}
+                    disabled={saving}
+                    title={autoCancelEnabled ? '自動キャンセルをOFFにする' : '自動キャンセルをONにする'}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-200 cursor-pointer disabled:opacity-50 shrink-0 ${
+                      autoCancelEnabled ? 'bg-purple-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                        autoCancelEnabled ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
 
-                <div className="flex items-center gap-4">
+                {!autoCancelEnabled && (
+                  <div className="mb-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                    <p className="text-sm text-gray-700 font-medium">⏸ 自動キャンセルは無効化されています</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      支払済み未受注の注文はキャンセルされません。決済画面で離脱した仮注文の30分クリーンアップは引き続き動作します。
+                    </p>
+                  </div>
+                )}
+
+                <div className={`flex items-center gap-4 ${!autoCancelEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -227,7 +262,7 @@ export default function AdminSystemPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className={`mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg ${!autoCancelEnabled ? 'opacity-50' : ''}`}>
                   <p className="text-sm text-amber-800">
                     現在の設定: 支払済みから <strong>{autoCancelHours}時間</strong>（{(autoCancelHours / 24).toFixed(1)}日）経過で自動キャンセル
                   </p>
@@ -350,7 +385,11 @@ export default function AdminSystemPage() {
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-gray-600">自動キャンセル</span>
-                    <span className="text-gray-900 font-medium">{autoCancelHours}時間（{(autoCancelHours / 24).toFixed(1)}日）</span>
+                    <span className="text-gray-900 font-medium">
+                      {autoCancelEnabled
+                        ? `${autoCancelHours}時間（${(autoCancelHours / 24).toFixed(1)}日）`
+                        : '無効'}
+                    </span>
                   </div>
                 </div>
               </div>

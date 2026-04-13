@@ -188,13 +188,13 @@ export default function AdminReportsPage() {
     setLoading(false);
   }
 
-  // --- UnivaPayfees fetch ---
+  // --- 決済手数料取得（UnivaPay） ---
   async function loadPaymentFees() {
     setPaymentFeesLoading(true);
     const range = getRange();
     try {
       const result = await invokeEdgeFunction<{ success: boolean; data?: PaymentFees; error?: string }>('admin-api', {
-        action: 'get-stripe-fees',
+        action: 'get-payment-fees',
         from_date: range.from,
         to_date: range.to,
       });
