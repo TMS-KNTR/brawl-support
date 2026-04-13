@@ -64,13 +64,17 @@ export default function ChatPage() {
   const checkAccess = async () => {
     if (!user || !threadId) return;
     try {
-      const { data: thread, error } = await supabase
-        .from('chat_threads').select('*, order:orders(id, user_id, employee_id, status)').eq('id', threadId).single();
-      if (error || !thread) { setHasAccess(false); setLoading(false); return; }
+      // chat_threads と orders を別々に取得（FK relation 名に依存しないため）
+      const { data: thread, error: threadError } = await supabase
+        .from('chat_threads').select('*').eq('id', threadId).single();
+      if (threadError || !thread) { setHasAccess(false); setLoading(false); return; }
       setThreadInfo(thread);
-      const order = thread.order;
-      if (!order) { setHasAccess(false); setLoading(false); return; }
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders').select('id, user_id, employee_id, status').eq('id', thread.order_id).single();
+      if (orderError || !order) { setHasAccess(false); setLoading(false); return; }
       setOrderId(order.id);
+
       const isCustomer = order.user_id === user.id;
       const isWorker = order.employee_id === user.id;
       const isAdmin = userProfile?.role === 'admin';
@@ -146,7 +150,11 @@ export default function ChatPage() {
     if (userProfile?.is_banned) { alert('アカウント停止中のためメッセージを送信できません。'); return; }
     if (hasText) {
       const matched = detectNgWord(newMessage);
-      if (matched) reportViolation(newMessage, matched);
+      if (matched) {
+        reportViolation(newMessage, matched);
+        alert(`このメッセージには禁止ワード「${matched}」が含まれています。送信できません。`);
+        return;
+      }
       if (containsBannedContent(newMessage)) { reportViolation(newMessage, 'banned_content'); alert('プラットフォーム外への誘導やリンクの送信は禁止されています。'); return; }
       if (containsPersonalInfo(newMessage)) { reportViolation(newMessage, 'personal_info'); alert('安全のため、電話番号やSNSアカウント等の個人情報の交換はご遠慮ください。'); return; }
     }

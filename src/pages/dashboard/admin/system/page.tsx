@@ -293,8 +293,36 @@ export default function AdminSystemPage() {
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-1">NGワード管理</h2>
                 <p className="text-sm text-gray-500 mb-4">
-                  チャットで禁止するワードを管理します。検知時はブロック＋管理者に通知されます
+                  チャットで禁止するワードを管理します。検知時は送信ブロック＋管理者に通知されます
                 </p>
+
+                {/* システム標準のブロックパターン（読み取り専用） */}
+                <details className="mb-4 rounded-lg border border-gray-200 bg-gray-50">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
+                    🔒 システム標準のブロックパターン（変更不可）
+                  </summary>
+                  <div className="px-4 pb-4 pt-2 space-y-3 text-xs">
+                    <div>
+                      <p className="font-semibold text-gray-700 mb-1">外部誘導・URL（送信ブロック）</p>
+                      <div className="flex flex-wrap gap-1">
+                        {['gametrade', 'ゲームトレード', 'x.com', 'twitter.com', 'discord.gg', 'line.me', 'http://～', 'https://～'].map((p) => (
+                          <span key={p} className="inline-block bg-white border border-gray-300 px-2 py-0.5 rounded text-gray-700 font-mono">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-700 mb-1">個人情報（送信ブロック）</p>
+                      <div className="flex flex-wrap gap-1">
+                        {['電話番号(NN-NNNN-NNNN形式)', 'LINE ID / ライン / らいん', 'Discord / ディスコード', 'Twitter / ツイッター', 'Instagram / インスタ'].map((p) => (
+                          <span key={p} className="inline-block bg-white border border-gray-300 px-2 py-0.5 rounded text-gray-700 font-mono">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-gray-500 italic">これらは src/pages/chat/page.tsx でハードコードされています。変更にはコード修正＋デプロイが必要です。</p>
+                  </div>
+                </details>
+
+                <p className="text-xs text-gray-500 mb-2 font-medium">カスタムNGワード（追加・削除可能）</p>
 
                 <div className="flex items-center gap-2 mb-4">
                   <input
