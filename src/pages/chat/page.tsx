@@ -129,7 +129,13 @@ export default function ChatPage() {
 
   const reportViolation = async (message: string, matchedWord: string) => {
     try {
-      await supabase.from('chat_violations').insert({ user_id: user?.id, order_id: orderId, thread_id: threadId, message_content: message, matched_word: matchedWord });
+      const { error: insertError } = await supabase.from('chat_violations').insert({ user_id: user?.id, order_id: orderId, thread_id: threadId, message_content: message, matched_word: matchedWord });
+      if (insertError) {
+        console.error('chat_violations insert error:', insertError);
+        // 失敗を画面でも気づけるように（管理者が違反ログ未反映の問題を検知できる）
+        alert(`違反ログの保存に失敗しました: ${insertError.message}`);
+        return;
+      }
       let admins: any[] = [];
       try {
         const adminResult = await invokeEdgeFunction<{ success: boolean; data?: any[]; error?: string }>('chat-data', { action: 'get-admin-ids' });
