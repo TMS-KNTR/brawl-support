@@ -458,7 +458,7 @@ export default function AdminReportsPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
 
-        <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+        <div className="flex-1 max-w-6xl mx-auto w-full px-4 pt-28 pb-8">
           <button onClick={() => navigate('/dashboard/admin')} className="text-purple-600 hover:underline text-sm mb-2 block">
             &larr; 管理者ダッシュボード
           </button>

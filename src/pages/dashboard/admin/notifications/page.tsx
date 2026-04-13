@@ -272,7 +272,7 @@ export default function AdminNotificationsPage() {
     <ProtectedRoute allowedRoles={['admin']}>
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 pt-28 pb-8">
           {/* ヘッダー */}
           <div className="flex items-center justify-between mb-6">
             <div>

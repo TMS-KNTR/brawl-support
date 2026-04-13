@@ -75,7 +75,7 @@ export default function AdminDashboardPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
 
-        <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+        <div className="flex-1 max-w-5xl mx-auto w-full px-4 pt-28 pb-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">管理者ダッシュボード</h1>
             <p className="text-gray-600">サービス全体の管理ができます</p>
