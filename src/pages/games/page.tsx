@@ -569,7 +569,6 @@ export default function GamesPage() {
                       <div
                         className="text-[30px] sm:text-[36px] font-black tracking-wide leading-none"
                         style={{
-                          fontFamily: '"Orbitron", sans-serif',
                           background: 'linear-gradient(135deg, #FFFFFF 0%, #E8E0FF 50%, #B8A5FF 100%)',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
