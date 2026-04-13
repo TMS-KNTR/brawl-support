@@ -177,7 +177,7 @@ export default function AdminChatsPage() {
               <p className="text-sm text-gray-500 mt-1">チャットの監視・閲覧。スレッドをクリックして内容を確認できます。</p>
             </div>
             <button
-              onClick={loadThreads}
+              onClick={() => { loadThreads(); loadViolations(); }}
               className="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm"
             >
               🔄 更新
@@ -193,7 +193,7 @@ export default function AdminChatsPage() {
               チャットスレッド ({threads.length})
             </button>
             <button
-              onClick={() => setTab('violations')}
+              onClick={() => { setTab('violations'); loadViolations(); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'violations' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
             >
               NGワード違反ログ ({violations.length})
