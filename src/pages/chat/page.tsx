@@ -124,7 +124,7 @@ export default function ChatPage() {
   };
 
   const containsPersonalInfo = (msg: string) => [/\d{2,4}-\d{2,4}-\d{4}/, /LINE\s*ID|ライン|らいん/i, /Discord|ディスコード/i, /Twitter|ツイッター/i, /Instagram|インスタ/i].some(p => p.test(msg));
-  const containsBannedContent = (msg: string) => /(gametrade|ゲームトレード|x\.com|twitter\.com|discord\.gg|line\.me|https?:\/\/)/i.test(msg);
+  const containsBannedContent = (msg: string) => /(gametrade|ゲームトレード|x\.com|twitter\.com|discord\.gg|line\.me|https?:\/\/|paypay|ペイペイ|line\s*pay|ラインペイ|merpay|メルペイ|楽天ペイ|rakuten\s*pay|d払い|au\s*pay|auペイ|kyash|paypal|ペイパル|amazon\s*pay|アマゾンペイ|apple\s*pay|アップルペイ|google\s*pay|グーグルペイ|venmo|wechat\s*pay|alipay|アリペイ|paidy|ペイディ|atone|アトネ|bitcoin|ビットコイン|ethereum|イーサリアム|usdt|仮想通貨|暗号資産)/i.test(msg);
   const detectNgWord = (msg: string): string | null => { const l = msg.toLowerCase(); for (const w of ngWords) { if (l.includes(w.toLowerCase())) return w; } return null; };
 
   const reportViolation = async (message: string, matchedWord: string) => {

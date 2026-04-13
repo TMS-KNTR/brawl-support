@@ -303,7 +303,7 @@ export default function AdminSystemPage() {
                   </summary>
                   <div className="px-4 pb-4 pt-2 space-y-3 text-xs">
                     <div>
-                      <p className="font-semibold text-gray-700 mb-1">外部誘導・URL（送信ブロック）</p>
+                      <p className="font-semibold text-gray-700 mb-1">外部サイト・URL</p>
                       <div className="flex flex-wrap gap-1">
                         {['gametrade', 'ゲームトレード', 'x.com', 'twitter.com', 'discord.gg', 'line.me', 'http://～', 'https://～'].map((p) => (
                           <span key={p} className="inline-block bg-white border border-gray-300 px-2 py-0.5 rounded text-gray-700 font-mono">{p}</span>
@@ -311,14 +311,30 @@ export default function AdminSystemPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-700 mb-1">個人情報（送信ブロック）</p>
+                      <p className="font-semibold text-gray-700 mb-1">外部決済サービス</p>
+                      <div className="flex flex-wrap gap-1">
+                        {['PayPay / ペイペイ', 'LINE Pay / ラインペイ', '楽天ペイ / Rakuten Pay', 'メルペイ / Merpay', 'd払い', 'au PAY / auペイ', 'Kyash', 'PayPal / ペイパル', 'Amazon Pay / アマゾンペイ', 'Apple Pay / アップルペイ', 'Google Pay / グーグルペイ', 'Paidy / ペイディ', 'atone / アトネ', 'Venmo', 'WeChat Pay', 'Alipay / アリペイ'].map((p) => (
+                          <span key={p} className="inline-block bg-white border border-gray-300 px-2 py-0.5 rounded text-gray-700 font-mono">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-700 mb-1">暗号通貨</p>
+                      <div className="flex flex-wrap gap-1">
+                        {['Bitcoin / ビットコイン', 'Ethereum / イーサリアム', 'USDT', '仮想通貨', '暗号資産'].map((p) => (
+                          <span key={p} className="inline-block bg-white border border-gray-300 px-2 py-0.5 rounded text-gray-700 font-mono">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-700 mb-1">個人情報</p>
                       <div className="flex flex-wrap gap-1">
                         {['電話番号(NN-NNNN-NNNN形式)', 'LINE ID / ライン / らいん', 'Discord / ディスコード', 'Twitter / ツイッター', 'Instagram / インスタ'].map((p) => (
                           <span key={p} className="inline-block bg-white border border-gray-300 px-2 py-0.5 rounded text-gray-700 font-mono">{p}</span>
                         ))}
                       </div>
                     </div>
-                    <p className="text-gray-500 italic">これらは src/pages/chat/page.tsx でハードコードされています。変更にはコード修正＋デプロイが必要です。</p>
+                    <p className="text-gray-500 italic">これらは src/pages/chat/page.tsx でハードコードされています。変更にはコード修正＋デプロイが必要です。検知時は送信ブロック＋管理者への通知が走ります。</p>
                   </div>
                 </details>
 
