@@ -14,12 +14,13 @@ type OrderRelation = {
   id?: string;
 };
 
-/** チャットスレッド（orders は 1件 or 配列で返ることがある） */
+/** チャットスレッド（admin-api が order:orders(...) の alias で返すので order は 1件 or 配列） */
 type ChatThreadRow = {
   id: string;
   order_id?: string;
   created_at: string;
-  orders?: OrderRelation | OrderRelation[] | null;
+  order?: OrderRelation | OrderRelation[] | null;
+  orders?: OrderRelation | OrderRelation[] | null; // 後方互換用フォールバック
 };
 
 function statusLabel(status: string): string {
@@ -122,9 +123,9 @@ export default function AdminChatsPage() {
     setViolationsLoading(false);
   }
 
-  /** スレッドから注文情報を1件取り出す */
+  /** スレッドから注文情報を1件取り出す（Edge Function は order alias で返す） */
   function getOrder(t: ChatThreadRow): OrderRelation | null {
-    const raw = t.orders;
+    const raw = t.order ?? t.orders;
     if (!raw) return null;
     return Array.isArray(raw) ? raw[0] ?? null : raw;
   }
