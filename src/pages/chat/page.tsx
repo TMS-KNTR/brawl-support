@@ -25,7 +25,8 @@ export default function ChatPage() {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [ngWords, setNgWords] = useState<string[]>([]);
 
-  useEffect(() => { if (user && threadId) checkAccess(); }, [user, threadId]);
+  // userProfile が未ロードの状態で checkAccess が走ると admin 判定ができないため、両方揃ってから実行
+  useEffect(() => { if (user && userProfile && threadId) checkAccess(); }, [user, userProfile, threadId]);
 
   useEffect(() => {
     supabase.from('system_settings').select('value').eq('key', 'ng_words').maybeSingle()
