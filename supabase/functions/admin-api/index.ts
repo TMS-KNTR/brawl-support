@@ -188,7 +188,7 @@ async function handleGetDisputeDetail(
     sb
       .from("orders")
       .select(
-        "id,price,total_price,payment_intent_id,employee_id,user_id,is_refunded,is_paid_out"
+        "id,price,univapay_charge_id,payment_intent_id,employee_id,user_id,is_refunded,is_paid_out"
       )
       .eq("id", params.order_id)
       .single(),
@@ -551,6 +551,7 @@ async function handleForceCompleteOrder(
 const ALLOWED_SETTING_KEYS = [
   "platform_fee_rate",
   "auto_cancel_hours",
+  "auto_cancel_enabled",
   "maintenance_mode",
   "ng_words",
 ];
@@ -674,10 +675,10 @@ async function handleDeleteExpense(
 }
 
 // ============================================================
-// Stripe 決済手数料取得
+// 決済手数料取得（UnivaPay）
 // ============================================================
 
-async function handleGetStripeFees(
+async function handleGetPaymentFees(
   params: { from_date: string; to_date: string }
 ) {
   if (!params.from_date || !params.to_date)
@@ -892,9 +893,9 @@ serve(async (req: Request) => {
         result = await handleDeleteExpense(supabase, params);
         break;
 
-      // STRIPE FEES
-      case "get-stripe-fees":
-        result = await handleGetStripeFees(params);
+      // PAYMENT FEES
+      case "get-payment-fees":
+        result = await handleGetPaymentFees(params);
         break;
 
       default:
@@ -910,7 +911,7 @@ serve(async (req: Request) => {
     ];
     const SENSITIVE_ACTIONS = [
       "adjust-balance", "change-role", "ban-user", "unban-user",
-      "force-complete-order", "approve-withdrawal",
+      "force-complete-order",
     ];
     if (WRITE_ACTIONS.includes(action)) {
       // 機密データをマスクしてからログに記録

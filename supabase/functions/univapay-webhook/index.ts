@@ -31,18 +31,24 @@ serve(async (req: Request) => {
     }
 
     const payload = await req.json();
+    // 本番投入初期のペイロード構造確認用（動作確認後に削除可）
+    console.log("UnivaPay webhook raw payload:", JSON.stringify(payload));
     const event = payload.event;
 
     console.log("UnivaPay webhook event received:", event);
 
-    if (event === "charge_finished") {
+    // charge_finished: クレカ/即時決済用
+    // charge_updated: コンビニ/銀行振込など非同期決済の入金検知用
+    if (event === "charge_finished" || event === "charge_updated") {
       const data = payload.data;
       const chargeId = data?.id;
       const chargeStatus = data?.status;
-      const chargeAmount = data?.requested_amount ?? data?.charged_amount ?? data?.amount;
+      // UnivaPay API: requested_amount = 請求額, charged_amount = 実決済額（JPYでは一致）
+      const chargeAmount = data?.charged_amount ?? data?.requested_amount;
       const metadata = data?.metadata ?? {};
       const orderId = metadata?.order_id;
       const customerId = metadata?.customer_id;
+      const paymentType = data?.payment_type ?? data?.transaction_token_type;
 
       console.log("Charge finished:", { chargeId, chargeStatus, chargeAmount, orderId });
 
@@ -56,8 +62,16 @@ serve(async (req: Request) => {
 
       // 課金が成功していない場合
       if (chargeStatus !== "successful") {
+        // awaiting / pending はコンビニ/銀行振込で入金待ちの正常状態なので何もしない
+        if (chargeStatus === "awaiting" || chargeStatus === "pending") {
+          console.log("Charge awaiting payment (正常):", chargeStatus);
+          return new Response(JSON.stringify({ received: true, awaiting: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        // failed / error / canceled は失敗扱い
         console.warn("Charge not successful:", chargeStatus);
-        // 仮注文を失敗に更新
         await supabase
           .from("orders")
           .update({ status: "payment_failed" })
@@ -93,9 +107,9 @@ serve(async (req: Request) => {
         });
       }
 
-      // 金額照合（改ざん防止）
-      if (chargeAmount != null && chargeAmount !== order.price) {
-        console.error("Price mismatch! charge_amount:", chargeAmount, "order_price:", order.price);
+      // 金額照合（改ざん防止）— nullは不正ペイロードとして扱う
+      if (chargeAmount == null || chargeAmount !== order.price) {
+        console.error("Price mismatch or missing! charge_amount:", chargeAmount, "order_price:", order.price);
         await supabase
           .from("orders")
           .update({ status: "payment_failed" })
@@ -108,12 +122,23 @@ serve(async (req: Request) => {
       }
 
       // 注文を paid に更新
+      // webhook が payment_type を返す場合はそれを保存（既に設定済みなら上書きしない想定でもOK）
+      const updatePayload: Record<string, any> = {
+        status: "paid",
+        univapay_charge_id: chargeId,
+      };
+      if (paymentType && typeof paymentType === "string") {
+        // UnivaPay の payment_type を内部名に正規化
+        const normalized =
+          paymentType === "card" ? "credit_card" :
+          paymentType === "konbini" ? "konbini" :
+          paymentType === "bank_transfer" ? "bank_transfer" :
+          null;
+        if (normalized) updatePayload.payment_method = normalized;
+      }
       const { error: updateError } = await supabase
         .from("orders")
-        .update({
-          status: "paid",
-          univapay_charge_id: chargeId,
-        })
+        .update(updatePayload)
         .eq("id", orderId)
         .in("status", ["pending_payment", "paid"]); // pending_payment → paid、既にpaidなら冪等
 
@@ -149,6 +174,19 @@ serve(async (req: Request) => {
         }
       }
 
+      // 顧客に支払い完了通知（コンビニ/銀行振込の場合も気づけるように）
+      try {
+        await supabase.from("notifications").insert({
+          user_id: customerId,
+          type: "payment_confirmed",
+          title: "お支払いが確認されました",
+          body: `ご注文 ¥${order.price.toLocaleString()} の決済が完了しました。代行者が見つかり次第、作業を開始します。`,
+          link_url: "/dashboard/customer",
+        });
+      } catch (notifErr) {
+        console.error("payment_confirmed 通知失敗:", notifErr);
+      }
+
       // 監査ログ
       try {
         await supabase.from("admin_logs").insert({
@@ -160,6 +198,7 @@ serve(async (req: Request) => {
             chargeId,
             chargeAmount,
             provider: "univapay",
+            paymentType,
           },
         });
       } catch { /* ログ失敗は無視 */ }

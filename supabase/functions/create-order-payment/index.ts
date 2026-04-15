@@ -81,7 +81,16 @@ serve(async (req) => {
       power11Count,
       buffyCount,
       brawlerStrength,
+      // 決済方法
+      paymentMethod,
     } = await req.json()
+
+    // 決済方法のバリデーション
+    const ALLOWED_PAYMENT_METHODS = ['credit_card', 'konbini', 'bank_transfer'] as const
+    const method = String(paymentMethod || 'credit_card')
+    if (!ALLOWED_PAYMENT_METHODS.includes(method as any)) {
+      throw new Error('決済方法が正しくありません')
+    }
 
     // --- サーバー側で料金を再計算して検証 ---
     const currentVal = Number(currentRank) || 0
@@ -122,6 +131,11 @@ serve(async (req) => {
 
     // --- 仮注文をDBに作成（pending_payment） ---
     // Webhook で課金完了時に paid に更新する
+    // コンビニ/銀行振込は非同期決済のため、7日後を支払い期限とする
+    const paymentDeadline = method === 'credit_card'
+      ? null
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -135,6 +149,8 @@ serve(async (req) => {
         platform_fee: serverPlatformFee,
         status: 'pending_payment',
         payment_provider: 'univapay',
+        payment_method: method,
+        payment_deadline: paymentDeadline,
         notes: notes || null,
       })
       .select('id')
@@ -155,9 +171,12 @@ serve(async (req) => {
           amount: serverPrice,
           currency: 'jpy',
           appId,
+          paymentMethod: method,
+          paymentDeadline,
           metadata: {
             order_id: order.id,
             customer_id: user.id,
+            payment_method: method,
           },
         }
       }),
@@ -167,10 +186,25 @@ serve(async (req) => {
       },
     )
   } catch (error: any) {
+    const message = error?.message || String(error)
+    console.error('create-order-payment error:', message)
+    const safeMessages = [
+      '認証が必要です',
+      'アカウントが停止されています',
+      '注文は依頼者アカウントからのみ作成できます',
+      '短時間に多くの注文が作成されました。しばらく時間を置いてからお試しください。',
+      '現在メンテナンス中のため、新規注文を受け付けておりません',
+      '目標値は現在値より大きく設定してください',
+      '料金が上限を超えています。内容をご確認ください。',
+      '料金が正しくありません。ページを再読み込みしてお試しください。',
+      '注文の作成に失敗しました',
+      '決済方法が正しくありません',
+    ]
+    const isSafe = safeMessages.some((m) => message.includes(m))
     return new Response(
       JSON.stringify({
         success: false,
-        error: error?.message || String(error)
+        error: isSafe ? message : '注文の作成に失敗しました',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

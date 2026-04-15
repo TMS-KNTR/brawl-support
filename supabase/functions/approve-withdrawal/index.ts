@@ -48,47 +48,24 @@ serve(async (req: Request) => {
     if (withdrawal.status !== "pending") throw new Error("この申請は既に処理済みです");
 
     if (action === "reject") {
-      // 却下：残高をアトミックに戻す
-      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      // 却下：残高をアトミックに戻す（increment_balance RPC経由）
+      const { error: rpcError } = await supabase.rpc(
         "increment_balance",
         { p_user_id: withdrawal.user_id, p_amount: withdrawal.amount }
       );
 
-      let restoredBalance: number;
-
-      if (rpcError && rpcError.message?.includes("function") && rpcError.message?.includes("does not exist")) {
-        // RPCが存在しない場合のフォールバック: 楽観的ロック
-        console.warn("increment_balance RPC not found, using optimistic lock fallback");
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("balance")
-          .eq("id", withdrawal.user_id)
-          .single();
-
-        const currentBalance = profile?.balance || 0;
-        restoredBalance = currentBalance + withdrawal.amount;
-        const { data: updated, error: updateError } = await supabase
-          .from("profiles")
-          .update({ balance: restoredBalance })
-          .eq("id", withdrawal.user_id)
-          .eq("balance", currentBalance)
-          .select("balance")
-          .single();
-
-        if (updateError || !updated) {
-          throw new Error("残高が変更されました。再度お試しください。");
-        }
-      } else if (rpcError) {
+      if (rpcError) {
+        console.error("increment_balance RPC failed:", rpcError);
         throw new Error("残高の復元に失敗しました。再度お試しください。");
-      } else {
-        // RPC成功 - 復元後の残高を取得
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("balance")
-          .eq("id", withdrawal.user_id)
-          .single();
-        restoredBalance = profile?.balance || 0;
       }
+
+      // 復元後の残高を取得
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("balance")
+        .eq("id", withdrawal.user_id)
+        .single();
+      const restoredBalance = profile?.balance || 0;
 
       const { data: rejectedRow, error: rejectError } = await supabase
         .from("withdrawals")
@@ -169,7 +146,6 @@ serve(async (req: Request) => {
       "認証が必要です", "アカウントが停止されています", "管理者権限が必要です",
       "withdrawal_id が必要です", "action は approve または reject",
       "出金申請が見つかりません", "この申請は既に処理済みです",
-      "残高が変更されました。再度お試しください。",
       "残高の復元に失敗しました。再度お試しください。",
       "従業員の銀行口座が未登録です",
     ];

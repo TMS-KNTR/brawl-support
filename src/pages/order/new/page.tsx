@@ -337,8 +337,10 @@ export default function OrderPage() {
 
   const totalPrice = mode === 'rank' ? (priceResult?.total ?? 0) : (trophyPriceResult?.total ?? 0)
 
+  type PaymentMethodChoice = 'credit_card' | 'konbini' | 'bank_transfer'
+
   /** UnivaPay ウィジェットで決済 */
-  const handlePayment = async () => {
+  const handlePayment = async (paymentMethod: PaymentMethodChoice) => {
     if (!user) {
       navigate('/login')
       return
@@ -371,6 +373,8 @@ export default function OrderPage() {
         power11Count: mode === 'rank' ? power11Count : undefined,
         buffyCount: mode === 'rank' ? buffyCount : undefined,
         brawlerStrength: mode === 'trophy' ? selectedBrawler?.strength : undefined,
+        // 決済方法
+        paymentMethod,
       })
 
       if (!result.success || !result.data) {
@@ -384,13 +388,23 @@ export default function OrderPage() {
         throw new Error('決済システムの読み込みに失敗しました。ページを再読み込みしてください。')
       }
 
+      // UnivaPay の paymentType 名に変換
+      // credit_card → 'card', konbini → 'konbini', bank_transfer → 'bank_transfer'
+      const univapayPaymentType =
+        paymentMethod === 'credit_card' ? 'card' :
+        paymentMethod === 'konbini' ? 'konbini' :
+        'bank_transfer'
+
       const checkout = (window as any).UnivapayCheckout.create({
         appId,
         checkout: 'payment',
+        paymentType: univapayPaymentType,
         amount,
         currency,
         metadata,
         onSuccess: () => {
+          // クレカ: 決済完了、コンビニ/銀行振込: 支払い指示発行
+          // どちらも payment-success ページに遷移し、ページ内で状態を判定
           navigate(`/payment-success?order_id=${orderId}`)
         },
         onError: () => {
@@ -933,23 +947,58 @@ export default function OrderPage() {
               <p className="text-[12px] font-semibold text-[#92400E]">現在メンテナンス中のため、新規注文を受け付けていません。</p>
             </div>
           )}
-          <button
-            onClick={handlePayment}
-            disabled={isSubmitting || totalPrice <= 0 || maintenance}
-            className="order-pay-btn mt-6 w-full bg-[#10B981] text-white py-4 rounded-xl font-bold text-[14px] tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? (
+          {/* 決済方法選択 */}
+          <div className="mt-6 space-y-3">
+            <p className="text-[11px] font-semibold text-[#64748B] tracking-wider uppercase">お支払い方法を選択</p>
+
+            {/* クレジットカード（即時決済） */}
+            <button
+              onClick={() => handlePayment('credit_card')}
+              disabled={isSubmitting || totalPrice <= 0 || maintenance}
+              className="order-pay-btn w-full bg-[#10B981] hover:bg-[#059669] text-white py-4 rounded-xl font-bold text-[14px] tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <i className="ri-loader-4-line animate-spin"></i>
+                  処理中...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <i className="ri-bank-card-line text-[18px]"></i>
+                  クレジットカードで支払う（即時）
+                </span>
+              )}
+            </button>
+
+            {/* コンビニ決済 */}
+            <button
+              onClick={() => handlePayment('konbini')}
+              disabled={isSubmitting || totalPrice <= 0 || maintenance}
+              className="w-full bg-white border-2 border-[#64748B] text-[#1E293B] hover:bg-[#F8FAFC] py-3.5 rounded-xl font-bold text-[13px] tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
               <span className="flex items-center justify-center gap-2">
-                <i className="ri-loader-4-line animate-spin"></i>
-                処理中...
+                <i className="ri-store-2-line text-[16px]"></i>
+                コンビニで支払う（7日以内）
               </span>
-            ) : (
+            </button>
+
+            {/* 銀行振込 */}
+            <button
+              onClick={() => handlePayment('bank_transfer')}
+              disabled={isSubmitting || totalPrice <= 0 || maintenance}
+              className="w-full bg-white border-2 border-[#64748B] text-[#1E293B] hover:bg-[#F8FAFC] py-3.5 rounded-xl font-bold text-[13px] tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
               <span className="flex items-center justify-center gap-2">
-                <i className="ri-secure-payment-line"></i>
-                決済へ進む
+                <i className="ri-bank-line text-[16px]"></i>
+                銀行振込で支払う（7日以内）
               </span>
-            )}
-          </button>
+            </button>
+
+            <p className="text-[10px] text-[#94A3B8] text-center leading-relaxed pt-1">
+              コンビニ決済・銀行振込は支払い確認後に代行が開始されます。<br/>
+              期限内にお支払いがない場合は自動的にキャンセルされます。
+            </p>
+          </div>
         </div>
         </div>
       </section>

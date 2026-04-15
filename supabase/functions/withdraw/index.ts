@@ -103,8 +103,20 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     console.error("Withdraw error:", err.message);
+    const safeMessages = [
+      "認証が必要です",
+      "従業員権限が必要です",
+      "未処理の出金申請が多すぎます。承認後に再度お試しください。",
+      "出金額を指定してください",
+      "最低出金額は",
+      "残高不足です",
+      "銀行口座が未登録です。先に口座登録を行ってください。",
+      "残高が変更されました。再度お試しください。",
+      "出金申請の記録に失敗しました。再度お試しください。",
+    ];
+    const isSafe = safeMessages.some((m) => err.message?.includes(m));
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: isSafe ? err.message : "出金処理中にエラーが発生しました" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

@@ -79,34 +79,53 @@ Deno.serve(async (req: Request) => {
       throw new Error("認証が必要です");
     }
 
-    // --- 自動キャンセル時間を取得 (デフォルト48時間) ---
-    const { data: setting } = await supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", "auto_cancel_hours")
-      .maybeSingle();
+    // --- 自動キャンセル設定を取得 (デフォルト: 有効・48時間) ---
+    const [{ data: hoursSetting }, { data: enabledSetting }] = await Promise.all([
+      supabase.from("system_settings").select("value").eq("key", "auto_cancel_hours").maybeSingle(),
+      supabase.from("system_settings").select("value").eq("key", "auto_cancel_enabled").maybeSingle(),
+    ]);
 
-    const autoCancelHours = Number(setting?.value) || 48;
+    const autoCancelHours = Number(hoursSetting?.value) || 48;
+    // 未設定 or true なら有効。false が明示的に設定されている場合のみ無効化
+    const autoCancelEnabled = !(enabledSetting?.value === false || enabledSetting?.value === "false");
 
     // --- 期限切れ注文を検索 ---
     const cutoff = new Date(
       Date.now() - autoCancelHours * 60 * 60 * 1000
     ).toISOString();
 
-    // pending_payment（決済未完了の仮注文）は30分で自動削除
-    const pendingPaymentCutoff = new Date(
-      Date.now() - 30 * 60 * 1000
-    ).toISOString();
+    // pending_payment のクリーンアップは決済方法別に期限を分ける:
+    //  - credit_card: 30分（ウィジェット決済失敗 or 顧客放置）
+    //  - konbini / bank_transfer: payment_deadline まで待つ（通常7日）
+    //  - payment_method が null（旧データ）: 30分
+    const creditCardCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const nowIso = new Date().toISOString();
 
     // 1. 決済未完了の仮注文をクリーンアップ
-    const { data: abandonedOrders } = await supabase
+    // クレカ or 未設定: 30分超過したもの
+    const { data: abandonedCreditCard } = await supabase
       .from("orders")
       .select("id, user_id")
       .eq("status", "pending_payment")
-      .lt("created_at", pendingPaymentCutoff);
+      .or("payment_method.is.null,payment_method.eq.credit_card")
+      .lt("created_at", creditCardCutoff);
 
-    if (abandonedOrders && abandonedOrders.length > 0) {
-      console.log(`[auto-cancel] ${abandonedOrders.length}件の決済未完了注文を削除`);
+    // コンビニ/銀行振込: payment_deadline 超過したもの
+    const { data: abandonedAsync } = await supabase
+      .from("orders")
+      .select("id, user_id")
+      .eq("status", "pending_payment")
+      .in("payment_method", ["konbini", "bank_transfer"])
+      .not("payment_deadline", "is", null)
+      .lt("payment_deadline", nowIso);
+
+    const abandonedOrders = [
+      ...(abandonedCreditCard || []),
+      ...(abandonedAsync || []),
+    ];
+
+    if (abandonedOrders.length > 0) {
+      console.log(`[auto-cancel] ${abandonedOrders.length}件の決済未完了注文を削除 (クレカ系: ${abandonedCreditCard?.length || 0}, 非同期系: ${abandonedAsync?.length || 0})`);
       for (const order of abandonedOrders) {
         await supabase
           .from("orders")
@@ -117,6 +136,20 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2. 決済済みだが未受注の期限切れ注文を自動キャンセル+返金
+    if (!autoCancelEnabled) {
+      console.log("[auto-cancel] 期限切れ自動キャンセルは無効化されています（pending_paymentクリーンアップのみ実行）");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "自動キャンセル無効化中",
+          cancelled: 0,
+          abandoned_cleaned: abandonedOrders?.length || 0,
+          disabled: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { data: expiredOrders, error: fetchError } = await supabase
       .from("orders")
       .select("*")
@@ -172,8 +205,8 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        // --- 注文ステータス更新 ---
-        const { error: updateError } = await supabase
+        // --- 注文ステータス更新（楽観ロック: 取得時のstatusのみ更新、競合時はスキップ） ---
+        const { data: updatedOrder, error: updateError } = await supabase
           .from("orders")
           .update({
             status: "cancelled",
@@ -181,10 +214,19 @@ Deno.serve(async (req: Request) => {
             refund_id: refundResult?.id || null,
             refunded_at: refundResult ? new Date().toISOString() : null,
           })
-          .eq("id", order.id);
+          .eq("id", order.id)
+          .eq("status", order.status)
+          .is("employee_id", null)
+          .select("id")
+          .maybeSingle();
 
         if (updateError) {
           console.error(`[auto-cancel] DB更新失敗 ${order.id}:`, updateError);
+        }
+        if (!updatedOrder) {
+          console.warn(`[auto-cancel] 競合検出（既に受注/更新済み）: ${order.id}`);
+          results.push({ order_id: order.id, success: false, error: "concurrent update" });
+          continue;
         }
 
         // --- 顧客に通知 ---

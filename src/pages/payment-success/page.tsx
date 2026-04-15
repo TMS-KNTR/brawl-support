@@ -3,12 +3,16 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
+type PaymentStatus = 'loading' | 'success' | 'pending' | 'awaiting_async' | 'error'
+
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
   const orderId = searchParams.get('order_id')
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus] = useState<PaymentStatus>('loading')
+  const [paymentMethod, setPaymentMethod] = useState<string | null>(null)
+  const [paymentDeadline, setPaymentDeadline] = useState<string | null>(null)
   const [chatThreadId, setChatThreadId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -18,40 +22,84 @@ export default function PaymentSuccessPage() {
     }
     if (!user) return // userロード待ち（loadingのまま）
 
-    // DBで注文の支払いステータスを確認（Webhookで更新されるまでリトライ）
-    let attempts = 0
-    const maxAttempts = 15
-    const checkPayment = async () => {
+    // まず注文を1回取得して、決済方法によって分岐
+    const checkInitialStatus = async () => {
       try {
-        const { data } = await supabase
+        const { data: order } = await supabase
           .from('orders')
-          .select('id, status')
+          .select('id, status, payment_method, payment_deadline')
           .eq('id', orderId)
-          .in('status', ['paid', 'assigned', 'in_progress', 'completed', 'confirmed'])
           .maybeSingle()
 
-        if (data) {
+        if (!order) {
+          setStatus('error')
+          return
+        }
+
+        setPaymentMethod(order.payment_method ?? null)
+        setPaymentDeadline(order.payment_deadline ?? null)
+
+        // 既に paid 以降なら即座に success
+        if (['paid', 'assigned', 'in_progress', 'completed', 'confirmed'].includes(order.status)) {
           setStatus('success')
           return
         }
 
-        attempts++
-        if (attempts < maxAttempts) {
-          setTimeout(checkPayment, 2000)
-        } else {
-          // Webhookが遅延しても一応成功表示（order_idがあるため）
-          setStatus('success')
+        // pending_payment の場合、決済方法で分岐
+        if (order.status === 'pending_payment') {
+          if (order.payment_method === 'konbini' || order.payment_method === 'bank_transfer') {
+            // 非同期決済: 入金待ち画面を即座に表示（ポーリングしない）
+            setStatus('awaiting_async')
+            return
+          }
+          // クレカ: webhook で更新されるまでポーリング
+          startCreditCardPolling()
+          return
         }
+
+        // それ以外（payment_failed/cancelled等）
+        setStatus('error')
       } catch {
-        attempts++
-        if (attempts < maxAttempts) {
-          setTimeout(checkPayment, 2000)
-        } else {
-          setStatus('success')
-        }
+        setStatus('error')
       }
     }
-    checkPayment()
+
+    const startCreditCardPolling = () => {
+      let attempts = 0
+      const maxAttempts = 15
+      const poll = async () => {
+        try {
+          const { data } = await supabase
+            .from('orders')
+            .select('id, status')
+            .eq('id', orderId)
+            .in('status', ['paid', 'assigned', 'in_progress', 'completed', 'confirmed'])
+            .maybeSingle()
+
+          if (data) {
+            setStatus('success')
+            return
+          }
+
+          attempts++
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 2000)
+          } else {
+            setStatus('pending')
+          }
+        } catch {
+          attempts++
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 2000)
+          } else {
+            setStatus('pending')
+          }
+        }
+      }
+      poll()
+    }
+
+    checkInitialStatus()
   }, [orderId, user])
 
   // order_id に対応する chat_thread_id を取得
@@ -59,17 +107,14 @@ export default function PaymentSuccessPage() {
     if (!user || status !== 'success' || !orderId) return
     const fetchChatThread = async () => {
       const { data, error } = await supabase
-        .from('orders')
-        .select('id, chat_threads:chat_threads(id)')
-        .eq('id', orderId)
+        .from('chat_threads')
+        .select('id')
+        .eq('order_id', orderId)
         .maybeSingle()
-      if (!error && data) {
-        const thread = Array.isArray(data.chat_threads) ? data.chat_threads[0] : data.chat_threads
-        if (thread?.id) setChatThreadId(thread.id)
-      }
+      if (!error && data?.id) setChatThreadId(data.id)
     }
     fetchChatThread()
-  }, [user, status])
+  }, [user, status, orderId])
 
   if (status === 'loading') {
     return (
@@ -80,6 +125,90 @@ export default function PaymentSuccessPage() {
             <div className="absolute inset-0 border-2 border-transparent border-t-[#111] rounded-full animate-spin" />
           </div>
           <p className="text-[13px] text-[#888]">決済情報を確認中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'pending') {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-[#E5E5E5] p-7 text-center">
+          <div className="w-14 h-14 rounded-full bg-[#FEF3C7] flex items-center justify-center mx-auto mb-4">
+            <i className="ri-time-line text-[24px] text-[#F59E0B]"></i>
+          </div>
+          <h1 className="text-[18px] font-bold text-[#111] mb-2">決済を確認しています</h1>
+          <p className="text-[13px] text-[#888] mb-6 leading-relaxed">
+            決済処理に時間がかかっています。数分後にダッシュボードで注文状況をご確認ください。<br />
+            決済が完了していない場合、注文は自動的にキャンセルされます。
+          </p>
+          <Link to="/dashboard/customer"
+            className="inline-block px-6 py-2.5 text-[13px] font-bold bg-[#111] text-white rounded-xl hover:bg-[#333] transition-colors">
+            ダッシュボードへ
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'awaiting_async') {
+    const methodLabel = paymentMethod === 'konbini' ? 'コンビニ決済' : '銀行振込'
+    const icon = paymentMethod === 'konbini' ? 'ri-store-2-line' : 'ri-bank-line'
+    const deadlineStr = paymentDeadline
+      ? new Date(paymentDeadline).toLocaleString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : null
+
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-[#E5E5E5] p-7">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-full bg-[#DBEAFE] flex items-center justify-center mx-auto mb-4">
+              <i className={`${icon} text-[26px] text-[#2563EB]`}></i>
+            </div>
+            <h1 className="text-[20px] font-bold text-[#111] mb-1">{methodLabel}の手続きをお願いします</h1>
+            <p className="text-[13px] text-[#888] mb-6">ご注文を受け付けました</p>
+          </div>
+
+          {/* 支払い手順 */}
+          <div className="rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] px-5 py-4 mb-5">
+            <p className="text-[14px] font-bold text-[#1E3A8A] mb-2 flex items-center gap-2">
+              <i className="ri-mail-line text-[16px]"></i>
+              お支払い手順
+            </p>
+            {paymentMethod === 'konbini' ? (
+              <ol className="text-[12px] text-[#1E3A8A] leading-relaxed list-decimal list-inside space-y-1">
+                <li>UnivaPayから支払い情報のメールが届きます</li>
+                <li>メール記載のコンビニと支払い番号で期限内にお支払いください</li>
+                <li>入金確認後、自動的に代行が開始されます</li>
+              </ol>
+            ) : (
+              <ol className="text-[12px] text-[#1E3A8A] leading-relaxed list-decimal list-inside space-y-1">
+                <li>UnivaPayから振込先口座情報のメールが届きます</li>
+                <li>指定口座に期限内に指定金額をお振込みください</li>
+                <li>入金確認後、自動的に代行が開始されます</li>
+              </ol>
+            )}
+          </div>
+
+          {/* 支払い期限 */}
+          {deadlineStr && (
+            <div className="rounded-xl bg-[#FFFBEB] border border-[#FDE68A] px-5 py-3 mb-5 text-center">
+              <p className="text-[11px] text-[#92400E] font-medium mb-0.5">お支払い期限</p>
+              <p className="text-[14px] font-bold text-[#92400E]">{deadlineStr}</p>
+              <p className="text-[10px] text-[#B45309] mt-1">期限までにお支払いがない場合、注文は自動的にキャンセルされます</p>
+            </div>
+          )}
+
+          {/* アクションボタン */}
+          <Link to="/dashboard/customer"
+            className="block w-full py-3.5 text-[13px] font-bold bg-[#111] text-white rounded-xl hover:bg-[#333] transition-colors text-center">
+            ダッシュボードで確認
+          </Link>
+
+          <p className="text-[10px] text-[#94A3B8] text-center mt-3 leading-relaxed">
+            入金確認後、通知でお知らせします<br />
+            不明点がある場合はサポートまでお問い合わせください
+          </p>
         </div>
       </div>
     )
