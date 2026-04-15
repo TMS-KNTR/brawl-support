@@ -428,12 +428,12 @@ export default function GamesPage() {
                   className="text-xl font-extrabold text-[#1A1A2E] tracking-wider mb-3"
                   style={{ fontFamily: '"Orbitron", sans-serif' }}
                 >
-                  トロフィー上げ代行
+                  トロフィー代行
                 </h3>
                 <p className="text-[13px] text-[#6E5FA0] leading-[1.8] font-medium mb-4">
-                  お気に入りのキャラや特定のブロウラーのトロフィーを、指定した数まで引き上げる代行サービスです。
+                  お気に入りのキャラや特定のキャラのトロフィーを、指定した数まで引き上げる代行サービスです。
                   0トロフィーから最大3000トロフィーまで対応。キャラの強さ（強・普通・弱）によって料金が変動し、
-                  強いキャラほど安価になります。シーズン報酬を狙いたい方、特定のブロウラーで実績を埋めたい方に最適です。
+                  強いキャラほど安価になります。シーズン報酬を狙いたい方、特定のキャラで実績を埋めたい方に最適です。
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider text-[#8B7AFF] bg-[#5B3AE8]/10 rounded border border-[#5B3AE8]/15">キャラ指定</span>
@@ -567,15 +567,7 @@ export default function GamesPage() {
                         {item.range}
                       </p>
                       <div
-                        className="text-[30px] sm:text-[36px] font-black tracking-wide leading-none"
-                        style={{
-                          background: 'linear-gradient(135deg, #FFFFFF 0%, #E8E0FF 50%, #B8A5FF 100%)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text',
-                          textShadow: '0 0 30px rgba(139,122,255,0.5)',
-                          filter: 'drop-shadow(0 2px 8px rgba(91,58,232,0.4))',
-                        }}
+                        className="text-[30px] sm:text-[36px] font-black tracking-wide leading-none text-white"
                       >
                         {item.price}
                       </div>
