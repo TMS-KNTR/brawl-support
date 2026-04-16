@@ -165,7 +165,7 @@ export default function AdminOrdersPage() {
     const map: Record<string, string> = {
       paid: '支払済', pending: '保留中', assigned: '受注済',
       in_progress: '作業中', completed: '完了', confirmed: '確認済',
-      cancelled: 'キャンセル', PAYMENT_PENDING: '決済待ち',
+      cancelled: 'キャンセル', PAYMENT_PENDING: '決済待ち', pending_payment: '入金待ち',
     };
     return map[status] || status;
   }
@@ -180,6 +180,7 @@ export default function AdminOrdersPage() {
       confirmed: 'bg-green-600 text-white',
       cancelled: 'bg-red-100 text-red-800',
       PAYMENT_PENDING: 'bg-gray-100 text-gray-800',
+      pending_payment: 'bg-yellow-100 text-yellow-800',
     };
     return <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorMap[status] || 'bg-gray-100 text-gray-800'}`}>{statusLabel(status)}</span>;
   };

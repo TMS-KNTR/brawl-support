@@ -32,7 +32,7 @@ function statusLabel(status: string): string {
     completed: '完了',
     confirmed: '確認済',
     cancelled: 'キャンセル',
-    PAYMENT_PENDING: '決済待ち',
+    PAYMENT_PENDING: '決済待ち', pending_payment: '入金待ち',
   };
   return map[status] || status;
 }
@@ -46,7 +46,7 @@ function getStatusBadge(status: string) {
     completed: 'bg-green-100 text-green-800',
     confirmed: 'bg-green-600 text-white',
     cancelled: 'bg-red-100 text-red-800',
-    PAYMENT_PENDING: 'bg-gray-100 text-gray-800',
+    PAYMENT_PENDING: 'bg-gray-100 text-gray-800', pending_payment: 'bg-yellow-100 text-yellow-800',
   };
   return (
     <span

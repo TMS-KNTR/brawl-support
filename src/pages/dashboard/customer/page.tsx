@@ -27,6 +27,7 @@ function useReveal(threshold = 0.15) {
 const STATUS: Record<string, { label: string; color: string; progress: number }> = {
   DRAFT:            { label: '下書き',       color: '#9CA3AF', progress: 0 },
   PAYMENT_PENDING:  { label: '決済待ち',     color: '#D97706', progress: 10 },
+  pending_payment:  { label: '入金待ち',     color: '#D97706', progress: 10 },
   PAID_UNASSIGNED:  { label: '受注待ち',     color: '#2563EB', progress: 20 },
   paid:             { label: '支払済',       color: '#059669', progress: 20 },
   open:             { label: '募集中',       color: '#2563EB', progress: 25 },
