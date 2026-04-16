@@ -96,7 +96,8 @@ Deno.serve(async (req: Request) => {
 
     // pending_payment のクリーンアップは決済方法別に期限を分ける:
     //  - credit_card: 30分（ウィジェット決済失敗 or 顧客放置）
-    //  - konbini / bank_transfer: payment_deadline まで待つ（通常7日）
+    //  - konbini: payment_deadline まで待つ（24時間）
+    //  - bank_transfer: payment_deadline まで待つ（72時間）
     //  - payment_method が null（旧データ）: 30分
     const creditCardCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const nowIso = new Date().toISOString();

@@ -131,10 +131,13 @@ serve(async (req) => {
 
     // --- 仮注文をDBに作成（pending_payment） ---
     // Webhook で課金完了時に paid に更新する
-    // コンビニ/銀行振込は非同期決済のため、7日後を支払い期限とする
+    // コンビニ/銀行振込は非同期決済のため、決済方法別に支払い期限を設定
+    //  - コンビニ: 24時間（24時間営業なのですぐ払える）
+    //  - 銀行振込: 72時間（土日祝の処理遅延を考慮）
+    const deadlineHours = method === 'konbini' ? 24 : method === 'bank_transfer' ? 72 : 0
     const paymentDeadline = method === 'credit_card'
       ? null
-      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      : new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString()
 
     const { data: order, error: orderError } = await supabase
       .from('orders')

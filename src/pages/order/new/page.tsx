@@ -898,14 +898,14 @@ export default function OrderPage() {
                 </div>
               )}
 
-              {/* 目標1000以上の注意書き */}
-              {targetTrophy >= 1000 && (
+              {/* 目標1001以上の注意書き */}
+              {targetTrophy >= 1001 && (
                 <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl bg-[#FFF7ED] border border-[#FED7AA]">
                   <div className="w-6 h-6 rounded-md bg-[#FFEDD5] flex items-center justify-center shrink-0 mt-0.5">
                     <i className="ri-alert-line text-xs text-[#F97316]"></i>
                   </div>
                   <span className="text-[12px] text-[#9A3412] font-medium leading-relaxed">
-                    トロフィー1,000以上はハイパーチャージ・スタパ・ギア解放キャラのみ対応
+                    トロフィー1,001以上はハイパーチャージ・スタパ・ギア解放キャラのみ対応
                   </span>
                 </div>
               )}
@@ -978,7 +978,7 @@ export default function OrderPage() {
             >
               <span className="flex items-center justify-center gap-2">
                 <i className="ri-store-2-line text-[16px]"></i>
-                コンビニで支払う（7日以内）
+                コンビニで支払う（24時間以内）
               </span>
             </button>
 
@@ -990,7 +990,7 @@ export default function OrderPage() {
             >
               <span className="flex items-center justify-center gap-2">
                 <i className="ri-bank-line text-[16px]"></i>
-                銀行振込で支払う（7日以内）
+                銀行振込で支払う（72時間以内）
               </span>
             </button>
 

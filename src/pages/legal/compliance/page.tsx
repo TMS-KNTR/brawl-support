@@ -68,7 +68,8 @@ export default function CompliancePage() {
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">支払時期</td>
                   <td className="px-6 py-4 text-gray-900">
                     <p>・クレジットカード：注文確定時に即時決済</p>
-                    <p>・コンビニ決済／銀行振込：注文確定から7日以内にお支払い</p>
+                    <p>・コンビニ決済：注文確定から24時間以内にお支払い</p>
+                    <p>・銀行振込：注文確定から72時間以内にお支払い</p>
                     <p className="text-gray-500 text-xs mt-1">※期限内にお支払いがない場合、注文は自動的にキャンセルされます</p>
                   </td>
                 </tr>
