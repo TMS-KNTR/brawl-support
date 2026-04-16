@@ -916,6 +916,12 @@ function EmployeeDashboardContent() {
                   <p className="text-[11px] text-[#D97706] mb-4">最低出金額は¥{MIN_WITHDRAW_AMOUNT.toLocaleString()}です</p>
                 )}
 
+                <div className="rounded-lg bg-[#FFFBEB] border border-[#FDE68A] p-3 mb-4">
+                  <p className="text-[11px] text-[#92400E]">
+                    振込手数料は出金額から差し引かれます（三井住友銀行宛は無料、他行宛は¥165〜¥330）
+                  </p>
+                </div>
+
                 <div className="flex justify-end gap-2.5 pt-1">
                   <button onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); }}
                     className="px-4 py-2 text-[12px] font-semibold text-[#666] rounded-lg hover:bg-[#F5F5F5] transition-colors cursor-pointer">

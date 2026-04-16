@@ -106,11 +106,20 @@ serve(async (req: Request) => {
       throw new Error("従業員の銀行口座が未登録です");
     }
 
+    // 振込手数料を計算（三井住友→無料、他行→金額に応じて165/330円）
+    const bankName: string = empProfile.bank_account_info?.bank_name || "";
+    const isSMBC = bankName.includes("三井住友");
+    const transferFee = isSMBC ? 0 : (withdrawal.amount >= 30000 ? 330 : 165);
+    const netAmount = withdrawal.amount - transferFee;
+
     const { data: completedRow, error: completeError } = await supabase
       .from("withdrawals")
       .update({
         status: "completed",
-        description: `出金完了 ¥${withdrawal.amount.toLocaleString()}（手動振込）`,
+        transfer_fee: transferFee,
+        description: transferFee > 0
+          ? `出金完了 ¥${withdrawal.amount.toLocaleString()}（振込手数料 ¥${transferFee} 差引、振込額 ¥${netAmount.toLocaleString()}）`
+          : `出金完了 ¥${withdrawal.amount.toLocaleString()}（手動振込）`,
         paid_by_admin_id: user.id,
         paid_at: new Date().toISOString(),
       })
@@ -125,18 +134,25 @@ serve(async (req: Request) => {
 
     // 従業員に通知
     try {
+      const feeNote = transferFee > 0
+        ? `（振込手数料 ¥${transferFee} を差し引き、¥${netAmount.toLocaleString()} を振込）`
+        : "";
       await supabase.from("notifications").insert({
         user_id: withdrawal.user_id,
         type: "withdrawal_completed",
         title: "出金が完了しました",
-        body: `¥${withdrawal.amount.toLocaleString()} の出金が承認され、登録口座に振り込まれました。`,
+        body: `¥${withdrawal.amount.toLocaleString()} の出金が承認され、登録口座に振り込まれました。${feeNote}`,
       });
     } catch { /* 通知失敗は無視 */ }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `¥${withdrawal.amount.toLocaleString()} の出金を承認しました`,
+        message: transferFee > 0
+          ? `¥${withdrawal.amount.toLocaleString()} の出金を承認しました（振込手数料 ¥${transferFee}、振込額 ¥${netAmount.toLocaleString()}）`
+          : `¥${withdrawal.amount.toLocaleString()} の出金を承認しました`,
+        transfer_fee: transferFee,
+        net_amount: netAmount,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

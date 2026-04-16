@@ -118,8 +118,21 @@ export default function AdminWithdrawalsPage() {
   }, [withdrawals, employees]);
 
   /* ── 承認 ── */
+  /** 振込手数料を計算（三井住友宛=0、他行3万未満=165、3万以上=330） */
+  function calcTransferFee(w: Withdrawal): number {
+    const emp = employees[w.user_id];
+    const bankName: string = emp?.bank_account_info?.bank_name || '';
+    if (bankName.includes('三井住友')) return 0;
+    return w.amount >= 30000 ? 330 : 165;
+  }
+
   async function handleApprove(w: Withdrawal) {
-    if (!confirm(`¥${w.amount.toLocaleString()} の出金を承認して振込完了として処理しますか？`)) return;
+    const fee = calcTransferFee(w);
+    const net = w.amount - fee;
+    const feeMsg = fee > 0
+      ? `\n\n申請額: ¥${w.amount.toLocaleString()}\n振込手数料: ¥${fee}\n振込額: ¥${net.toLocaleString()}`
+      : '';
+    if (!confirm(`¥${w.amount.toLocaleString()} の出金を承認して振込完了として処理しますか？${feeMsg}`)) return;
     setProcessingId(w.id);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -402,6 +415,15 @@ export default function AdminWithdrawalsPage() {
                             <span className="text-sm text-gray-400">
                               {new Date(w.created_at).toLocaleString('ja-JP')}
                             </span>
+                            {w.status === 'pending' && isWithdrawal && (() => {
+                              const fee = calcTransferFee(w);
+                              const net = w.amount - fee;
+                              return fee > 0 ? (
+                                <span className="text-xs text-gray-500">
+                                  手数料 ¥{fee} → 振込 ¥{net.toLocaleString()}
+                                </span>
+                              ) : null;
+                            })()}
                             {w.status === 'pending' && (
                               <div className="flex gap-2">
                                 <button
