@@ -72,6 +72,7 @@ const fallbackService = { label: '代行', icon: 'ri-gamepad-line' };
 
 /* ── Status guide messages for customers ── */
 const STATUS_GUIDE: Record<string, { icon: string; text: string }> = {
+  pending_payment: { icon: 'ri-time-line',     text: 'コンビニ/銀行振込でのお支払いをお待ちしています' },
   paid:        { icon: 'ri-key-2-line',        text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください' },
   open:        { icon: 'ri-key-2-line',        text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください' },
   assigned:    { icon: 'ri-user-follow-line',  text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください' },
