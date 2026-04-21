@@ -26,6 +26,7 @@ export default function ChatPage() {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [ngWords, setNgWords] = useState<string[]>([]);
   const [warning, setWarning] = useState<string | null>(null);
+  const [confirmSendGuide, setConfirmSendGuide] = useState(false);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showWarning = (msg: string) => {
     setWarning(msg);
@@ -477,6 +478,39 @@ export default function ChatPage() {
       {!userProfile?.is_banned && !orderClosed && (
         <div className="border-t border-[#EFF3F4] bg-[#F5F5F5]">
           <div className="max-w-[600px] mx-auto px-2 py-2 border-x border-[#EFF3F4] bg-white">
+            {confirmSendGuide && (
+              <div
+                role="dialog"
+                aria-labelledby="confirm-guide-title"
+                className="mb-2 flex items-start gap-2 px-3 py-2 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF]"
+              >
+                <i className="ri-shield-keyhole-line text-[16px] mt-[1px] shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p id="confirm-guide-title" className="text-[13px] leading-[1.5] font-bold mb-0.5">連携手順を送信しますか？</p>
+                  <p className="text-[11px] leading-[1.5] text-[#1E3A8A] mb-2">5件のメッセージ（画像付き）が依頼者に送信されます。</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={sending}
+                      onClick={async () => {
+                        setConfirmSendGuide(false);
+                        await sendGuide();
+                      }}
+                      className="px-3 py-1 rounded-full bg-[#1E40AF] text-white text-[12px] font-bold hover:bg-[#1E3A8A] transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      送信する
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmSendGuide(false)}
+                      className="px-3 py-1 rounded-full bg-white border border-[#BFDBFE] text-[#1E40AF] text-[12px] font-bold hover:bg-[#DBEAFE] transition-colors cursor-pointer"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {warning && (
               <div
                 role="alert"
@@ -514,7 +548,7 @@ export default function ChatPage() {
                 <i className="ri-image-line text-[18px]"></i>
               </button>
               {orderInfo?.employee_id === user?.id && (
-                <button type="button" onClick={sendGuide} disabled={sending}
+                <button type="button" onClick={() => setConfirmSendGuide(true)} disabled={sending || confirmSendGuide}
                   className="w-9 h-9 rounded-full flex items-center justify-center text-[#111] hover:bg-[#F5F5F5] transition-colors cursor-pointer disabled:opacity-40 shrink-0"
                   title="連携手順を送信（依頼者向けの案内テンプレ）">
                   <i className="ri-shield-keyhole-line text-[18px]"></i>
