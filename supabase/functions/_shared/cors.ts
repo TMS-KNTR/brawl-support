@@ -7,6 +7,10 @@ const RAW_SITE_URL = Deno.env.get('SITE_URL') || ''
 let ALLOWED_ORIGIN = ''
 try { ALLOWED_ORIGIN = RAW_SITE_URL ? new URL(RAW_SITE_URL).origin : '' } catch { /* invalid URL */ }
 
+// 開発用ローカルホスト（Vite 既定の 5173 / CRA の 3000 等）を許可する
+// 認証トークン必須なので、localhost 許可によって未認証攻撃は増えない
+const LOCALHOST_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
+
 console.log('[CORS] SITE_URL =', RAW_SITE_URL, '| ALLOWED_ORIGIN =', ALLOWED_ORIGIN)
 
 export function getCorsHeaders(req?: Request): Record<string, string> {
@@ -15,6 +19,9 @@ export function getCorsHeaders(req?: Request): Record<string, string> {
   let origin = ''
   if (ALLOWED_ORIGIN && requestOrigin === ALLOWED_ORIGIN) {
     // SITE_URL と一致 → 許可
+    origin = requestOrigin
+  } else if (LOCALHOST_PATTERN.test(requestOrigin)) {
+    // ローカル開発環境 → 許可（JWT認証で別途保護）
     origin = requestOrigin
   } else if (!requestOrigin && ALLOWED_ORIGIN) {
     // Origin ヘッダーがない場合（サーバー間通信等）
