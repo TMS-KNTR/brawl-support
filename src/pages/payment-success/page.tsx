@@ -234,7 +234,7 @@ export default function PaymentSuccessPage() {
 
   const handleNext = () => {
     if (chatThreadId) {
-      navigate(`/chat/${chatThreadId}?guide=open`)
+      navigate(`/chat/${chatThreadId}`)
     } else {
       navigate('/dashboard/customer')
     }

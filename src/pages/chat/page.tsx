@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, invokeEdgeFunction } from '../../lib/supabase';
 
@@ -113,8 +113,9 @@ export default function ChatPage() {
       setMessages(enriched);
 
       // Private バケットの添付画像用に署名付きURLを一括生成
+      // http:// や / で始まるものは公開URL扱いで署名不要
       const pathsToSign = enriched
-        .filter(m => m.attachment_url && !m.attachment_url.startsWith('http'))
+        .filter(m => m.attachment_url && !m.attachment_url.startsWith('http') && !m.attachment_url.startsWith('/'))
         .map(m => m.attachment_url as string);
       if (pathsToSign.length > 0) {
         const { data: signed } = await supabase.storage.from(CHAT_BUCKET).createSignedUrls(pathsToSign, SIGNED_URL_TTL);
@@ -199,6 +200,46 @@ export default function ChatPage() {
       setNewMessage(''); setAttachmentFile(null); setAttachmentPreview(null); fetchMessages();
     } catch (err: any) { alert(err?.message?.includes('Bucket') ? '画像のアップロードに失敗しました。' : 'メッセージの送信に失敗しました'); }
     finally { setSending(false); }
+  };
+
+  const sendGuide = async () => {
+    if (!user || !orderId || sending) return;
+    if (userProfile?.is_banned) { showWarning('アカウント停止中のためメッセージを送信できません。'); return; }
+    const steps = [
+      { content: '【連携手順 1/5】ブロスタを開き、Supercell ID 設定画面を開いてください。', image: '/guide/step1_supercell_id.jpg' },
+      { content: '【連携手順 2/5】設定画面で「代行するアカウント」のメールアドレスをコピーしてください。', image: '/guide/step1.jpg' },
+      { content: '【連携手順 3/5】設定画面の「ログアウト」をタップしてアカウントからログアウトしてください。', image: '/guide/step2.png' },
+      { content: '【連携手順 4/5】ログイン画面でメアドを入力し「認証コードを送信」→ メールに届いたコードを確認してください。', image: '/guide/step3.png' },
+      { content: '【連携手順 5/5】このチャットにメールアドレスと認証コードを送信してください。', image: '/guide/step4.jpg' },
+    ];
+    setSending(true);
+    try {
+      for (const s of steps) {
+        const { error } = await supabase.from('messages').insert({
+          sender_id: user.id,
+          receiver_id: receiverId ?? null,
+          order_id: orderId,
+          content: s.content,
+          attachment_url: s.image,
+        });
+        if (error) throw error;
+      }
+      if (receiverId && threadId) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await supabase.functions.invoke('create-notification', {
+            body: { user_id: receiverId, type: 'chat_message', title: 'チャットに新しいメッセージ', body: '連携手順が届きました', link_url: `/chat/${threadId}` },
+            headers: { Authorization: `Bearer ${session?.access_token}` },
+          });
+          if (res.data?.id) await supabase.functions.invoke('send-notification-email', { body: { notification_id: res.data.id }, headers: { Authorization: `Bearer ${session?.access_token}` } });
+        } catch {}
+      }
+      fetchMessages();
+    } catch {
+      showWarning('連携手順の送信に失敗しました');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,16 +331,13 @@ export default function ChatPage() {
       <style>{`.chat-scroll::-webkit-scrollbar{display:none} .chat-scroll{scrollbar-width:none;}`}</style>
       <div className="chat-scroll flex-1 overflow-y-auto bg-[#F5F5F5]">
         <div className="max-w-[600px] mx-auto px-4 py-2 min-h-full bg-white border-x border-[#EFF3F4]">
-          {/* アカウント共有ガイド（依頼者のみ） */}
-          {orderInfo?.user_id === user?.id && <AccountGuide />}
-
           {messages.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-12 h-12 rounded-full bg-[#F7F9F9] flex items-center justify-center mx-auto mb-3">
                 <i className="ri-message-3-line text-[22px] text-[#536471]"></i>
               </div>
               <p className="text-[15px] font-bold text-[#0F1419] mb-1">まだメッセージがありません</p>
-              <p className="text-[13px] text-[#536471]">以下の手順に沿ってアカウント情報を送信してください</p>
+              <p className="text-[13px] text-[#536471]">代行者からの連絡をお待ちください</p>
             </div>
           ) : (
             <div>
@@ -367,8 +405,8 @@ export default function ChatPage() {
                             : isLastInGroup ? 'rounded-[20px] rounded-bl-[4px]' : 'rounded-[20px]'
                         } px-3 py-2`}>
                           {message.attachment_url && (() => {
-                            // 既存の公開URL（http）はそのまま、パスは署名付きURLに変換
-                            const imgUrl = message.attachment_url.startsWith('http')
+                            // 既存の公開URL（http / 相対パス）はそのまま、ストレージパスは署名付きURLに変換
+                            const imgUrl = (message.attachment_url.startsWith('http') || message.attachment_url.startsWith('/'))
                               ? message.attachment_url
                               : signedUrls[message.attachment_url] || '';
                             if (!imgUrl) return null;
@@ -471,9 +509,17 @@ export default function ChatPage() {
               <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp"
                 onChange={handleAttachmentChange} className="hidden" />
               <button type="button" onClick={() => fileInputRef.current?.click()} disabled={sending}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-[#111] hover:bg-[#F5F5F5] transition-colors cursor-pointer disabled:opacity-40 shrink-0">
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[#111] hover:bg-[#F5F5F5] transition-colors cursor-pointer disabled:opacity-40 shrink-0"
+                title="画像を添付">
                 <i className="ri-image-line text-[18px]"></i>
               </button>
+              {orderInfo?.employee_id === user?.id && (
+                <button type="button" onClick={sendGuide} disabled={sending}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#111] hover:bg-[#F5F5F5] transition-colors cursor-pointer disabled:opacity-40 shrink-0"
+                  title="連携手順を送信（依頼者向けの案内テンプレ）">
+                  <i className="ri-shield-keyhole-line text-[18px]"></i>
+                </button>
+              )}
               <div className="flex-1 flex items-end bg-[#EFF3F4] rounded-2xl px-3 py-1.5 min-h-[36px]">
                 <input
                   type="text"
@@ -535,138 +581,3 @@ function DateSeparator({ label }: { label: string }) {
   );
 }
 
-/* ── Account Guide ── */
-function AccountGuide() {
-  const [searchParams] = useSearchParams();
-  const guideOpen = searchParams.get('guide') === 'open';
-  const [collapsed, setCollapsed] = useState(() => guideOpen ? false : localStorage.getItem('guide_collapsed') === '1');
-  const toggleCollapsed = (v: boolean) => { setCollapsed(v); if (v) localStorage.setItem('guide_collapsed', '1'); };
-  const [zoomImg, setZoomImg] = useState<string | null>(null);
-
-  const steps = [
-    {
-      img: '/guide/step1_supercell_id.jpg',
-      text: <>ブロスタを開き、<strong>Supercell ID 設定画面</strong>を開く</>,
-    },
-    {
-      img: '/guide/step1.jpg',
-      text: <>設定画面で「代行するアカウント」の<strong>メールアドレスをコピー</strong></>,
-    },
-    {
-      img: '/guide/step2.png',
-      text: <>設定画面の「<strong>ログアウト</strong>」をタップしてアカウントからログアウト</>,
-    },
-    {
-      img: '/guide/step3.png',
-      text: <>ログイン画面でメアドを入力し「<strong>認証コードを送信</strong>」→ メールに届いたコードを確認</>,
-    },
-    {
-      img: '/guide/step4.jpg',
-      text: <>このチャットに<strong>メールアドレス</strong>と<strong>認証コード</strong>を送信</>,
-    },
-  ];
-
-  if (collapsed) {
-    return (
-      <button onClick={() => setCollapsed(false)}
-        className="w-full my-3 px-4 py-2.5 rounded-xl bg-[#F7F9F9] border border-[#EFF3F4] flex items-center justify-between cursor-pointer hover:bg-[#EFF3F4] transition-colors">
-        <span className="flex items-center gap-2 text-[13px] font-semibold text-[#536471]">
-          <i className="ri-shield-keyhole-line text-[14px]"></i>
-          ブロスタ連携手順を表示
-        </span>
-        <i className="ri-arrow-down-s-line text-[16px] text-[#536471]"></i>
-      </button>
-    );
-  }
-
-  return (
-    <>
-      <div className="my-3 rounded-xl bg-[#F7F9F9] border border-[#EFF3F4] overflow-hidden">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <span className="flex items-center gap-2 text-[13px] font-bold text-[#0F1419]">
-            <i className="ri-shield-keyhole-line text-[14px] text-[#536471]"></i>
-            ブロスタ連携手順
-          </span>
-          <button onClick={() => toggleCollapsed(true)}
-            className="px-2.5 py-1 rounded-full border border-[#CFD9DE] flex items-center gap-1 hover:bg-[#E1E8ED] cursor-pointer transition-colors">
-            <span className="text-[11px] font-medium text-[#536471]">閉じる</span>
-            <i className="ri-arrow-up-s-line text-[14px] text-[#536471]"></i>
-          </button>
-        </div>
-        <div className="px-4 pb-4">
-          <div className="mb-4 rounded-xl overflow-hidden bg-[#EFF6FF] border border-[#BFDBFE]">
-            <div className="px-3.5 py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center shrink-0">
-                <i className="ri-check-line text-[16px] text-[#2563EB]"></i>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12px] font-bold text-[#1E40AF] leading-snug">決済が完了しました</p>
-                <p className="text-[11px] text-[#1E3A8A] mt-0.5 leading-relaxed">下の手順に従ってアカウント情報を送信 ↓</p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-4">
-          {steps.map((step, i) => (
-            <div key={i} className="flex gap-3">
-              <div className="flex flex-col items-center shrink-0">
-                <span className="w-[22px] h-[22px] rounded-full bg-[#0F1419] text-white flex items-center justify-center text-[10px] font-bold">
-                  {i + 1}
-                </span>
-                {i < steps.length - 1 && <div className="w-[2px] flex-1 bg-[#E1E8ED] mt-1 rounded-full" />}
-              </div>
-              <div className="flex-1 min-w-0 pb-1">
-                <p className="text-[13px] text-[#536471] leading-relaxed mb-2">{step.text}</p>
-                <button type="button" onClick={() => setZoomImg(step.img)}
-                  className="block rounded-lg overflow-hidden border border-[#EFF3F4] hover:border-[#CFD9DE] transition-colors cursor-pointer">
-                  <img src={step.img} alt={`手順${i + 1}`}
-                    className="w-full max-w-[240px] h-auto object-contain bg-white" />
-                </button>
-              </div>
-            </div>
-          ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Zoom overlay */}
-      {zoomImg && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setZoomImg(null)}>
-          <div className="relative max-w-lg w-full">
-            <img src={zoomImg} alt="拡大表示" className="w-full rounded-xl shadow-2xl" />
-            <button onClick={() => setZoomImg(null)}
-              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white text-[#0F1419] flex items-center justify-center shadow-lg cursor-pointer hover:bg-[#F7F9F9]">
-              <i className="ri-close-line text-[18px]"></i>
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-/* ── Status Banner ── */
-function StatusBanner({ status }: { status?: string }) {
-  const s = (status || '').toLowerCase();
-  const config: Record<string, { icon: string; text: string; bg: string; border: string; color: string }> = {
-    paid:             { icon: 'ri-time-line',       text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
-    paid_unassigned:  { icon: 'ri-time-line',       text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
-    open:             { icon: 'ri-time-line',       text: 'チャットの"連携手順"に沿って認証コードを送信し、代行者の受注をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
-    assigned:         { icon: 'ri-user-follow-line', text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
-    claimed:          { icon: 'ri-user-follow-line', text: '代行者が決まりました。認証コードがまだの場合はチャットから送信してください。代行の開始をお待ちください', bg: 'bg-[#EFF6FF]', border: 'border-[#BFDBFE]', color: 'text-[#1E40AF]' },
-    in_progress:      { icon: 'ri-loader-4-line',   text: '代行作業中です。完了までお待ちください', bg: 'bg-[#FFFBEB]', border: 'border-[#FDE68A]', color: 'text-[#92400E]' },
-    completed:        { icon: 'ri-check-line',       text: '代行が完了しました。ゲームを開いて結果を確認し、"完了を確認"を押してください', bg: 'bg-[#ECFDF5]', border: 'border-[#A7F3D0]', color: 'text-[#065F46]' },
-    delivered:        { icon: 'ri-check-line',       text: '代行が完了しました。ゲームを開いて結果を確認し、"完了を確認"を押してください', bg: 'bg-[#ECFDF5]', border: 'border-[#A7F3D0]', color: 'text-[#065F46]' },
-    confirmed:        { icon: 'ri-check-double-line', text: 'お取引完了です。ありがとうございました', bg: 'bg-[#F7F9F9]', border: 'border-[#EFF3F4]', color: 'text-[#536471]' },
-  };
-  const c = config[s];
-  if (!c) return null;
-  return (
-    <div className={`${c.bg} border-b ${c.border}`}>
-      <div className="max-w-[600px] mx-auto px-4 py-2.5 flex items-start gap-2">
-        <i className={`${c.icon} text-[15px] ${c.color} shrink-0 mt-0.5`}></i>
-        <p className={`text-[12px] ${c.color} leading-relaxed`}>{c.text}</p>
-      </div>
-    </div>
-  );
-}
