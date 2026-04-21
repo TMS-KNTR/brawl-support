@@ -25,6 +25,14 @@ export default function ChatPage() {
   const SIGNED_URL_TTL = 3600; // 1時間
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [ngWords, setNgWords] = useState<string[]>([]);
+  const [warning, setWarning] = useState<string | null>(null);
+  const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showWarning = (msg: string) => {
+    setWarning(msg);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+    warningTimerRef.current = setTimeout(() => setWarning(null), 6000);
+  };
+  useEffect(() => () => { if (warningTimerRef.current) clearTimeout(warningTimerRef.current); }, []);
 
   // userProfile が未ロードの状態で checkAccess が走ると admin 判定ができないため、両方揃ってから実行
   useEffect(() => { if (user && userProfile && threadId) checkAccess(); }, [user, userProfile, threadId]);
@@ -160,11 +168,11 @@ export default function ChatPage() {
       const matched = detectNgWord(newMessage);
       if (matched) {
         reportViolation(newMessage, matched);
-        alert(`このメッセージには禁止ワード「${matched}」が含まれています。送信できません。`);
+        showWarning(`このメッセージには禁止ワード「${matched}」が含まれています。送信できません。`);
         return;
       }
-      if (containsBannedContent(newMessage)) { reportViolation(newMessage, 'banned_content'); alert('プラットフォーム外への誘導やリンクの送信は禁止されています。'); return; }
-      if (containsPersonalInfo(newMessage)) { reportViolation(newMessage, 'personal_info'); alert('安全のため、電話番号やSNSアカウント等の個人情報の交換はご遠慮ください。'); return; }
+      if (containsBannedContent(newMessage)) { reportViolation(newMessage, 'banned_content'); showWarning('プラットフォーム外への誘導やリンクの送信は禁止されています。'); return; }
+      if (containsPersonalInfo(newMessage)) { reportViolation(newMessage, 'personal_info'); showWarning('安全のため、電話番号やSNSアカウント等の個人情報の交換はご遠慮ください。'); return; }
     }
     setSending(true);
     try {
@@ -431,6 +439,23 @@ export default function ChatPage() {
       {!userProfile?.is_banned && !orderClosed && (
         <div className="border-t border-[#EFF3F4] bg-[#F5F5F5]">
           <div className="max-w-[600px] mx-auto px-2 py-2 border-x border-[#EFF3F4] bg-white">
+            {warning && (
+              <div
+                role="alert"
+                className="mb-2 flex items-start gap-2 px-3 py-2 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B]"
+              >
+                <i className="ri-error-warning-fill text-[16px] mt-[1px] shrink-0" />
+                <span className="text-[13px] leading-[1.5] font-medium flex-1">{warning}</span>
+                <button
+                  type="button"
+                  onClick={() => setWarning(null)}
+                  aria-label="閉じる"
+                  className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[#991B1B] hover:bg-[#FECACA] transition-colors cursor-pointer"
+                >
+                  <i className="ri-close-line text-[12px]" />
+                </button>
+              </div>
+            )}
             {attachmentPreview && (
               <div className="flex items-start gap-2 mb-2 ml-11">
                 <div className="relative">
