@@ -74,9 +74,9 @@ serve(async (req: Request) => {
       }
     );
 
-    // RPCが存在しない場合のフォールバック
-    if (updateError && updateError.message?.includes("function") && updateError.message?.includes("does not exist")) {
-      console.warn("assign_order_if_under_limit RPC not found, using fallback with post-check");
+    // RPCエラー時のフォールバック（RPC未作成・権限エラー等すべて）
+    if (updateError) {
+      console.warn("assign_order_if_under_limit RPC failed, using fallback:", updateError.message);
 
       // 同時受注数のレートリミット
       const { count: activeCount } = await supabase
@@ -131,12 +131,6 @@ serve(async (req: Request) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
         );
       }
-    } else if (updateError) {
-      console.error("accept-order RPC error:", updateError);
-      return new Response(
-        JSON.stringify({ success: false, error: "受注処理に失敗しました" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
     } else if (updated === false || (Array.isArray(updated) && updated.length === 0)) {
       // RPC returned no rows or false — either order taken or limit reached
       // Check which case
