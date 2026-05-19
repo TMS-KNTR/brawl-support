@@ -46,7 +46,7 @@ serve(async (req: Request) => {
       throw new Error("未処理の出金申請が多すぎます。承認後に再度お試しください。");
     }
 
-    const MIN_WITHDRAW = 300;
+    const MIN_WITHDRAW = 1000;
     const { amount: rawAmount } = await req.json();
     const amount = Math.floor(Number(rawAmount));
     if (isNaN(amount) || amount <= 0) throw new Error("出金額を指定してください");

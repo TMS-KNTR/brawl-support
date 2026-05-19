@@ -399,7 +399,7 @@ function EmployeeDashboardContent() {
     }
   };
 
-  const MIN_WITHDRAW_AMOUNT = 300;
+  const MIN_WITHDRAW_AMOUNT = 1000;
 
   /** 出金申請 */
   const handleWithdraw = async () => {
@@ -918,7 +918,7 @@ function EmployeeDashboardContent() {
 
                 <div className="rounded-lg bg-[#FFFBEB] border border-[#FDE68A] p-3 mb-4">
                   <p className="text-[11px] text-[#92400E]">
-                    振込手数料は出金額から差し引かれます（三井住友銀行宛は無料、他行宛は¥165〜¥330）
+                    振込手数料として一律¥145が差し引かれます
                   </p>
                 </div>
 
