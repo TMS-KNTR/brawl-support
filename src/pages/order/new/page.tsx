@@ -8,6 +8,13 @@ import { BRAWLERS, STRENGTH_LABELS, STRENGTH_COLORS } from '../../../data/brawle
 import Header from '../../home/components/Header'
 import Footer from '../../home/components/Footer'
 
+/*
+ * コンビニ決済の表示フラグ。
+ * UnivaPay 側でコンビニ決済が未プロビジョニングのため一時的に非表示。
+ * UnivaPay が有効化したら true に戻すだけで復活する（バックエンドは対応済み）。
+ */
+const KONBINI_ENABLED = false
+
 /* ── ランク帯定義 ── */
 const RANK_TIERS = [
   { name: 'ブロンズ',    from: 0,     to: 750,   color: '#CD7F32' },
@@ -970,17 +977,19 @@ export default function OrderPage() {
               )}
             </button>
 
-            {/* コンビニ決済 */}
-            <button
-              onClick={() => handlePayment('konbini')}
-              disabled={isSubmitting || totalPrice <= 0 || maintenance}
-              className="w-full bg-white border-2 border-[#64748B] text-[#1E293B] hover:bg-[#F8FAFC] py-3.5 rounded-xl font-bold text-[13px] tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <span className="flex items-center justify-center gap-2">
-                <i className="ri-store-2-line text-[16px]"></i>
-                コンビニで支払う（24時間以内）
-              </span>
-            </button>
+            {/* コンビニ決済（UnivaPay 有効化待ちのため一時非表示） */}
+            {KONBINI_ENABLED && (
+              <button
+                onClick={() => handlePayment('konbini')}
+                disabled={isSubmitting || totalPrice <= 0 || maintenance}
+                className="w-full bg-white border-2 border-[#64748B] text-[#1E293B] hover:bg-[#F8FAFC] py-3.5 rounded-xl font-bold text-[13px] tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <i className="ri-store-2-line text-[16px]"></i>
+                  コンビニで支払う（24時間以内）
+                </span>
+              </button>
+            )}
 
             {/* 銀行振込 */}
             <button
@@ -995,7 +1004,7 @@ export default function OrderPage() {
             </button>
 
             <p className="text-[10px] text-[#94A3B8] text-center leading-relaxed pt-1">
-              コンビニ決済・銀行振込は支払い確認後に代行が開始されます。<br/>
+              {KONBINI_ENABLED ? 'コンビニ決済・銀行振込' : '銀行振込'}は支払い確認後に代行が開始されます。<br/>
               期限内にお支払いがない場合は自動的にキャンセルされます。
             </p>
           </div>
