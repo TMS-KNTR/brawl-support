@@ -22,6 +22,7 @@ const GamesPage = lazy(() => import('../pages/games/page'))
 const TermsPage = lazy(() => import('../pages/legal/terms/page'))
 const PrivacyPage = lazy(() => import('../pages/legal/privacy/page'))
 const CompliancePage = lazy(() => import('../pages/legal/compliance/page'))
+const ContractorAgreementPage = lazy(() => import('../pages/legal/contractor-agreement/page'))
 
 // Dashboard
 const CustomerDashboardPage = lazy(() => import('../pages/dashboard/customer/page'))
@@ -64,6 +65,7 @@ const routes: RouteObject[] = [
 { path: '/legal/terms', element: <TermsPage /> },
   { path: '/legal/privacy', element: <PrivacyPage /> },
   { path: '/legal/compliance', element: <CompliancePage /> },
+  { path: '/legal/contractor-agreement', element: <ContractorAgreementPage /> },
 
   // === 注文・決済（ログイン必須） ===
   {
