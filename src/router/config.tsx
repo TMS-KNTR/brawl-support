@@ -50,6 +50,7 @@ const NotificationsPage = lazy(() => import('../pages/notifications/page'))
 const OrderDetailPage = lazy(() => import('../pages/dashboard/customer/order/page'))
 const EmployeeOrderDetailPage = lazy(() => import('../pages/dashboard/employee/order/page'))
 const EmployeeManualPage = lazy(() => import('../pages/dashboard/employee/manual/page'))
+const EmployeeIdentityVerificationPage = lazy(() => import('../pages/dashboard/employee/identity-verification/page'))
 const AccountPage = lazy(() => import('../pages/account/page'))
 
 /* ========= Route定義（1ファイルに統一） ========= */
@@ -155,6 +156,14 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={['employee', 'admin']}>
         <EmployeeManualPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/employee/identity-verification',
+    element: (
+      <ProtectedRoute allowedRoles={['employee', 'admin']}>
+        <EmployeeIdentityVerificationPage />
       </ProtectedRoute>
     ),
   },

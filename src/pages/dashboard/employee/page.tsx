@@ -59,6 +59,55 @@ export default function EmployeeDashboardPage() {
 const PLATFORM_FEE_RATE = 0.20;
 const EMPLOYEE_RATE = 1 - PLATFORM_FEE_RATE;
 
+function IdentityVerificationBanner({ status, onSubmit }: { status: string; onSubmit: () => void }) {
+  if (status === 'approved') return null;
+
+  if (status === 'pending_review') {
+    return (
+      <div className="mt-4 px-3.5 py-2.5 rounded-lg border border-[#93C5FD]/40 bg-[#EFF6FF]">
+        <div className="flex items-center gap-2">
+          <i className="ri-time-line text-[14px] text-[#1D4ED8]"></i>
+          <p className="text-[12px] font-semibold text-[#1E40AF]">本人確認を審査中です</p>
+        </div>
+        <p className="text-[11px] text-[#1E3A8A] mt-1">通常1〜3営業日で審査結果をお知らせします。</p>
+      </div>
+    );
+  }
+
+  if (status === 'rejected') {
+    return (
+      <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-[#FCA5A5]/40 bg-[#FEF2F2]">
+        <div>
+          <p className="text-[12px] font-semibold text-[#991B1B]">本人確認が差戻されました</p>
+          <p className="text-[11px] text-[#7F1D1D]">再提出をお願いします</p>
+        </div>
+        <button
+          onClick={onSubmit}
+          className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors cursor-pointer whitespace-nowrap"
+        >
+          再提出する
+        </button>
+      </div>
+    );
+  }
+
+  // unsubmitted
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-[#FCD34D]/40 bg-[#FFFBEB]">
+      <div>
+        <p className="text-[12px] font-semibold text-[#92400E]">本人確認が未提出です</p>
+        <p className="text-[11px] text-[#A16207]">本人確認を完了すると案件の受注ができます</p>
+      </div>
+      <button
+        onClick={onSubmit}
+        className="px-3.5 py-1.5 text-[11px] font-semibold bg-[#111] text-white rounded-md hover:bg-[#333] transition-colors cursor-pointer whitespace-nowrap"
+      >
+        提出する
+      </button>
+    </div>
+  );
+}
+
 function EmployeeDashboardContent() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
@@ -546,6 +595,9 @@ function EmployeeDashboardContent() {
                 </button>
               </div>
             </div>
+
+            {/* 本人確認バナー */}
+            <IdentityVerificationBanner status={userProfile?.identity_verification_status ?? 'unsubmitted'} onSubmit={() => navigate('/dashboard/employee/identity-verification')} />
 
             {/* 銀行口座アラート (inline) */}
             {!hasBankAccount ? (
