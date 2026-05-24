@@ -152,6 +152,10 @@ function EmployeeDashboardContent() {
   }, [userProfile]);
 
   const hasBankAccount = !!bankAccountInfo;
+  // 本人確認ステータス（admin は受注ゲート対象外）
+  const isUserAdmin = userProfile?.role === 'admin';
+  const identityStatus = userProfile?.identity_verification_status ?? 'unsubmitted';
+  const isIdentityVerified = isUserAdmin || identityStatus === 'approved';
 
   /** 銀行口座を保存 */
   async function saveBankAccount() {
@@ -699,10 +703,19 @@ function EmployeeDashboardContent() {
                             )}
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] text-[#BBB]">{new Date(order.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                              <button onClick={() => handleAccept(order.id)} disabled={actionLoading === order.id}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#111] text-white hover:bg-[#333] transition-colors disabled:opacity-40">
-                                {actionLoading === order.id ? '処理中...' : 'この案件を受注する'}
-                              </button>
+                              {isIdentityVerified ? (
+                                <button onClick={() => handleAccept(order.id)} disabled={actionLoading === order.id}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#111] text-white hover:bg-[#333] transition-colors disabled:opacity-40">
+                                  {actionLoading === order.id ? '処理中...' : 'この案件を受注する'}
+                                </button>
+                              ) : (
+                                <button onClick={() => navigate('/dashboard/employee/identity-verification')}
+                                  title="本人確認後に受注可能"
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold rounded-md cursor-pointer bg-[#E5E5E5] text-[#666] hover:bg-[#D5D5D5] transition-colors">
+                                  <i className="ri-lock-line text-[11px]"></i>
+                                  本人確認後に受注可能
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

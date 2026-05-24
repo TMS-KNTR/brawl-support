@@ -68,6 +68,7 @@ export default function AdminDashboardPage() {
     { to: '/dashboard/admin/withdrawals', icon: '💰', label: '出金管理', desc: '出金申請の承認・却下・残高管理', badge: kpi?.pendingWithdrawals ? `保留: ${kpi.pendingWithdrawals}` : '' },
     { to: '/dashboard/admin/notifications', icon: '🔔', label: '通知管理', desc: '通知履歴・一斉通知・メール送信', badge: '' },
     { to: '/dashboard/admin/reports', icon: '📑', label: '売上レポート', desc: '売上集計・CSVエクスポート・確定申告用', badge: '' },
+    { to: '/dashboard/admin/identity-verifications', icon: '🪪', label: '本人確認審査', desc: '代行者の本人確認提出を審査', badge: '' },
   ];
 
   return (

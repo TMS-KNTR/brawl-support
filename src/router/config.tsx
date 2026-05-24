@@ -46,6 +46,7 @@ const AdminRatingsPage = lazy(() => import('../pages/dashboard/admin/ratings/pag
 const AdminNotificationsPage = lazy(() => import('../pages/dashboard/admin/notifications/page'))
 const AdminWithdrawalsPage = lazy(() => import('../pages/dashboard/admin/withdrawals/page'))
 const AdminReportsPage = lazy(() => import('../pages/dashboard/admin/reports/page'))
+const AdminIdentityVerificationsPage = lazy(() => import('../pages/dashboard/admin/identity-verifications/page'))
 const NotificationsPage = lazy(() => import('../pages/notifications/page'))
 const OrderDetailPage = lazy(() => import('../pages/dashboard/customer/order/page'))
 const EmployeeOrderDetailPage = lazy(() => import('../pages/dashboard/employee/order/page'))
@@ -278,6 +279,14 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={['admin']}>
         <AdminReportsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/dashboard/admin/identity-verifications',
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AdminIdentityVerificationsPage />
       </ProtectedRoute>
     ),
   },

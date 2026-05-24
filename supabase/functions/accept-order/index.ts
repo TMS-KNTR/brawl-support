@@ -26,12 +26,25 @@ serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, is_banned")
+      .select("role, is_banned, identity_verification_status")
       .eq("id", user.id)
       .single();
 
     if (profile?.is_banned) {
       throw new Error("アカウントが停止されています");
+    }
+
+    // 本人確認の承認が受注の前提（管理者は除く）
+    const isUserAdmin = (profile?.role ?? "").toString().toLowerCase() === "admin";
+    if (!isUserAdmin && profile?.identity_verification_status !== "approved") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "受注には本人確認の承認が必要です",
+          code: "IDENTITY_VERIFICATION_REQUIRED",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
     }
 
     // メンテナンスモードチェック
@@ -245,6 +258,7 @@ serve(async (req: Request) => {
       "この注文は既に他の代行者が受注しました",
       "同時に受注できる注文数の上限に達しています",
       "order_id が必要です",
+      "受注には本人確認の承認が必要です",
     ];
     const isSafe = safeMessages.some(m => err.message?.includes(m));
     return new Response(
