@@ -36,10 +36,4 @@
     <priority>0.4</priority>
     <changefreq>monthly</changefreq>
   </url>
-  <url>
-    <loc>https://gemusuke.com/legal/compliance</loc>
-    <lastmod>2026-02-18</lastmod>
-    <priority>0.4</priority>
-    <changefreq>monthly</changefreq>
-  </url>
 </urlset>

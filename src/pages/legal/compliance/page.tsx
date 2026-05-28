@@ -9,14 +9,9 @@ export default function CompliancePage() {
   return (
     <div className="min-h-screen bg-white">
       <Helmet>
-        <title>特定商取引法に基づく表記 | げむ助 - ゲームスキルマッチングプラットフォーム</title>
-        <meta name="description" content="げむ助の特定商取引法に基づく表記。運営者情報、支払方法、返品・キャンセルポリシー等を掲載しています。" />
-        <meta property="og:title" content="特定商取引法に基づく表記 | げむ助" />
-        <meta property="og:description" content="げむ助の特定商取引法に基づく表記。運営者情報、支払方法、返品・キャンセルポリシー。" />
-        <meta property="og:url" content="https://gemusuke.com/legal/compliance" />
-        <meta property="og:locale" content="ja_JP" />
-        <meta property="og:image" content="https://gemusuke.com/og-image.png" />
-        <link rel="canonical" href="https://gemusuke.com/legal/compliance" />
+        <title>特定商取引法に基づく表記 | げむ助</title>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="googlebot" content="noindex, nofollow" />
       </Helmet>
       <Header />
 
