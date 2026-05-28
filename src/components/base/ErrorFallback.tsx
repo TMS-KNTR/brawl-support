@@ -1,0 +1,34 @@
+type Props = {
+  isChunkError: boolean
+  onReload: () => void
+}
+
+export default function ErrorFallback({ isChunkError, onReload }: Props) {
+  return (
+    <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl border border-[#E5E5E5] p-7 text-center">
+        <div className="w-14 h-14 rounded-full bg-[#FEF2F2] flex items-center justify-center mx-auto mb-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <h1 className="text-[18px] font-bold text-[#111] mb-2">
+          {isChunkError ? '新しいバージョンが利用可能です' : 'エラーが発生しました'}
+        </h1>
+        <p className="text-[13px] text-[#888] mb-5">
+          {isChunkError
+            ? 'ページを再読み込みすると、最新版に更新されます。'
+            : '予期しないエラーが発生しました。ページを再読み込みしてください。'}
+        </p>
+        <button
+          onClick={onReload}
+          className="inline-block px-6 py-2.5 text-[13px] font-bold bg-[#111] text-white rounded-xl hover:bg-[#333] transition-colors cursor-pointer"
+        >
+          再読み込み
+        </button>
+      </div>
+    </div>
+  )
+}
