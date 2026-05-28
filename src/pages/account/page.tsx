@@ -259,9 +259,9 @@ export default function AccountPage() {
                 <span className="text-[12px] text-[#888]">登録日</span>
                 <span className="text-[12px] font-medium text-[#111]">{createdAt}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
                 <span className="text-[12px] text-[#888]">ユーザーID</span>
-                <span className="text-[11px] font-mono text-[#999] truncate ml-4 max-w-[180px]">{user?.id || '—'}</span>
+                <span className="text-[11px] font-mono text-[#999] break-all select-all">{user?.id || '—'}</span>
               </div>
             </div>
           </div>
