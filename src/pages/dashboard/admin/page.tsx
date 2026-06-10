@@ -69,6 +69,7 @@ export default function AdminDashboardPage() {
     { to: '/dashboard/admin/notifications', icon: '🔔', label: '通知管理', desc: '通知履歴・一斉通知・メール送信', badge: '' },
     { to: '/dashboard/admin/reports', icon: '📑', label: '売上レポート', desc: '売上集計・CSVエクスポート・確定申告用', badge: '' },
     { to: '/dashboard/admin/identity-verifications', icon: '🪪', label: '本人確認審査', desc: '代行者の本人確認提出を審査', badge: '' },
+    { to: '/dashboard/admin/security/2fa', icon: '🔑', label: '2段階認証', desc: '管理者アカウントのMFA設定', badge: '' },
   ];
 
   return (

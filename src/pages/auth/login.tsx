@@ -73,10 +73,21 @@ export default function LoginPage() {
       supabase.auth.signOut()
       return
     }
-    const role = normalizeRole(userProfile.role)
-    if (role === 'admin') navigate('/dashboard/admin', { replace: true })
-    else if (role === 'employee') navigate('/dashboard/employee', { replace: true })
-    else navigate('/dashboard/customer', { replace: true })
+    ;(async () => {
+      const role = normalizeRole(userProfile.role)
+      // 管理者かつMFA factor登録済みでAAL未昇格ならチャレンジへ
+      if (role === 'admin') {
+        try {
+          const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+          if (aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2') {
+            navigate('/auth/mfa-challenge', { replace: true })
+            return
+          }
+        } catch { /* fall through to normal redirect */ }
+        navigate('/dashboard/admin', { replace: true })
+      } else if (role === 'employee') navigate('/dashboard/employee', { replace: true })
+      else navigate('/dashboard/customer', { replace: true })
+    })()
   }, [user, userProfile, loading, navigate])
 
   async function signIn(targetEmail: string, targetPassword: string) {
@@ -118,8 +129,16 @@ export default function LoginPage() {
           return
         }
         const role = normalizeRole(profile?.role)
-        if (role === 'admin') navigate('/dashboard/admin', { replace: true })
-        else if (role === 'employee') navigate('/dashboard/employee', { replace: true })
+        if (role === 'admin') {
+          try {
+            const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+            if (aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2') {
+              navigate('/auth/mfa-challenge', { replace: true })
+              return
+            }
+          } catch { /* fall through */ }
+          navigate('/dashboard/admin', { replace: true })
+        } else if (role === 'employee') navigate('/dashboard/employee', { replace: true })
         else navigate('/dashboard/customer', { replace: true })
       }
     } catch (e: any) {

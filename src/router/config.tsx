@@ -9,6 +9,7 @@ const LoginPage = lazy(() => import('../pages/auth/login'))
 const RegisterPage = lazy(() => import('../pages/auth/register'))
 const ForgotPasswordPage = lazy(() => import('../pages/auth/forgot-password'))
 const AuthCallbackPage = lazy(() => import('../pages/auth/callback'))
+const MfaChallengePage = lazy(() => import('../pages/auth/mfa-challenge'))
 const NotFoundPage = lazy(() => import('../pages/NotFound'))
 
 // Order / Payment
@@ -47,6 +48,7 @@ const AdminNotificationsPage = lazy(() => import('../pages/dashboard/admin/notif
 const AdminWithdrawalsPage = lazy(() => import('../pages/dashboard/admin/withdrawals/page'))
 const AdminReportsPage = lazy(() => import('../pages/dashboard/admin/reports/page'))
 const AdminIdentityVerificationsPage = lazy(() => import('../pages/dashboard/admin/identity-verifications/page'))
+const Admin2FAPage = lazy(() => import('../pages/dashboard/admin/security/2fa/page'))
 const NotificationsPage = lazy(() => import('../pages/notifications/page'))
 const OrderDetailPage = lazy(() => import('../pages/dashboard/customer/order/page'))
 const EmployeeOrderDetailPage = lazy(() => import('../pages/dashboard/employee/order/page'))
@@ -63,6 +65,7 @@ const routes: RouteObject[] = [
   { path: '/register', element: <RegisterPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/auth/callback', element: <AuthCallbackPage /> },
+  { path: '/auth/mfa-challenge', element: <MfaChallengePage /> },
   { path: '/games', element: <GamesPage /> },
 { path: '/legal/terms', element: <TermsPage /> },
   { path: '/legal/privacy', element: <PrivacyPage /> },
@@ -287,6 +290,15 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={['admin']}>
         <AdminIdentityVerificationsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    // 2FA設定ページ自身はAAL2を要求しない（未設定時に詰むため）
+    path: '/dashboard/admin/security/2fa',
+    element: (
+      <ProtectedRoute allowedRoles={['admin']} requireAdminAAL2={false}>
+        <Admin2FAPage />
       </ProtectedRoute>
     ),
   },
