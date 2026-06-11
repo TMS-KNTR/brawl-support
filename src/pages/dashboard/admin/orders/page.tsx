@@ -16,6 +16,9 @@ export default function AdminOrdersPage() {
   const [processing, setProcessing] = useState<string | null>(null); // 処理中のorder_id
   const [feeRate, setFeeRate] = useState(0.20);
   const [page, setPage] = useState(1);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [reassignTarget, setReassignTarget] = useState<any | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const PAGE_SIZE = 50;
 
   useEffect(() => {
@@ -30,6 +33,19 @@ export default function AdminOrdersPage() {
   }, []);
 
   useEffect(() => { loadOrders(); }, []);
+
+  // 代行者一覧をロード（入れ替え用ドロップダウン）
+  useEffect(() => {
+    invokeEdgeFunction<{ success: boolean; data: any[] }>('admin-api', { action: 'list-users' })
+      .then((result) => {
+        if (!result.success) return;
+        const emps = (result.data || [])
+          .filter((u: any) => u.role === 'employee' && !u.is_banned)
+          .sort((a: any, b: any) => (a.username || '').localeCompare(b.username || ''));
+        setEmployees(emps);
+      })
+      .catch(() => { /* 失敗は無視（ボタンは押せるがリスト空になる） */ });
+  }, []);
 
   async function loadOrders() {
     setLoading(true);
@@ -146,6 +162,58 @@ export default function AdminOrdersPage() {
       await logAdminAction({ action: 'order_force_completed_fallback', targetType: 'order', targetId: order.id, details: `支払いエラー、ステータスのみ完了に変更`, meta: { error: err.message } });
     }
 
+    setProcessing(null);
+    loadOrders();
+  }
+
+  /** 代行者を変更（モーダル確定時） */
+  async function confirmReassign() {
+    if (!reassignTarget || !selectedEmployeeId) return;
+    const order = reassignTarget;
+    setProcessing(order.id);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>(
+        'admin-api',
+        { action: 'reassign-order', order_id: order.id, new_employee_id: selectedEmployeeId }
+      );
+      if (!result.success) { alert('エラー: ' + result.error); return; }
+      await logAdminAction({
+        action: 'order_reassigned',
+        targetType: 'order',
+        targetId: order.id,
+        details: '代行者を変更',
+        meta: { old_employee_id: order.employee_id, new_employee_id: selectedEmployeeId },
+      });
+      setReassignTarget(null);
+      setSelectedEmployeeId('');
+    } catch (err: any) {
+      alert('エラー: ' + err.message);
+    }
+    setProcessing(null);
+    loadOrders();
+  }
+
+  /** 受注前に戻す（assigned/in_progress → paid + employee_id クリア） */
+  async function revertAssignment(order: any) {
+    const msg = `🔄 受注前の状態（再募集中）に戻しますか？\n\n注文: ${order.id.slice(0, 8)}...\n現代行者: ${order.employee_id?.slice(0, 8) || '-'}...\n\n※ 元代行者には担当解除の通知が送られます`;
+    if (!window.confirm(msg)) return;
+    setProcessing(order.id);
+    try {
+      const result = await invokeEdgeFunction<{ success: boolean; error?: string }>(
+        'admin-api',
+        { action: 'revert-order-assignment', order_id: order.id }
+      );
+      if (!result.success) { alert('エラー: ' + result.error); return; }
+      await logAdminAction({
+        action: 'order_reverted_to_open',
+        targetType: 'order',
+        targetId: order.id,
+        details: '受注前に戻した',
+        meta: { old_employee_id: order.employee_id },
+      });
+    } catch (err: any) {
+      alert('エラー: ' + err.message);
+    }
     setProcessing(null);
     loadOrders();
   }
@@ -298,6 +366,26 @@ export default function AdminOrdersPage() {
                           </button>
                         )}
 
+                        {/* 代行者を変更 / 受注前に戻す */}
+                        {['assigned', 'in_progress'].includes(o.status) && (
+                          <>
+                            <button
+                              onClick={() => { setReassignTarget(o); setSelectedEmployeeId(''); }}
+                              disabled={isProcessing}
+                              className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50"
+                            >
+                              👤 代行者を変更
+                            </button>
+                            <button
+                              onClick={() => revertAssignment(o)}
+                              disabled={isProcessing}
+                              className="px-3 py-1 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-50"
+                            >
+                              🔄 受注前に戻す
+                            </button>
+                          </>
+                        )}
+
                         {/* ステータスのみ変更 */}
                         {o.status === 'paid' && !o.employee_id && (
                           <button onClick={() => changeStatusOnly(o.id, 'pending')} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200">保留に戻す</button>
@@ -319,6 +407,56 @@ export default function AdminOrdersPage() {
           )}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
+
+        {/* 代行者変更モーダル */}
+        {reassignTarget && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+              <h3 className="text-lg font-bold mb-4">👤 代行者を変更</h3>
+              <div className="text-sm text-gray-600 mb-4 space-y-1">
+                <p>注文ID: <span className="font-mono">{reassignTarget.id.slice(0, 8)}...</span></p>
+                <p>現代行者: <span className="font-mono">{reassignTarget.employee_id?.slice(0, 8) || '-'}...</span></p>
+                <p>ステータス: {statusLabel(reassignTarget.status)}</p>
+              </div>
+              <label className="block mb-6">
+                <span className="block text-sm font-medium text-gray-700 mb-1">新しい代行者</span>
+                <select
+                  value={selectedEmployeeId}
+                  onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="">選択してください</option>
+                  {employees
+                    .filter((e) => e.id !== reassignTarget.employee_id)
+                    .map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.username || e.full_name || '(名前未設定)'} — {e.id.slice(0, 8)}
+                      </option>
+                    ))}
+                </select>
+                {employees.length === 0 && (
+                  <p className="text-xs text-red-600 mt-1">代行者一覧の取得に失敗しました</p>
+                )}
+              </label>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => { setReassignTarget(null); setSelectedEmployeeId(''); }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={confirmReassign}
+                  disabled={!selectedEmployeeId || processing === reassignTarget.id}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                >
+                  {processing === reassignTarget.id ? '処理中...' : '変更する'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Footer />
       </div>
     </ProtectedRoute>

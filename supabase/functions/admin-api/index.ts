@@ -548,6 +548,175 @@ async function handleForceCompleteOrder(
   return data;
 }
 
+// chat_threads.participants は配列または JSON 文字列の混在実績があるため正規化する
+function parseParticipants(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw as string[];
+  if (typeof raw === "string") {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr as string[];
+    } catch { /* noop */ }
+  }
+  return [];
+}
+
+async function handleReassignOrder(
+  sb: SupabaseClient,
+  params: { order_id: string; new_employee_id: string }
+) {
+  if (!params.order_id) throw new Error("order_id が必要です");
+  if (!params.new_employee_id) throw new Error("new_employee_id が必要です");
+
+  const { data: newEmp, error: empErr } = await sb
+    .from("profiles")
+    .select("id, role, is_banned")
+    .eq("id", params.new_employee_id)
+    .single();
+  if (empErr || !newEmp) throw new Error("指定された代行者が見つかりません");
+  if (newEmp.role !== "employee") throw new Error("指定されたユーザーは代行者ではありません");
+  if (newEmp.is_banned) throw new Error("指定された代行者は停止されています");
+
+  const { data: order, error: orderErr } = await sb
+    .from("orders")
+    .select("id, status, employee_id, user_id")
+    .eq("id", params.order_id)
+    .single();
+  if (orderErr || !order) throw new Error("注文が見つかりません");
+  if (!["assigned", "in_progress"].includes(order.status)) {
+    throw new Error(`このステータスでは代行者変更できません（現在: ${order.status}）`);
+  }
+  if (order.employee_id === params.new_employee_id) {
+    throw new Error("同じ代行者が既に割当されています");
+  }
+
+  const oldEmployeeId: string | null = order.employee_id;
+
+  // 楽観ロック: 取得時のステータスが維持されている場合のみ更新
+  const { data: updated, error: updateErr } = await sb
+    .from("orders")
+    .update({ employee_id: params.new_employee_id })
+    .eq("id", params.order_id)
+    .in("status", ["assigned", "in_progress"])
+    .select("id");
+  if (updateErr) throw new Error(updateErr.message);
+  if (!updated || updated.length === 0) {
+    throw new Error("注文の状態が変わったため、変更できませんでした");
+  }
+
+  // チャットスレッドの participants を [依頼者, 新代行者] に再構成
+  const { data: thread } = await sb
+    .from("chat_threads")
+    .select("id, participants")
+    .eq("order_id", params.order_id)
+    .maybeSingle();
+  if (thread) {
+    let participants = parseParticipants(thread.participants);
+    if (oldEmployeeId) {
+      participants = participants.filter((id) => id !== oldEmployeeId);
+    }
+    if (!participants.includes(params.new_employee_id)) {
+      participants.push(params.new_employee_id);
+    }
+    await sb.from("chat_threads").update({ participants }).eq("id", thread.id);
+  }
+
+  // 通知
+  if (oldEmployeeId) {
+    await sb.from("notifications").insert({
+      user_id: oldEmployeeId,
+      type: "order_unassigned",
+      title: "担当を解除されました",
+      body: "管理者により、担当案件の代行者が変更されました。",
+      link_url: "/dashboard/employee",
+    });
+  }
+  await sb.from("notifications").insert({
+    user_id: params.new_employee_id,
+    type: "order_assigned",
+    title: "新しい案件が割当されました",
+    body: "管理者により、案件が割当されました。",
+    link_url: "/dashboard/employee",
+  });
+  if (order.user_id) {
+    await sb.from("notifications").insert({
+      user_id: order.user_id,
+      type: "order_employee_changed",
+      title: "代行者が変更されました",
+      body: "管理者により、担当代行者が変更されました。",
+      link_url: "/dashboard/customer",
+    });
+  }
+
+  return {
+    order_id: params.order_id,
+    new_employee_id: params.new_employee_id,
+    old_employee_id: oldEmployeeId,
+  };
+}
+
+async function handleRevertOrderAssignment(
+  sb: SupabaseClient,
+  params: { order_id: string }
+) {
+  if (!params.order_id) throw new Error("order_id が必要です");
+
+  const { data: order, error: orderErr } = await sb
+    .from("orders")
+    .select("id, status, employee_id, user_id")
+    .eq("id", params.order_id)
+    .single();
+  if (orderErr || !order) throw new Error("注文が見つかりません");
+  if (!["assigned", "in_progress"].includes(order.status)) {
+    throw new Error(`このステータスでは受注前に戻せません（現在: ${order.status}）`);
+  }
+
+  const oldEmployeeId: string | null = order.employee_id;
+
+  const { data: updated, error: updateErr } = await sb
+    .from("orders")
+    .update({ employee_id: null, status: "paid" })
+    .eq("id", params.order_id)
+    .in("status", ["assigned", "in_progress"])
+    .select("id");
+  if (updateErr) throw new Error(updateErr.message);
+  if (!updated || updated.length === 0) {
+    throw new Error("注文の状態が変わったため、変更できませんでした");
+  }
+
+  // チャットスレッドの participants から旧代行者を除外
+  const { data: thread } = await sb
+    .from("chat_threads")
+    .select("id, participants")
+    .eq("order_id", params.order_id)
+    .maybeSingle();
+  if (thread && oldEmployeeId) {
+    const participants = parseParticipants(thread.participants)
+      .filter((id) => id !== oldEmployeeId);
+    await sb.from("chat_threads").update({ participants }).eq("id", thread.id);
+  }
+
+  if (oldEmployeeId) {
+    await sb.from("notifications").insert({
+      user_id: oldEmployeeId,
+      type: "order_unassigned",
+      title: "担当を解除されました",
+      body: "管理者により、担当案件が再募集されました。",
+      link_url: "/dashboard/employee",
+    });
+  }
+  if (order.user_id) {
+    await sb.from("notifications").insert({
+      user_id: order.user_id,
+      type: "order_reopened",
+      title: "代行者を再募集中です",
+      body: "管理者により、代行者が再募集中になりました。",
+      link_url: "/dashboard/customer",
+    });
+  }
+
+  return { order_id: params.order_id, old_employee_id: oldEmployeeId };
+}
+
 const ALLOWED_SETTING_KEYS = [
   "platform_fee_rate",
   "auto_cancel_hours",
@@ -875,6 +1044,12 @@ serve(async (req: Request) => {
       case "force-complete-order":
         result = await handleForceCompleteOrder(supabase, params);
         break;
+      case "reassign-order":
+        result = await handleReassignOrder(supabase, params);
+        break;
+      case "revert-order-assignment":
+        result = await handleRevertOrderAssignment(supabase, params);
+        break;
       case "update-system-setting":
         result = await handleUpdateSystemSetting(supabase, params, user.id);
         break;
@@ -906,7 +1081,8 @@ serve(async (req: Request) => {
     const WRITE_ACTIONS = [
       "warn-user", "ban-user", "unban-user", "reset-warnings",
       "change-role", "adjust-balance", "change-order-status",
-      "force-complete-order", "update-system-setting",
+      "force-complete-order", "reassign-order", "revert-order-assignment",
+      "update-system-setting",
       "create-expense", "update-expense", "delete-expense",
     ];
     const SENSITIVE_ACTIONS = [
