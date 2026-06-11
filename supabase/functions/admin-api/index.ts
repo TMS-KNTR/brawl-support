@@ -582,28 +582,33 @@ async function handleReassignOrder(
     .eq("id", params.order_id)
     .single();
   if (orderErr || !order) throw new Error("注文が見つかりません");
-  if (!["assigned", "in_progress"].includes(order.status)) {
-    throw new Error(`このステータスでは代行者変更できません（現在: ${order.status}）`);
+  if (!["paid", "assigned", "in_progress"].includes(order.status)) {
+    throw new Error(`このステータスでは代行者を割当・変更できません（現在: ${order.status}）`);
   }
   if (order.employee_id === params.new_employee_id) {
     throw new Error("同じ代行者が既に割当されています");
   }
 
   const oldEmployeeId: string | null = order.employee_id;
+  const isNewAssignment = order.status === "paid";
 
   // 楽観ロック: 取得時のステータスが維持されている場合のみ更新
+  // paid → assigned に昇格、assigned/in_progress はステータス維持
+  const updatePayload: Record<string, unknown> = { employee_id: params.new_employee_id };
+  if (isNewAssignment) updatePayload.status = "assigned";
+
   const { data: updated, error: updateErr } = await sb
     .from("orders")
-    .update({ employee_id: params.new_employee_id })
+    .update(updatePayload)
     .eq("id", params.order_id)
-    .in("status", ["assigned", "in_progress"])
+    .in("status", ["paid", "assigned", "in_progress"])
     .select("id");
   if (updateErr) throw new Error(updateErr.message);
   if (!updated || updated.length === 0) {
     throw new Error("注文の状態が変わったため、変更できませんでした");
   }
 
-  // チャットスレッドの participants を [依頼者, 新代行者] に再構成
+  // チャットスレッドの participants を再構成。無ければ新規作成
   const { data: thread } = await sb
     .from("chat_threads")
     .select("id, participants")
@@ -618,6 +623,12 @@ async function handleReassignOrder(
       participants.push(params.new_employee_id);
     }
     await sb.from("chat_threads").update({ participants }).eq("id", thread.id);
+  } else if (order.user_id) {
+    // paid から初回割当のケース: スレッドが無いので新規作成
+    await sb.from("chat_threads").insert({
+      order_id: params.order_id,
+      participants: [order.user_id, params.new_employee_id],
+    });
   }
 
   // 通知
@@ -640,9 +651,11 @@ async function handleReassignOrder(
   if (order.user_id) {
     await sb.from("notifications").insert({
       user_id: order.user_id,
-      type: "order_employee_changed",
-      title: "代行者が変更されました",
-      body: "管理者により、担当代行者が変更されました。",
+      type: isNewAssignment ? "order_employee_assigned" : "order_employee_changed",
+      title: isNewAssignment ? "代行者が決定しました" : "代行者が変更されました",
+      body: isNewAssignment
+        ? "管理者により、担当代行者が決定しました。まもなく作業が開始されます。"
+        : "管理者により、担当代行者が変更されました。",
       link_url: "/dashboard/customer",
     });
   }

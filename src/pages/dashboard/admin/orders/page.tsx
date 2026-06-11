@@ -177,11 +177,12 @@ export default function AdminOrdersPage() {
         { action: 'reassign-order', order_id: order.id, new_employee_id: selectedEmployeeId }
       );
       if (!result.success) { alert('エラー: ' + result.error); return; }
+      const isAssign = !order.employee_id;
       await logAdminAction({
-        action: 'order_reassigned',
+        action: isAssign ? 'order_assigned_by_admin' : 'order_reassigned',
         targetType: 'order',
         targetId: order.id,
-        details: '代行者を変更',
+        details: isAssign ? '代行者を割当' : '代行者を変更',
         meta: { old_employee_id: order.employee_id, new_employee_id: selectedEmployeeId },
       });
       setReassignTarget(null);
@@ -366,24 +367,26 @@ export default function AdminOrdersPage() {
                           </button>
                         )}
 
-                        {/* 代行者を変更 / 受注前に戻す */}
+                        {/* 代行者を割当（paid） / 代行者を変更（assigned/in_progress） */}
+                        {['paid', 'assigned', 'in_progress'].includes(o.status) && (
+                          <button
+                            onClick={() => { setReassignTarget(o); setSelectedEmployeeId(''); }}
+                            disabled={isProcessing}
+                            className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50"
+                          >
+                            {o.employee_id ? '👤 代行者を変更' : '👤 代行者を割当'}
+                          </button>
+                        )}
+
+                        {/* 受注前に戻す */}
                         {['assigned', 'in_progress'].includes(o.status) && (
-                          <>
-                            <button
-                              onClick={() => { setReassignTarget(o); setSelectedEmployeeId(''); }}
-                              disabled={isProcessing}
-                              className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50"
-                            >
-                              👤 代行者を変更
-                            </button>
-                            <button
-                              onClick={() => revertAssignment(o)}
-                              disabled={isProcessing}
-                              className="px-3 py-1 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-50"
-                            >
-                              🔄 受注前に戻す
-                            </button>
-                          </>
+                          <button
+                            onClick={() => revertAssignment(o)}
+                            disabled={isProcessing}
+                            className="px-3 py-1 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-50"
+                          >
+                            🔄 受注前に戻す
+                          </button>
                         )}
 
                         {/* ステータスのみ変更 */}
@@ -412,14 +415,18 @@ export default function AdminOrdersPage() {
         {reassignTarget && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-              <h3 className="text-lg font-bold mb-4">👤 代行者を変更</h3>
+              <h3 className="text-lg font-bold mb-4">
+                {reassignTarget.employee_id ? '👤 代行者を変更' : '👤 代行者を割当'}
+              </h3>
               <div className="text-sm text-gray-600 mb-4 space-y-1">
                 <p>注文ID: <span className="font-mono">{reassignTarget.id.slice(0, 8)}...</span></p>
-                <p>現代行者: <span className="font-mono">{reassignTarget.employee_id?.slice(0, 8) || '-'}...</span></p>
+                <p>現代行者: <span className="font-mono">{reassignTarget.employee_id?.slice(0, 8) ? `${reassignTarget.employee_id.slice(0, 8)}...` : '未割当'}</span></p>
                 <p>ステータス: {statusLabel(reassignTarget.status)}</p>
               </div>
               <label className="block mb-6">
-                <span className="block text-sm font-medium text-gray-700 mb-1">新しい代行者</span>
+                <span className="block text-sm font-medium text-gray-700 mb-1">
+                  {reassignTarget.employee_id ? '新しい代行者' : '割当する代行者'}
+                </span>
                 <select
                   value={selectedEmployeeId}
                   onChange={(e) => setSelectedEmployeeId(e.target.value)}
@@ -450,7 +457,9 @@ export default function AdminOrdersPage() {
                   disabled={!selectedEmployeeId || processing === reassignTarget.id}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
                 >
-                  {processing === reassignTarget.id ? '処理中...' : '変更する'}
+                  {processing === reassignTarget.id
+                    ? '処理中...'
+                    : (reassignTarget.employee_id ? '変更する' : '割当する')}
                 </button>
               </div>
             </div>
