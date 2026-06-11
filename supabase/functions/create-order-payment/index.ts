@@ -42,7 +42,19 @@ serve(async (req) => {
       throw new Error('注文は依頼者アカウントからのみ作成できます')
     }
 
-    // レートリミット: 同一ユーザーの短期間の大量注文を防止
+    // レートリミット（バースト防止）: 10分間に3件超を即時ブロック
+    // クレジットマスター攻撃・カード有効性確認攻撃の高速試行に対する第一段の防御
+    const { count: burstCount } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString())
+
+    if ((burstCount ?? 0) >= 3) {
+      throw new Error('短時間に多くの注文が作成されました。10分ほど時間を置いてからお試しください。')
+    }
+
+    // レートリミット（持続防止）: 1時間に10件超をブロック
     const { count: recentOrderCount } = await supabase
       .from('orders')
       .select('id', { count: 'exact', head: true })
