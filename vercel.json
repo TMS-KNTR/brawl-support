@@ -24,7 +24,7 @@
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://widget.univapay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' https: data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.univapay.com https://widget.univapay.com https://token.univapay.com; frame-src https://widget.univapay.com https://checkout.univapay.com" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://widget.univapay.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' https: data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.univapay.com https://widget.univapay.com https://token.univapay.com https://challenges.cloudflare.com; frame-src https://widget.univapay.com https://checkout.univapay.com https://challenges.cloudflare.com" }
       ]
     }
   ]
