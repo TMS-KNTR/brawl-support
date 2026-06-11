@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import TurnstileWidget, { type TurnstileWidgetHandle, isTurnstileEnabled } from '../../components/base/TurnstileWidget'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -13,6 +14,9 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const captchaRequired = isTurnstileEnabled()
 
   const passwordChecks = [
     { test: (p: string) => p.length >= 8, label: '8文字以上' },
@@ -28,6 +32,7 @@ export default function RegisterPage() {
     if (!email.trim()) { setError('メールアドレスを入力してください'); return }
     if (!allChecksPassed) { setError('パスワード要件を満たしてください'); return }
     if (password !== confirmPassword) { setError('パスワードが一致しません'); return }
+    if (captchaRequired && !captchaToken) { setError('CAPTCHA認証を完了してください。'); return }
 
     setLoading(true)
     try {
@@ -37,6 +42,7 @@ export default function RegisterPage() {
         options: {
           data: {},
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          ...(captchaToken ? { captchaToken } : {}),
         },
       })
       if (signUpError) throw signUpError
@@ -44,6 +50,8 @@ export default function RegisterPage() {
       redirectTimer.current = setTimeout(() => navigate('/login'), 3000)
     } catch (err: any) {
       setError(err.message || '登録に失敗しました')
+      turnstileRef.current?.reset()
+      setCaptchaToken(null)
     } finally {
       setLoading(false)
     }
@@ -213,9 +221,16 @@ export default function RegisterPage() {
               />
             </div>
 
+            <TurnstileWidget
+              ref={turnstileRef}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onError={() => setCaptchaToken(null)}
+              onExpire={() => setCaptchaToken(null)}
+            />
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (captchaRequired && !captchaToken)}
               className="reg-btn w-full py-3 text-[12px] font-bold tracking-[0.08em] uppercase bg-[#6366F1] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >

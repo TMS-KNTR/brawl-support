@@ -1,19 +1,27 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { AuthBackground } from './login'
+import TurnstileWidget, { type TurnstileWidgetHandle, isTurnstileEnabled } from '../../components/base/TurnstileWidget'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [sent, setSent] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const captchaRequired = isTurnstileEnabled()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) {
       setErrorMsg('メールアドレスを入力してください')
+      return
+    }
+    if (captchaRequired && !captchaToken) {
+      setErrorMsg('CAPTCHA認証を完了してください。')
       return
     }
     setErrorMsg(null)
@@ -22,11 +30,14 @@ export default function ForgotPasswordPage() {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/auth/callback`,
+        ...(captchaToken ? { captchaToken } : {}),
       })
       if (error) throw error
       setSent(true)
     } catch (err: any) {
       setErrorMsg(err.message || 'エラーが発生しました')
+      turnstileRef.current?.reset()
+      setCaptchaToken(null)
     } finally {
       setSubmitting(false)
     }
@@ -164,9 +175,16 @@ export default function ForgotPasswordPage() {
               />
             </div>
 
+            <TurnstileWidget
+              ref={turnstileRef}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onError={() => setCaptchaToken(null)}
+              onExpire={() => setCaptchaToken(null)}
+            />
+
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || (captchaRequired && !captchaToken)}
               className="fp-btn w-full py-3 text-[12px] font-bold tracking-[0.08em] uppercase bg-[#6366F1] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >

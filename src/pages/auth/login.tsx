@@ -1,9 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { normalizeRole } from '../../hooks/useAuth'
+import TurnstileWidget, { type TurnstileWidgetHandle, isTurnstileEnabled } from '../../components/base/TurnstileWidget'
 
 const DEV_TOGGLE_KEY = 'show_dev_quick_login'
 
@@ -32,6 +33,9 @@ export default function LoginPage() {
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [lockCountdown, setLockCountdown] = useState(0)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const captchaRequired = isTurnstileEnabled()
 
   // Rate limit countdown
   useEffect(() => {
@@ -95,12 +99,17 @@ export default function LoginPage() {
       setErrorMsg(`試行回数が多すぎます。${lockCountdown}秒後にお試しください。`)
       return
     }
+    if (captchaRequired && !captchaToken) {
+      setErrorMsg('CAPTCHA認証を完了してください。')
+      return
+    }
     setErrorMsg(null)
     setSubmitting(true)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: targetEmail.trim(),
         password: targetPassword,
+        options: captchaToken ? { captchaToken } : undefined,
       })
       if (error) {
         const next = failedAttempts + 1
@@ -111,6 +120,9 @@ export default function LoginPage() {
         } else {
           setErrorMsg('メールアドレスまたはパスワードが正しくありません。')
         }
+        // CAPTCHAトークンは一度きりなのでリセット
+        turnstileRef.current?.reset()
+        setCaptchaToken(null)
         setSubmitting(false)
         return
       }
@@ -273,9 +285,16 @@ export default function LoginPage() {
               />
             </div>
 
+            <TurnstileWidget
+              ref={turnstileRef}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onError={() => setCaptchaToken(null)}
+              onExpire={() => setCaptchaToken(null)}
+            />
+
             <button
               type="submit"
-              disabled={submitting || isLocked}
+              disabled={submitting || isLocked || (captchaRequired && !captchaToken)}
               className="auth-btn w-full py-3 text-[12px] font-bold tracking-[0.08em] uppercase bg-[#6366F1] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               style={{ fontFamily: '"Orbitron", sans-serif' }}
             >
