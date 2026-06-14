@@ -75,10 +75,10 @@ export default function CompliancePage() {
                 <tr className="border-b border-gray-200">
                   <td className="bg-gray-100 px-6 py-4 font-semibold text-gray-700">返品・キャンセル</td>
                   <td className="px-6 py-4 text-gray-900">
-                    <p>・作業開始前：全額返金</p>
+                    <p>・受注前のキャンセル：全額返金</p>
                     <p>・提供者都合による中止：全額返金</p>
                     <p>・目標未達成（購入後30日以内）：全額返金</p>
-                    <p>・作業開始後のお客様都合：進捗状況に応じて部分返金を検討</p>
+                    <p>・受注後のお客様都合：進捗状況に応じて部分返金を検討</p>
                     <p>・やむを得ない事情による中止：進捗状況に応じて部分返金または再作業で対応</p>
                     <p className="text-gray-500 text-xs mt-1">※返金保証期間は購入後30日以内です</p>
                     <p className="text-gray-500 text-xs">※返金処理に係る手数料は当サービスが負担します</p>
